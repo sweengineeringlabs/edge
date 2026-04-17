@@ -1,8 +1,7 @@
-//! Core implementation layer (L3).
+//! Core implementation layer.
 //!
-//! All structs here should use `pub(crate)` visibility.
-//! Implement traits from api/ here.
+//! Holds concrete, domain-agnostic implementations of the `api/` traits.
+//! Downstream controlroom crates add domain-specific impls alongside (or
+//! replace) these defaults.
 
-
-pub(crate) mod service;
-
+pub mod null_lifecycle_monitor;

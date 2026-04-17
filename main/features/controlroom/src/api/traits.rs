@@ -1,24 +1,19 @@
-//! Public trait definitions.
+//! Barrel re-export of the 5-Concern ControlRoom traits.
 //!
-//! Define service traits here that core/ will implement.
+//! Consumers who want a single import path can write
+//! `use swedge_controlroom::api::traits::*;` and get all concern traits.
 
-use super::config::Config;
-use super::error::Error;
+pub use super::job::Job;
+pub use super::router::Router;
+pub use super::handler::Handler;
+pub use super::lifecycle_monitor::LifecycleMonitor;
 
-/// Primary service trait for controlroom.
+/// Marker type naming the five concerns for discoverability in docs.
 ///
-/// Implement this in core/ to define the crate's main behavior.
-pub trait Service: Send + Sync {
-    /// Execute the primary operation with the given configuration.
-    fn execute(&self, config: &Config) -> Result<(), Error>;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_service_trait_is_object_safe() {
-        fn _accept(_s: &dyn Service) {}
-    }
-}
+/// Traits implementing each concern:
+/// 1. **Job** — [`Job`]
+/// 2. **Routing** — [`Router`]
+/// 3. **Handlers** — [`Handler`]
+/// 4. **Lifecycle** — [`LifecycleMonitor`]
+/// 5. **Gateway (boundary types)** — `crate::gateway` module (internal)
+pub struct ControlRoomPattern;

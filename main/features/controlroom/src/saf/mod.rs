@@ -1,15 +1,25 @@
-//! SAF facade layer (L4) - public surface.
+//! SAF (Static Access Facade) layer — stable function entrypoints.
 //!
-//! Re-export types from api/ and expose core functionality
-//! via standalone public functions.
+//! Re-exports the concern traits and contract-level types from `api/`.
+//! Factory functions provide stable entry points for constructing the
+//! default building blocks.
 
+mod factory;
 
-mod facade;
+// Factory functions
+pub use factory::{new_handler_registry, new_null_lifecycle_monitor};
 
-// Re-export public types
-pub use crate::api::config::Config;
-pub use crate::api::error::Error;
+// Concern traits
+pub use crate::api::job::Job;
+pub use crate::api::router::Router;
+pub use crate::api::handler::Handler;
+pub use crate::api::lifecycle_monitor::LifecycleMonitor;
 
-// Re-export facade functions
-pub use facade::{execute, run};
+// Error types
+pub use crate::api::error::{HandlerError, JobError, LifecycleError, RoutingError};
 
+// Health types
+pub use crate::api::health::{ComponentHealth, HealthReport, HealthStatus};
+
+// Contract-level building blocks (shared default types)
+pub use crate::api::handler_registry::HandlerRegistry;

@@ -12,6 +12,12 @@ categories = ["development-tools"]
 
 [dependencies]
 thiserror = "2"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+parking_lot = "0.12"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
 
 [package.metadata.struct-engine]
 application_type = "lib"
@@ -19,50 +25,3 @@ application_type = "lib"
 
 [lib]
 path = "src/lib.rs"
-
-
-
-
-[[test]]
-name = "controlroom_int_test"
-path = "tests/controlroom_int_test.rs"
-
-
-[[test]]
-name = "traits_int_test"
-path = "tests/traits_int_test.rs"
-
-[[test]]
-name = "config_int_test"
-path = "tests/config_int_test.rs"
-
-[[test]]
-name = "error_int_test"
-path = "tests/error_int_test.rs"
-[[test]]
-name = "service_int_test"
-path = "tests/service_int_test.rs"
-
-[[test]]
-name = "default_service_int_test"
-path = "tests/default_service_int_test.rs"
-
-
-
-[[test]]
-name = "facade_e2e_test"
-path = "tests/facade_e2e_test.rs"
-
-
-
-[[test]]
-name = "controlroom_e2e_test"
-path = "tests/controlroom_e2e_test.rs"
-
-[[test]]
-name = "controlroom_security_test"
-path = "tests/controlroom_security_test.rs"
-
-[[test]]
-name = "controlroom_caching_test"
-path = "tests/controlroom_caching_test.rs"
