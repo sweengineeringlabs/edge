@@ -1,17 +1,14 @@
-[workspace]
-members = [".", "xtask"]
-
 [package]
-name = "swe-gateway"
-version = "0.6.0"
-edition = "2021"
-rust-version = "1.75"
-license = "MIT"
-authors = ["SWE Compliance Team"]
-description = "Gateway abstraction layer with inbound + outbound support for database, file, HTTP, notification, and payment gateways"
-repository = "https://github.com/swe-compliance/swe-gateway"
-keywords = ["gateway", "abstraction", "hexagonal", "ports-adapters"]
-categories = ["development-tools", "web-programming"]
+name = "swedge-gateway"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "swedge — L1 inbound gateway: Gateway<Req,Resp> contract, Pipeline, hexagonal adapters"
+keywords = ["gateway", "pipeline", "edge", "hexagonal", "swe"]
+categories = ["web-programming", "development-tools"]
 
 [package.metadata.struct-engine]
 application_type = "full"
