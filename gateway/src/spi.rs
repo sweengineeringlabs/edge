@@ -13,8 +13,8 @@ pub use crate::api::process::{
 pub use crate::api::traits::{
     // Database
     DatabaseGateway,
-    DatabaseInbound,
-    DatabaseOutbound,
+    DatabaseRead,
+    DatabaseWrite,
     // File
     FileGateway,
     FileInbound,

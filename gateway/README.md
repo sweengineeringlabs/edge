@@ -56,7 +56,7 @@ while let Some(record) = stream.next().await {
 }
 ```
 
-Methods: `DatabaseInbound::query_stream()`, `FileInbound::list_stream()`. Type alias: `GatewayStream<'a, T>`.
+Methods: `DatabaseRead::query_stream()`, `FileInbound::list_stream()`. Type alias: `GatewayStream<'a, T>`.
 
 ## Configuration
 

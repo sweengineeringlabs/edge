@@ -11,7 +11,7 @@ use edge_gateway::saf;
 #[tokio::test]
 async fn test_memory_database_builder_returns_functional_gateway() {
     let db = saf::memory_database();
-    let health = DatabaseInbound::health_check(&db).await.unwrap();
+    let health = DatabaseRead::health_check(&db).await.unwrap();
     assert_eq!(health.status, HealthStatus::Healthy);
 }
 
@@ -21,7 +21,7 @@ async fn test_memory_database_with_tables_builder_returns_functional_gateway() {
     // Insert into a predefined table.
     let mut record = saf::database::Record::new();
     record.insert("id".to_string(), serde_json::json!("t-1"));
-    let result = DatabaseOutbound::insert(&db, "users", record).await.unwrap();
+    let result = DatabaseWrite::insert(&db, "users", record).await.unwrap();
     assert_eq!(result.rows_affected, 1);
 }
 
@@ -100,26 +100,26 @@ async fn test_database_trait_methods_accessible_via_saf() {
     let mut rec = saf::database::Record::new();
     rec.insert("id".to_string(), serde_json::json!("r1"));
     rec.insert("val".to_string(), serde_json::json!(1));
-    DatabaseOutbound::insert(&db, "t", rec).await.unwrap();
+    DatabaseWrite::insert(&db, "t", rec).await.unwrap();
 
     let mut rec2 = saf::database::Record::new();
     rec2.insert("val".to_string(), serde_json::json!(2));
-    DatabaseOutbound::update(&db, "t", "r1", rec2).await.unwrap();
+    DatabaseWrite::update(&db, "t", "r1", rec2).await.unwrap();
 
     // Inbound: query, get_by_id, exists, count, health_check
-    let found = DatabaseInbound::get_by_id(&db, "t", "r1").await.unwrap();
+    let found = DatabaseRead::get_by_id(&db, "t", "r1").await.unwrap();
     assert!(found.is_some(), "get_by_id must find the updated record");
 
-    let exists = DatabaseInbound::exists(&db, "t", "r1").await.unwrap();
+    let exists = DatabaseRead::exists(&db, "t", "r1").await.unwrap();
     assert!(exists, "exists must return true for inserted record");
 
-    let count = DatabaseInbound::count(&db, "t", saf::database::QueryParams::new())
+    let count = DatabaseRead::count(&db, "t", saf::database::QueryParams::new())
         .await
         .unwrap();
     assert!(count >= 1, "count must be at least 1");
 
-    DatabaseOutbound::delete(&db, "t", "r1").await.unwrap();
-    let gone = DatabaseInbound::exists(&db, "t", "r1").await.unwrap();
+    DatabaseWrite::delete(&db, "t", "r1").await.unwrap();
+    let gone = DatabaseRead::exists(&db, "t", "r1").await.unwrap();
     assert!(!gone, "record must be gone after delete");
 }
 
@@ -343,7 +343,7 @@ fn test_result_gateway_ext_maps_std_error() {
 #[tokio::test]
 async fn test_health_check_database_gateway() {
     let db = saf::memory_database();
-    let health = DatabaseInbound::health_check(&db).await.unwrap();
+    let health = DatabaseRead::health_check(&db).await.unwrap();
     assert_eq!(
         health.status,
         HealthStatus::Healthy,

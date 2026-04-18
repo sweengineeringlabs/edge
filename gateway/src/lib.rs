@@ -58,7 +58,7 @@
 //!
 //! struct MyDatabase;
 //!
-//! impl DatabaseInbound for MyDatabase {
+//! impl DatabaseRead for MyDatabase {
 //!     fn query(
 //!         &self,
 //!         table: &str,

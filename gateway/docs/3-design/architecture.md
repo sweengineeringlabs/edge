@@ -335,7 +335,7 @@ Token-bucket algorithm, thread-safe via `parking_lot::Mutex`. Returns `GatewayEr
 
 ## 9. Async Streaming
 
-`DatabaseInbound::query_stream()` and `FileInbound::list_stream()` return `GatewayStream<'a, T>` — a `Pin<Box<dyn Stream<Item = GatewayResult<T>> + Send>>`.
+`DatabaseRead::query_stream()` and `FileInbound::list_stream()` return `GatewayStream<'a, T>` — a `Pin<Box<dyn Stream<Item = GatewayResult<T>> + Send>>`.
 
 Default implementations call the Vec-returning method and convert via `futures::stream::iter`. Backends with cursor support can override for true incremental streaming.
 

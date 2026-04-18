@@ -1,6 +1,6 @@
 //! End-to-end tests for BL-005: async streaming support.
 //!
-//! Validates that `DatabaseInbound::query_stream` and `FileInbound::list_stream`
+//! Validates that `DatabaseRead::query_stream` and `FileInbound::list_stream`
 //! deliver items incrementally and produce the same results as their `Vec`-based
 //! counterparts.
 
