@@ -68,6 +68,14 @@ pub use crate::core::metrics_bridge::{
 pub use crate::api::types::GatewayError;
 pub use crate::api::types::GatewayErrorCode;
 pub use crate::api::types::GatewayResult;
+
+// ── HTTP value types (from api layer) ──
+// Required to construct HttpRequest / inspect HttpResponse from outside
+// the crate. Without these the HttpOutbound / HttpInbound traits are
+// callable but their parameter and return types are unnameable.
+pub use crate::api::http::{
+    HttpAuth, HttpBody, HttpConfig, HttpMethod, HttpRequest, HttpResponse,
+};
 pub use crate::api::types::HealthCheck;
 pub use crate::api::types::HealthStatus;
 pub use crate::api::types::IntoGatewayError;
