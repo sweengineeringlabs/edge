@@ -3,9 +3,9 @@
 //! Exercises the combined NotificationGateway trait through full flows:
 //! send -> check status -> send batch -> list sent -> cancel.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_notification_send_and_check_status() {

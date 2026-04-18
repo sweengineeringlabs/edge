@@ -4,9 +4,9 @@
 //! Payments, customers, and refunds are seeded using PaymentOutbound (via the
 //! combined gateway), then only PaymentInbound methods are exercised.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::payment::{Customer, Money, Payment, PaymentStatus, Refund, RefundStatus};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::payment::{Customer, Money, Payment, PaymentStatus, Refund, RefundStatus};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_payment_inbound_get_payment_and_list_payments() {

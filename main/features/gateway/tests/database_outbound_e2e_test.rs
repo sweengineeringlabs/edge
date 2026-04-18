@@ -4,9 +4,9 @@
 //! Verification uses DatabaseInbound methods (get_by_id, exists, count) on the
 //! same combined gateway instance.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::database::QueryParams;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::database::QueryParams;
+use edge_gateway::saf;
 
 fn make_record(id: &str, name: &str, status: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut r = serde_json::Map::new();

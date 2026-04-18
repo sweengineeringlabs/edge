@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use swe_gateway::saf::{
+use edge_gateway::saf::{
     ClosureRouter, GatewayError, MiddlewareAction, Pipeline, RequestMiddleware,
     ResponseMiddleware, Router,
 };

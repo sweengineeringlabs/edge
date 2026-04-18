@@ -4,9 +4,9 @@
 //! The RestClient operates in mock mode — requests are recorded and
 //! mock 200 responses are returned, allowing multi-step flow verification.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::http::HttpRequest;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::http::HttpRequest;
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_http_outbound_send_get_post_json() {

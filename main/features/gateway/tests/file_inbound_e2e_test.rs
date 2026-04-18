@@ -4,9 +4,9 @@
 //! Files are first written using FileOutbound (via the combined gateway),
 //! then only FileInbound methods are exercised.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::file::{ListOptions, UploadOptions};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::file::{ListOptions, UploadOptions};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_file_inbound_read_exists_metadata() {

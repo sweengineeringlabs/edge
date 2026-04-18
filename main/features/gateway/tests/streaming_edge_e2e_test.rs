@@ -8,10 +8,10 @@
 //! - File stream over a directory tree with subdirectories
 //! - Stream stability when underlying data is mutated after stream creation
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::database::QueryParams;
-use swe_gateway::saf::file::{ListOptions, UploadOptions};
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::database::QueryParams;
+use edge_gateway::saf::file::{ListOptions, UploadOptions};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -215,9 +215,9 @@ async fn test_query_stream_concurrent_streams_iterate_independently() {
 async fn test_query_stream_error_mid_iteration_surfaces_to_consumer() {
     // We simulate a stream that yields Ok items then an error by building
     // a raw stream and using the GatewayStream type alias.
-    use swe_gateway::saf::{GatewayError, GatewayErrorCode};
+    use edge_gateway::saf::{GatewayError, GatewayErrorCode};
 
-    let items: Vec<GatewayResult<swe_gateway::saf::database::Record>> = vec![
+    let items: Vec<GatewayResult<edge_gateway::saf::database::Record>> = vec![
         Ok(make_record("1", "good")),
         Ok(make_record("2", "good")),
         Err(GatewayError::new(
@@ -227,7 +227,7 @@ async fn test_query_stream_error_mid_iteration_surfaces_to_consumer() {
         Ok(make_record("3", "should-still-be-reachable")),
     ];
 
-    let stream: GatewayStream<'_, swe_gateway::saf::database::Record> =
+    let stream: GatewayStream<'_, edge_gateway::saf::database::Record> =
         Box::pin(futures::stream::iter(items));
 
     let collected: Vec<_> = stream.collect::<Vec<_>>().await;

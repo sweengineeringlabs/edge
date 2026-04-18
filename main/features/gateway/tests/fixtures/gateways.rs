@@ -3,7 +3,7 @@
 //! Wraps `saf::*` builders with test-friendly defaults and
 //! provides `TempFileGateway` for isolated file operations.
 
-use swe_gateway::saf;
+use edge_gateway::saf;
 
 /// An isolated file gateway backed by a temporary directory.
 ///
@@ -23,7 +23,7 @@ impl TempFileGateway {
     /// Create a fresh `LocalFileGateway` pointing at this temp directory.
     ///
     /// Returns an owned gateway — call this wherever you need the gateway.
-    pub fn gateway(&self) -> impl swe_gateway::saf::FileGateway {
+    pub fn gateway(&self) -> impl edge_gateway::saf::FileGateway {
         saf::local_file_gateway(self.dir.path().to_path_buf())
     }
 
@@ -34,26 +34,26 @@ impl TempFileGateway {
 }
 
 /// Create an in-memory database with no tables.
-pub fn memory_db() -> impl swe_gateway::saf::DatabaseGateway {
+pub fn memory_db() -> impl edge_gateway::saf::DatabaseGateway {
     saf::memory_database()
 }
 
 /// Create an in-memory database with the given table names pre-registered.
-pub fn memory_db_with_tables(tables: &[&str]) -> impl swe_gateway::saf::DatabaseGateway {
+pub fn memory_db_with_tables(tables: &[&str]) -> impl edge_gateway::saf::DatabaseGateway {
     saf::memory_database_with_tables(tables.to_vec())
 }
 
 /// Create a silent notification gateway (no stdout output).
-pub fn notifier() -> impl swe_gateway::saf::NotificationGateway {
+pub fn notifier() -> impl edge_gateway::saf::NotificationGateway {
     saf::silent_notifier()
 }
 
 /// Create a mock payment gateway.
-pub fn payments() -> impl swe_gateway::saf::PaymentGateway {
+pub fn payments() -> impl edge_gateway::saf::PaymentGateway {
     saf::mock_payment_gateway()
 }
 
 /// Create a REST client pointed at the given base URL.
-pub fn http_client(base_url: impl Into<String>) -> impl swe_gateway::saf::HttpGateway {
+pub fn http_client(base_url: impl Into<String>) -> impl edge_gateway::saf::HttpGateway {
     saf::rest_client_with_base_url(base_url)
 }

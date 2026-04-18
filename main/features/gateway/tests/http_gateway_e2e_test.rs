@@ -3,9 +3,9 @@
 //! Exercises the combined HttpGateway trait through realistic multi-step flows:
 //! configure client -> send requests -> verify responses -> handle inbound.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::http::{HttpConfig, HttpRequest};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::http::{HttpConfig, HttpRequest};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_http_outbound_request_lifecycle() {

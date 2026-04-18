@@ -3,9 +3,9 @@
 //! Exercises the full lifecycle through the combined FileGateway trait:
 //! write -> read -> copy -> rename -> list -> delete -> verify.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::file::UploadOptions;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::file::UploadOptions;
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_file_write_read_delete_lifecycle() {
@@ -95,7 +95,7 @@ async fn e2e_file_directory_operations() {
 
     // List root directory
     let listing = gw
-        .list(swe_gateway::saf::file::ListOptions::default())
+        .list(edge_gateway::saf::file::ListOptions::default())
         .await
         .unwrap();
     // Should see the subdir

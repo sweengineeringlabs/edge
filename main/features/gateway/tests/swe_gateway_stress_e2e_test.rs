@@ -5,10 +5,10 @@
 
 use std::sync::Arc;
 
-use swe_gateway::saf::{self, DatabaseInbound, DatabaseOutbound, FileInbound, FileOutbound};
-use swe_gateway::saf::database::{QueryParams, Record};
-use swe_gateway::saf::file::UploadOptions;
-use swe_gateway::saf::{
+use edge_gateway::saf::{self, DatabaseInbound, DatabaseOutbound, FileInbound, FileOutbound};
+use edge_gateway::saf::database::{QueryParams, Record};
+use edge_gateway::saf::file::UploadOptions;
+use edge_gateway::saf::{
     ClosureRouter, GatewayError, Pipeline, RateLimiter, Router,
 };
 
