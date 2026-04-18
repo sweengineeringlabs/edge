@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
-use swe_gateway::saf::{
-    async_trait, GatewayError, GatewayResult, RequestMiddleware,
-    RetryMiddleware,
+use edge_gateway::saf::{
+    async_trait, wrap_with_retry, GatewayError, GatewayResult, RequestMiddleware,
+    RetryMiddlewareBuilder,
 };
 
 // ── Test helpers ────────────────────────────────────────────────────────────
@@ -119,10 +119,13 @@ async fn test_retry_on_transient_error_succeeds_after_n_attempts() {
     ));
     let counter = Arc::new(CountingMiddleware::new(inner));
 
-    let mw = RetryMiddleware::builder()
+    let mw = wrap_with_retry(
+RetryMiddlewareBuilder::new()
         .max_attempts(3)
         .fixed_backoff(Duration::from_millis(1)) // minimal delay for test speed
-        .build_with(counter.clone() as Arc<dyn RequestMiddleware>);
+        .build(),
+counter.clone() as Arc<dyn RequestMiddleware>,
+);
 
     let result = mw.process_request(serde_json::json!({})).await;
 
@@ -139,10 +142,13 @@ async fn test_retry_gives_up_after_max_attempts() {
     }));
     let counter = Arc::new(CountingMiddleware::new(inner));
 
-    let mw = RetryMiddleware::builder()
+    let mw = wrap_with_retry(
+RetryMiddlewareBuilder::new()
         .max_attempts(4)
         .fixed_backoff(Duration::from_millis(1))
-        .build_with(counter.clone() as Arc<dyn RequestMiddleware>);
+        .build(),
+counter.clone() as Arc<dyn RequestMiddleware>,
+);
 
     let result = mw.process_request(serde_json::json!({})).await;
 
@@ -167,10 +173,13 @@ async fn test_retry_does_not_retry_non_retryable_errors() {
     }));
     let counter = Arc::new(CountingMiddleware::new(inner));
 
-    let mw = RetryMiddleware::builder()
+    let mw = wrap_with_retry(
+RetryMiddlewareBuilder::new()
         .max_attempts(5)
         .fixed_backoff(Duration::from_millis(1))
-        .build_with(counter.clone() as Arc<dyn RequestMiddleware>);
+        .build(),
+counter.clone() as Arc<dyn RequestMiddleware>,
+);
 
     let result = mw.process_request(serde_json::json!({})).await;
 
@@ -190,10 +199,13 @@ async fn test_retry_exponential_backoff_timing() {
         GatewayError::ConnectionFailed("connection refused".into())
     }));
 
-    let mw = RetryMiddleware::builder()
+    let mw = wrap_with_retry(
+RetryMiddlewareBuilder::new()
         .max_attempts(4)
         .exponential_backoff(Duration::from_millis(50), false)
-        .build_with(inner as Arc<dyn RequestMiddleware>);
+        .build(),
+inner as Arc<dyn RequestMiddleware>,
+);
 
     let start = Instant::now();
     let _ = mw.process_request(serde_json::json!({})).await;
@@ -222,11 +234,14 @@ async fn test_retry_custom_predicate_override() {
     ));
     let counter = Arc::new(CountingMiddleware::new(inner));
 
-    let mw = RetryMiddleware::builder()
+    let mw = wrap_with_retry(
+RetryMiddlewareBuilder::new()
         .max_attempts(5)
         .fixed_backoff(Duration::from_millis(1))
         .retry_predicate(|err| matches!(err, GatewayError::ValidationError(_)))
-        .build_with(counter.clone() as Arc<dyn RequestMiddleware>);
+        .build(),
+counter.clone() as Arc<dyn RequestMiddleware>,
+);
 
     let result = mw.process_request(serde_json::json!({})).await;
 
@@ -235,7 +250,7 @@ async fn test_retry_custom_predicate_override() {
     assert_eq!(counter.call_count(), 3, "should have retried twice then succeeded");
 }
 
-/// The builder factory function `swe_gateway::saf::retry_middleware()` works.
+/// The builder factory function `edge_gateway::saf::retry_middleware()` works.
 #[tokio::test]
 async fn test_retry_builder_factory_function() {
     let inner = Arc::new(TransientFailure::new(
@@ -244,20 +259,21 @@ async fn test_retry_builder_factory_function() {
         serde_json::json!({"ok": 1}),
     ));
 
-    // Use the SAF builder function (not RetryMiddleware::builder directly)
-    let mw = swe_gateway::saf::retry_middleware()
+    // Use the SAF builder factory (not RetryMiddlewareBuilder::new() directly)
+    let spec = edge_gateway::saf::retry_middleware()
         .max_attempts(3)
         .fixed_backoff(Duration::from_millis(1))
-        .build_with(inner as Arc<dyn RequestMiddleware>);
+        .build();
+    let mw = wrap_with_retry(spec, inner as Arc<dyn RequestMiddleware>);
 
     let result = mw.process_request(serde_json::json!({})).await;
     assert!(result.is_ok());
 }
 
-/// RetryMiddlewareSpec::wrap deferred-build pattern works end-to-end.
+/// saf::wrap_with_retry deferred-build pattern works end-to-end.
 #[tokio::test]
 async fn test_retry_spec_wrap_deferred_build() {
-    let spec = RetryMiddleware::builder()
+    let spec = RetryMiddlewareBuilder::new()
         .max_attempts(2)
         .fixed_backoff(Duration::from_millis(1))
         .build();
@@ -268,7 +284,7 @@ async fn test_retry_spec_wrap_deferred_build() {
         serde_json::json!({"fast": true}),
     ));
 
-    let mw = spec.wrap(inner as Arc<dyn RequestMiddleware>);
+    let mw = wrap_with_retry(spec, inner as Arc<dyn RequestMiddleware>);
     let result = mw.process_request(serde_json::json!({})).await;
 
     assert!(result.is_ok());

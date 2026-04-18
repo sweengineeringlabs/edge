@@ -240,8 +240,8 @@ pub fn configured_sink(config: GatewayConfig) -> impl OutputSink {
 ///
 /// Defaults: 3 max attempts, exponential backoff (200ms base, jitter enabled),
 /// retries only `GatewayError::is_retryable()` errors.
-pub fn retry_middleware() -> crate::core::retry::RetryMiddlewareBuilder {
-    crate::core::retry::RetryMiddlewareBuilder::new()
+pub fn retry_middleware() -> crate::api::retry::RetryMiddlewareBuilder {
+    crate::api::retry::RetryMiddlewareBuilder::new()
 }
 
 #[cfg(test)]

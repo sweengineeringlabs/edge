@@ -15,6 +15,7 @@ pub mod notification;
 pub mod output;
 pub mod payment;
 pub mod process;
+pub mod retry;
 pub mod traits;
 pub mod types;
 
