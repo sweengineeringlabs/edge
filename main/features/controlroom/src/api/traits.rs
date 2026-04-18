@@ -1,7 +1,7 @@
 //! Barrel re-export of the 5-Concern ControlRoom traits.
 //!
 //! Consumers who want a single import path can write
-//! `use swedge_controlroom::api::traits::*;` and get all concern traits.
+//! `use edge_controlroom::api::traits::*;` and get all concern traits.
 
 pub use super::job::Job;
 pub use super::router::Router;
