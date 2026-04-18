@@ -27,6 +27,12 @@ s3 = ["aws-sdk-s3", "aws-config"]
 # HTTP backends
 graphql = ["graphql_client"]
 
+# Real outbound HTTP (reqwest-backed RestClient).
+# Without this feature every outbound HTTP call returns
+# GatewayError::NotSupported instead of silently faking a 200.
+# See swedge issue #1.
+reqwest = ["dep:reqwest"]
+
 # Notification backends
 email = ["lettre"]
 
@@ -97,6 +103,6 @@ tauri = { version = "2", default-features = false, optional = true }
 # sst-sdk = { path = "../sst/sst-sdk", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 tempfile = "3"
 reqwest = { version = "0.12", features = ["json"], default-features = false }
