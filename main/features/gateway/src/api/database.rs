@@ -72,12 +72,12 @@ impl Default for DatabaseConfig {
 
 impl DatabaseConfig {
     /// Creates a new in-memory database configuration.
-    pub fn memory() -> Self {
+    pub(crate) fn memory() -> Self {
         Self::default()
     }
 
     /// Creates a PostgreSQL configuration.
-    pub fn postgres(connection_string: impl Into<String>) -> Self {
+    pub(crate) fn postgres(connection_string: impl Into<String>) -> Self {
         Self {
             database_type: DatabaseType::Postgres,
             connection_string: Some(connection_string.into()),
@@ -86,7 +86,7 @@ impl DatabaseConfig {
     }
 
     /// Creates a MySQL configuration.
-    pub fn mysql(connection_string: impl Into<String>) -> Self {
+    pub(crate) fn mysql(connection_string: impl Into<String>) -> Self {
         Self {
             database_type: DatabaseType::MySql,
             connection_string: Some(connection_string.into()),

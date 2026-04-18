@@ -1,73 +1,37 @@
-//! Generic metrics bridge — a response middleware that extracts fields from
-//! the response and records them via a pluggable metrics collector.
+//! Runtime metrics bridge — a response middleware that extracts fields
+//! from the response and records them via a pluggable metrics collector.
 //!
-//! This is intentionally generic: the caller supplies a [`MetricsCollector`]
-//! and a field-extractor closure that knows how to pull metric-relevant data
-//! out of a `serde_json::Value` response.
+//! The public contract types (`MetricFields`, `MetricsCollector`,
+//! `FieldExtractor`) live in `crate::api::metrics`. This module provides
+//! the default runtime middleware that connects an extractor to a
+//! collector. Consumers obtain one via `saf::metrics_middleware`, which
+//! returns `impl ResponseMiddleware` so the concrete bridge type is
+//! never named externally.
 
 use async_trait::async_trait;
 use std::sync::Arc;
 
+use crate::api::metrics::{FieldExtractor, MetricsCollector};
 use crate::api::middleware::ResponseMiddleware;
 use crate::api::types::GatewayResult;
-
-/// Extracted metric fields that the bridge knows how to record.
-///
-/// The extractor closure is responsible for pulling these values out of the
-/// domain-specific response payload.
-#[derive(Debug, Clone)]
-pub struct MetricFields {
-    /// Identifier for the upstream provider (e.g. "openai", "anthropic").
-    pub provider: String,
-    /// Model identifier (e.g. "gpt-4", "claude-3").
-    pub model: String,
-    /// Status label (e.g. "ok", "error").
-    pub status: String,
-    /// Latency in seconds.
-    pub latency_secs: f64,
-    /// Number of input/prompt tokens consumed.
-    pub input_tokens: u64,
-    /// Number of output/completion tokens produced.
-    pub output_tokens: u64,
-}
-
-/// Trait for a generic metrics collector that the bridge delegates to.
-///
-/// Implementors connect this to their observability stack (Prometheus,
-/// OpenTelemetry, in-memory counters for testing, etc.).
-pub trait MetricsCollector: Send + Sync {
-    /// Record a single completion event with the given fields.
-    fn record_completion(
-        &self,
-        provider: &str,
-        model: &str,
-        status: &str,
-        latency_secs: f64,
-        input_tokens: u64,
-        output_tokens: u64,
-    );
-}
-
-/// Type alias for the field-extractor closure.
-///
-/// Given a response `serde_json::Value`, returns `Some(MetricFields)` if
-/// the response contains enough data to record metrics, or `None` to skip.
-pub type FieldExtractor =
-    Arc<dyn Fn(&serde_json::Value) -> Option<MetricFields> + Send + Sync>;
 
 /// A response middleware that extracts metric fields from each response
 /// and records them via a [`MetricsCollector`].
 ///
 /// The bridge itself never interprets the response schema — that knowledge
 /// lives entirely in the caller-supplied [`FieldExtractor`].
-pub struct MetricsResponseMiddleware {
+///
+/// `pub(crate)` per rule 50: core items are implementation, not public
+/// contract. Consumers reach this type only through
+/// `saf::metrics_middleware`, which returns it as `impl ResponseMiddleware`.
+pub(crate) struct MetricsResponseMiddleware {
     collector: Arc<dyn MetricsCollector>,
     extractor: FieldExtractor,
 }
 
 impl MetricsResponseMiddleware {
     /// Create a new metrics bridge with the given collector and extractor.
-    pub fn new(
+    pub(crate) fn new(
         collector: Arc<dyn MetricsCollector>,
         extractor: FieldExtractor,
     ) -> Self {
@@ -112,6 +76,7 @@ impl ResponseMiddleware for MetricsResponseMiddleware {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::metrics::MetricFields;
     use parking_lot::Mutex;
 
     /// In-memory collector that stores recorded events for assertion.

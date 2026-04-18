@@ -74,10 +74,11 @@ async fn test_rate_limiter_builder_returns_functional_middleware() {
 
 #[tokio::test]
 async fn test_rate_limiter_builder_step_by_step() {
-    let limiter = saf::rate_limiter_builder()
+    let spec = saf::rate_limiter_builder()
         .capacity(3)
         .refill_rate(1.0)
         .build();
+    let limiter = saf::make_rate_limiter(spec);
     // Exhaust capacity.
     for _ in 0..3 {
         limiter.try_acquire().unwrap();
@@ -233,13 +234,13 @@ fn test_prelude_provides_domain_modules() {
     // Database domain types.
     let _qp = saf::database::QueryParams::new();
     let _wr = saf::database::WriteResult::new(0);
-    let _dc = saf::database::DatabaseConfig::memory();
+    let _dc = saf::database_config_memory();
 
     // File domain types.
     let _fi = saf::file::FileInfo::new("test", 0);
     let _lo = saf::file::ListOptions::default();
     let _uo = saf::file::UploadOptions::overwrite();
-    let _fc = saf::file::FileStorageConfig::local("/tmp");
+    let _fc = saf::file_storage_config_local("/tmp");
 
     // Notification domain types.
     let _n = saf::notification::Notification::console("test");

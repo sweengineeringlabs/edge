@@ -19,14 +19,14 @@ pub(crate) struct MemoryDatabase {
 
 impl MemoryDatabase {
     /// Creates a new empty in-memory database.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             tables: RwLock::new(HashMap::new()),
         }
     }
 
     /// Creates a database with predefined tables.
-    pub fn with_tables(tables: Vec<&str>) -> Self {
+    pub(crate) fn with_tables(tables: Vec<&str>) -> Self {
         let mut map = HashMap::new();
         for table in tables {
             map.insert(table.to_string(), HashMap::new());

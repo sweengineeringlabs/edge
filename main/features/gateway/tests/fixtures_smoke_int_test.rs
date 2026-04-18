@@ -1,5 +1,6 @@
 //! Smoke tests verifying the fixtures module compiles and works.
 
+#[path = "common/fixtures/mod.rs"]
 mod fixtures;
 
 use fixtures::gateways::TempFileGateway;

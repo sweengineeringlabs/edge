@@ -73,10 +73,11 @@ async fn test_tokens_refill_over_time() {
 
 #[tokio::test]
 async fn test_builder_produces_working_limiter() {
-    let limiter = edge_gateway::saf::rate_limiter_builder()
+    let spec = edge_gateway::saf::rate_limiter_builder()
         .capacity(3)
         .refill_rate(NEAR_ZERO_REFILL)
         .build();
+    let limiter = edge_gateway::saf::make_rate_limiter(spec);
 
     let payload = serde_json::json!({"test": true});
 
@@ -97,11 +98,11 @@ async fn test_rate_limiter_in_pipeline_rejects_excess_requests() {
     let limiter: Arc<dyn RequestMiddleware> =
         Arc::new(edge_gateway::saf::rate_limiter(2, NEAR_ZERO_REFILL));
 
-    let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(|req: &serde_json::Value| {
-        Ok(req.clone())
-    }));
+    let router: Arc<dyn Router> = Arc::new(edge_gateway::saf::sync_closure_router(
+        |req: &serde_json::Value| Ok(req.clone()),
+    ));
 
-    let pipeline = Pipeline::new(vec![limiter], router, vec![]);
+    let pipeline = edge_gateway::saf::default_pipeline(vec![limiter], router, vec![]);
 
     let payload = serde_json::json!({"model": "claude-3"});
 

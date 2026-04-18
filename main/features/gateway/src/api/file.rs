@@ -65,7 +65,7 @@ impl Default for FileStorageConfig {
 
 impl FileStorageConfig {
     /// Creates a local filesystem configuration.
-    pub fn local(base_path: impl Into<String>) -> Self {
+    pub(crate) fn local(base_path: impl Into<String>) -> Self {
         Self {
             storage_type: FileStorageType::Local,
             base_path: base_path.into(),
@@ -74,7 +74,7 @@ impl FileStorageConfig {
     }
 
     /// Creates an S3 configuration.
-    pub fn s3(bucket: impl Into<String>, region: impl Into<String>) -> Self {
+    pub(crate) fn s3(bucket: impl Into<String>, region: impl Into<String>) -> Self {
         Self {
             storage_type: FileStorageType::S3,
             base_path: bucket.into(),
@@ -84,7 +84,7 @@ impl FileStorageConfig {
     }
 
     /// Creates an in-memory configuration for testing.
-    pub fn memory() -> Self {
+    pub(crate) fn memory() -> Self {
         Self {
             storage_type: FileStorageType::Memory,
             base_path: "/".to_string(),

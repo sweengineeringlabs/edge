@@ -91,7 +91,7 @@ impl Default for HttpConfig {
 
 impl HttpConfig {
     /// Creates a configuration with a base URL.
-    pub fn with_base_url(base_url: impl Into<String>) -> Self {
+    pub(crate) fn with_base_url(base_url: impl Into<String>) -> Self {
         Self {
             base_url: Some(base_url.into()),
             ..Default::default()
@@ -99,13 +99,13 @@ impl HttpConfig {
     }
 
     /// Adds a default header.
-    pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+    pub(crate) fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.default_headers.insert(name.into(), value.into());
         self
     }
 
     /// Sets the timeout.
-    pub fn with_timeout(mut self, secs: u64) -> Self {
+    pub(crate) fn with_timeout(mut self, secs: u64) -> Self {
         self.timeout_secs = secs;
         self
     }

@@ -19,8 +19,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::api::pipeline::Pipeline;
 use crate::api::types::{GatewayError, GatewayResult, HealthCheck};
-use crate::core::pipeline::Pipeline;
 
 // ============================================================================
 // Request envelope

@@ -17,7 +17,7 @@ use crate::api::types::{GatewayError, GatewayResult};
 /// # Type parameters
 /// - `PReq` — your pipeline request type (must implement `Send + Sync + 'static`)
 /// - `PResp` — your pipeline response type (must implement `Send + Sync + 'static`)
-pub struct AuthMiddleware<PReq, PResp> {
+pub(crate) struct AuthMiddleware<PReq, PResp> {
     authenticator: Arc<dyn Authenticator>,
     authorizer: Option<Arc<dyn Authorizer>>,
     extractor: Arc<dyn CredentialExtractor<PReq>>,
@@ -31,7 +31,7 @@ where
     PResp: Send + Sync + 'static,
 {
     /// Create an authentication-only middleware (no authorization check).
-    pub fn new(
+    pub(crate) fn new(
         authenticator: Arc<dyn Authenticator>,
         extractor: Arc<dyn CredentialExtractor<PReq>>,
     ) -> Self {
@@ -45,7 +45,7 @@ where
     }
 
     /// Create a middleware that authenticates AND enforces a specific permission.
-    pub fn with_authz(
+    pub(crate) fn with_authz(
         authenticator: Arc<dyn Authenticator>,
         authorizer: Arc<dyn Authorizer>,
         extractor: Arc<dyn CredentialExtractor<PReq>>,

@@ -1,7 +1,9 @@
 //! End-to-end tests for configuration validation and environment variable
 //! expansion (BL-006).
 
-use edge_gateway::saf::{expand_env_vars, load_config_from_str, ConfigError, GatewayConfig};
+use edge_gateway::saf::{
+    expand_env_vars, load_config_from_str, validate_config, ConfigError, GatewayConfig,
+};
 
 // =============================================================================
 // expand_env_vars — unit-level coverage via integration test binary
@@ -72,7 +74,7 @@ fn test_expand_env_vars_existing_var_ignores_default() {
 #[test]
 fn test_validate_default_config_passes() {
     let config = GatewayConfig::default();
-    config.validate().expect("default config should be valid");
+    validate_config(&config).expect("default config should be valid");
 }
 
 #[test]
@@ -83,7 +85,7 @@ database_type = "postgres"
 connection_string = "postgres://localhost/mydb"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    config.validate().expect("postgres with connection_string should be valid");
+    validate_config(&config).expect("postgres with connection_string should be valid");
 }
 
 #[test]
@@ -95,7 +97,7 @@ host = "localhost"
 database = "mydb"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    config.validate().expect("postgres with host+database should be valid");
+    validate_config(&config).expect("postgres with host+database should be valid");
 }
 
 #[test]
@@ -107,7 +109,7 @@ base_path = "my-bucket"
 region = "us-east-1"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    config.validate().expect("s3 with region should be valid");
+    validate_config(&config).expect("s3 with region should be valid");
 }
 
 #[test]
@@ -118,7 +120,7 @@ provider = "stripe"
 api_key = "sk_test_abc123"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    config.validate().expect("stripe with api_key should be valid");
+    validate_config(&config).expect("stripe with api_key should be valid");
 }
 
 #[test]
@@ -129,7 +131,7 @@ sink_type = "file"
 path = "/tmp/report.json"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    config.validate().expect("file sink with path should be valid");
+    validate_config(&config).expect("file sink with path should be valid");
 }
 
 // =============================================================================
@@ -143,7 +145,7 @@ fn test_validate_postgres_without_connection_info_fails() {
 database_type = "postgres"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    let err = config.validate().unwrap_err();
+    let err = validate_config(&config).unwrap_err();
     match &err {
         ConfigError::Validation(msg) => {
             assert!(
@@ -167,7 +169,7 @@ storage_type = "s3"
 base_path = "my-bucket"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    let err = config.validate().unwrap_err();
+    let err = validate_config(&config).unwrap_err();
     match &err {
         ConfigError::Validation(msg) => {
             assert!(
@@ -190,7 +192,7 @@ fn test_validate_stripe_without_api_key_fails() {
 provider = "stripe"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    let err = config.validate().unwrap_err();
+    let err = validate_config(&config).unwrap_err();
     match &err {
         ConfigError::Validation(msg) => {
             assert!(
@@ -213,7 +215,7 @@ fn test_validate_file_sink_without_path_fails() {
 sink_type = "file"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    let err = config.validate().unwrap_err();
+    let err = validate_config(&config).unwrap_err();
     match &err {
         ConfigError::Validation(msg) => {
             assert!(
@@ -246,7 +248,7 @@ provider = "stripe"
 sink_type = "file"
 "#;
     let config = load_config_from_str(toml).unwrap();
-    let err = config.validate().unwrap_err();
+    let err = validate_config(&config).unwrap_err();
     match &err {
         ConfigError::Validation(msg) => {
             assert!(msg.contains("[database]"), "should report database error, got: {msg}");
@@ -322,6 +324,6 @@ region = "${SWE_CFG_E2E_REGION:-us-west-2}"
     );
     assert_eq!(config.file.region, Some("us-west-2".to_string()));
     // Validation should pass
-    config.validate().expect("fully configured config should validate");
+    validate_config(&config).expect("fully configured config should validate");
     std::env::remove_var("SWE_CFG_E2E_CONN");
 }

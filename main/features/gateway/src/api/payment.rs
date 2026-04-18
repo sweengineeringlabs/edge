@@ -66,12 +66,12 @@ impl Default for PaymentConfig {
 
 impl PaymentConfig {
     /// Creates a mock payment configuration.
-    pub fn mock() -> Self {
+    pub(crate) fn mock() -> Self {
         Self::default()
     }
 
     /// Creates a Stripe configuration.
-    pub fn stripe(secret_key: impl Into<String>) -> Self {
+    pub(crate) fn stripe(secret_key: impl Into<String>) -> Self {
         Self {
             provider: PaymentProvider::Stripe,
             secret_key: Some(secret_key.into()),

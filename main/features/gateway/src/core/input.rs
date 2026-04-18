@@ -24,7 +24,7 @@ pub(crate) struct LocalInputSource {
 }
 
 impl LocalInputSource {
-    pub fn new(config: GatewayConfig) -> Self {
+    pub(crate) fn new(config: GatewayConfig) -> Self {
         Self { config }
     }
 }

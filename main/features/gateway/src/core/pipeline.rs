@@ -1,44 +1,38 @@
-//! Generic request/response pipeline.
+//! Runtime implementations of the pipeline contract.
 //!
-//! Generic over `Req`, `Resp`, and `Err`. All default to swe-gateway types.
+//! The public traits (`Pipeline`, `Router`) live in `crate::api::pipeline`.
+//! This module provides the default runtime implementations:
+//!
+//! - [`DefaultPipeline`] — composes pre-middleware, a router, and
+//!   post-middleware with short-circuit support.
+//! - [`PipelineRouter`] — wraps an async closure as a [`Router`].
+//!
+//! Both are `pub(crate)` per rule 50; consumers obtain them indirectly
+//! through `saf/` factories that return `impl Pipeline` / `impl Router`.
 
 use async_trait::async_trait;
-use std::sync::Arc;
 use futures::future::BoxFuture;
+use std::sync::Arc;
 
 use crate::api::middleware::{MiddlewareAction, RequestMiddleware, ResponseMiddleware};
+use crate::api::pipeline::{Pipeline, Router};
 use crate::api::types::GatewayError;
 
-/// Router trait — dispatches a request to produce a response.
-///
-/// Generic over `Req`, `Resp`, `Err`.
-#[async_trait]
-pub trait Router<
-    Req: Send + Sync + 'static = serde_json::Value,
-    Resp: Send + Sync + 'static = serde_json::Value,
-    Err: Send + Sync + 'static = GatewayError,
->: Send + Sync {
-    async fn dispatch(&self, request: &Req) -> Result<Resp, Err>;
-}
-
+// ============================================================================
+// PipelineRouter (Core) — closure-backed Router impl
+// ============================================================================
 
 /// Async closure-based router.
 ///
 /// Use this when your dispatch logic is async — e.g. calling an external service.
 /// The handler captures whatever dependencies it needs at construction time,
 /// keeping the router free of domain knowledge.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let mgmt = Arc::clone(&mgmt);
-/// PipelineRouter::new(move |req: &MyReq| {
-///     let mgmt = Arc::clone(&mgmt);
-///     let input = req.sanitized.clone();
-///     Box::pin(async move { mgmt.process(&input).await.map_err(into_err) })
-/// })
-/// ```
-pub struct PipelineRouter<F, Req = serde_json::Value, Resp = serde_json::Value, Err = GatewayError>
+pub(crate) struct PipelineRouter<
+    F,
+    Req = serde_json::Value,
+    Resp = serde_json::Value,
+    Err = GatewayError,
+>
 where
     F: for<'a> Fn(&'a Req) -> BoxFuture<'a, Result<Resp, Err>> + Send + Sync,
 {
@@ -50,7 +44,7 @@ impl<F, Req, Resp, Err> PipelineRouter<F, Req, Resp, Err>
 where
     F: for<'a> Fn(&'a Req) -> BoxFuture<'a, Result<Resp, Err>> + Send + Sync,
 {
-    pub fn new(handler: F) -> Self {
+    pub(crate) fn new(handler: F) -> Self {
         Self { handler, _phantom: std::marker::PhantomData }
     }
 }
@@ -69,28 +63,7 @@ where
 }
 
 // ============================================================================
-// Pipeline trait (API)
-// ============================================================================
-
-/// Pipeline — executes a request through an ordered chain of stages.
-///
-/// Generic over `Req`, `Resp`, `Err`.
-///
-/// The default implementation is [`DefaultPipeline`], which composes
-/// pre-middleware, a router, and post-middleware with short-circuit support.
-/// Implement this trait directly for custom execution strategies (e.g. metered,
-/// cached, or fan-out pipelines).
-#[async_trait]
-pub trait Pipeline<
-    Req: Send + Sync + 'static = serde_json::Value,
-    Resp: Send + Sync + 'static = serde_json::Value,
-    Err: Send + Sync + 'static = GatewayError,
->: Send + Sync {
-    async fn execute(&self, request: Req) -> Result<Resp, Err>;
-}
-
-// ============================================================================
-// DefaultPipeline (Core)
+// DefaultPipeline (Core) — default pre → route → post implementation
 // ============================================================================
 
 /// Standard pre → route → post pipeline.
@@ -101,7 +74,7 @@ pub trait Pipeline<
 /// [`RequestMiddleware::process_request_action`] to skip remaining
 /// pre-middleware and the router. Post-middleware still runs on the
 /// short-circuited response (useful for logging, metrics, headers, etc.).
-pub struct DefaultPipeline<
+pub(crate) struct DefaultPipeline<
     Req: Send + Sync + 'static = serde_json::Value,
     Resp: Send + Sync + 'static = serde_json::Value,
     Err: Send + Sync + 'static = GatewayError,
@@ -114,7 +87,7 @@ pub struct DefaultPipeline<
 impl<Req: Send + Sync + 'static, Resp: Send + Sync + 'static, Err: Send + Sync + 'static>
     DefaultPipeline<Req, Resp, Err>
 {
-    pub fn new(
+    pub(crate) fn new(
         pre: Vec<Arc<dyn RequestMiddleware<Req, Err, Resp>>>,
         router: Arc<dyn Router<Req, Resp, Err>>,
         post: Vec<Arc<dyn ResponseMiddleware<Resp, Err>>>,
@@ -122,8 +95,10 @@ impl<Req: Send + Sync + 'static, Resp: Send + Sync + 'static, Err: Send + Sync +
         Self { pre, router, post }
     }
 
-    pub fn pre_middleware_count(&self) -> usize { self.pre.len() }
-    pub fn post_middleware_count(&self) -> usize { self.post.len() }
+    #[allow(dead_code)]
+    pub(crate) fn pre_middleware_count(&self) -> usize { self.pre.len() }
+    #[allow(dead_code)]
+    pub(crate) fn post_middleware_count(&self) -> usize { self.post.len() }
 }
 
 #[async_trait]

@@ -7,9 +7,9 @@
 //! - ConsoleNotifier: Console output for notifications
 //! - MockPaymentGateway: Mock payment processing
 
-pub(crate) mod daemon;
 pub(crate) mod database;
 pub(crate) mod file;
+pub(crate) mod grpc;
 pub(crate) mod http;
 pub(crate) mod input;
 pub(crate) mod metrics_bridge;

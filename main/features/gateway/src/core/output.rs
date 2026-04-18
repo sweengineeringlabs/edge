@@ -29,7 +29,7 @@ pub(crate) struct FileSink {
 }
 
 impl FileSink {
-    pub fn new(path: PathBuf) -> Self {
+    pub(crate) fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
@@ -65,7 +65,7 @@ pub(crate) struct ConfiguredOutputSink {
 }
 
 impl ConfiguredOutputSink {
-    pub fn new(config: GatewayConfig) -> Self {
+    pub(crate) fn new(config: GatewayConfig) -> Self {
         Self { config }
     }
 }
