@@ -1,8 +1,8 @@
-//! End-to-end tests for DatabaseInbound sub-trait.
+//! End-to-end tests for DatabaseRead sub-trait.
 //!
-//! Exercises only the DatabaseInbound read operations through the SAF factory.
+//! Exercises only the DatabaseRead read operations through the SAF factory.
 //! Data is seeded using the combined gateway (which implements both sub-traits),
-//! then only DatabaseInbound methods are exercised.
+//! then only DatabaseRead methods are exercised.
 
 use edge_gateway::prelude::*;
 use edge_gateway::saf::database::QueryParams;
@@ -19,7 +19,7 @@ fn make_record(id: &str, name: &str, category: &str) -> serde_json::Map<String, 
 #[tokio::test]
 async fn e2e_database_inbound_query_and_get_by_id() {
     // The SAF builder returns impl DatabaseGateway which implements both sub-traits.
-    // We seed data using the full gateway, then call only DatabaseInbound methods.
+    // We seed data using the full gateway, then call only DatabaseRead methods.
     let db = saf::memory_database();
 
     // Seed data via the combined gateway (Outbound side)
@@ -27,7 +27,7 @@ async fn e2e_database_inbound_query_and_get_by_id() {
     db.insert("products", make_record("p2", "Widget B", "widgets")).await.unwrap();
     db.insert("products", make_record("p3", "Gadget X", "gadgets")).await.unwrap();
 
-    // --- DatabaseInbound: query ---
+    // --- DatabaseRead: query ---
     let all = db.query("products", QueryParams::new()).await.unwrap();
     assert_eq!(all.len(), 3);
 
@@ -40,7 +40,7 @@ async fn e2e_database_inbound_query_and_get_by_id() {
         assert_eq!(w.get("category").unwrap(), "widgets");
     }
 
-    // --- DatabaseInbound: get_by_id ---
+    // --- DatabaseRead: get_by_id ---
     let p1 = db.get_by_id("products", "p1").await.unwrap();
     assert!(p1.is_some());
     let p1 = p1.unwrap();
@@ -66,12 +66,12 @@ async fn e2e_database_inbound_exists_and_count() {
     }
     db.insert("orders", make_record("o6", "Order 6", "shipped")).await.unwrap();
 
-    // --- DatabaseInbound: exists ---
+    // --- DatabaseRead: exists ---
     assert!(db.exists("orders", "o1").await.unwrap());
     assert!(db.exists("orders", "o6").await.unwrap());
     assert!(!db.exists("orders", "o99").await.unwrap());
 
-    // --- DatabaseInbound: count ---
+    // --- DatabaseRead: count ---
     let total = db.count("orders", QueryParams::new()).await.unwrap();
     assert_eq!(total, 6);
 
@@ -102,7 +102,7 @@ async fn e2e_database_inbound_query_pagination_and_health_check() {
         .unwrap();
     }
 
-    // --- DatabaseInbound: query with pagination ---
+    // --- DatabaseRead: query with pagination ---
     let first_page = db
         .query("items", QueryParams::new().paginate(0, 5))
         .await
@@ -126,7 +126,7 @@ async fn e2e_database_inbound_query_pagination_and_health_check() {
     let second_page_first = second_page.first().unwrap().get("id").unwrap().clone();
     assert_ne!(first_page_last, second_page_first);
 
-    // --- DatabaseInbound: health_check ---
+    // --- DatabaseRead: health_check ---
     let health = db.health_check().await.unwrap();
     assert_eq!(health.status, HealthStatus::Healthy);
 }

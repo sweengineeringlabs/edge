@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use edge_gateway::saf::{self, DatabaseInbound, DatabaseOutbound, FileInbound, FileOutbound};
+use edge_gateway::saf::{self, DatabaseRead, DatabaseWrite, FileInbound, FileOutbound};
 use edge_gateway::saf::database::{QueryParams, Record};
 use edge_gateway::saf::file::UploadOptions;
 use edge_gateway::saf::{

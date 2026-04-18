@@ -64,7 +64,7 @@ Type-aware numeric sorting, nulls-last ordering, and comparison operator filteri
 **Closed:** 2026-03-24
 **Commit:** `34f4021`
 
-Added `query_stream` on `DatabaseInbound` and `list_stream` on `FileInbound` with default Vec-to-stream implementations. `GatewayStream<T>` type alias and `StreamExt` re-exported via saf. 8 e2e tests.
+Added `query_stream` on `DatabaseRead` and `list_stream` on `FileInbound` with default Vec-to-stream implementations. `GatewayStream<T>` type alias and `StreamExt` re-exported via saf. 8 e2e tests.
 
 ---
 

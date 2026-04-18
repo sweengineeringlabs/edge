@@ -36,8 +36,8 @@ pub use crate::api::output::OutputSink;
 
 // ── Gateway traits (from api layer) ──
 pub use crate::api::traits::DatabaseGateway;
-pub use crate::api::traits::DatabaseInbound;
-pub use crate::api::traits::DatabaseOutbound;
+pub use crate::api::traits::DatabaseRead;
+pub use crate::api::traits::DatabaseWrite;
 pub use crate::api::traits::FileGateway;
 pub use crate::api::traits::FileInbound;
 pub use crate::api::traits::FileOutbound;

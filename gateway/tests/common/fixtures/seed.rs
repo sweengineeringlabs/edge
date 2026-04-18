@@ -1,7 +1,7 @@
 //! Seed data functions for populating gateways in tests.
 
 use edge_gateway::saf::file::UploadOptions;
-use edge_gateway::saf::{DatabaseOutbound, FileOutbound};
+use edge_gateway::saf::{DatabaseWrite, FileOutbound};
 
 use super::records;
 
@@ -9,7 +9,7 @@ use super::records;
 ///
 /// Each record has fields: `id`, `name` ("item-{i}"), `payload`.
 pub async fn insert_numbered_records(
-    db: &(impl DatabaseOutbound + ?Sized),
+    db: &(impl DatabaseWrite + ?Sized),
     table: &str,
     count: usize,
     payload: &str,
@@ -23,7 +23,7 @@ pub async fn insert_numbered_records(
 
 /// Insert a batch of user records: (id, name) pairs.
 pub async fn insert_users(
-    db: &(impl DatabaseOutbound + ?Sized),
+    db: &(impl DatabaseWrite + ?Sized),
     table: &str,
     users: &[(&str, &str)],
 ) {
@@ -38,7 +38,7 @@ pub async fn insert_users(
 ///
 /// Creates `count` records spread across `categories` round-robin.
 pub async fn insert_categorized_records(
-    db: &(impl DatabaseOutbound + ?Sized),
+    db: &(impl DatabaseWrite + ?Sized),
     table: &str,
     count: usize,
     categories: &[&str],
