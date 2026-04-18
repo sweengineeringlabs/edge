@@ -219,19 +219,39 @@ mod http_tests {
     use super::*;
     use edge_gateway::saf::http::HttpRequest;
 
+    #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn test_rest_client_mock() {
-        let client = saf::rest_client_with_base_url("https://api.example.com");
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        // GET request
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/users"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"id": 1})))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let uri = server.uri();
+        let client = saf::rest_client_with_base_url(&uri);
+
         let response = client.get("/users").await.unwrap();
         assert!(response.is_success());
         assert_eq!(response.status, 200);
 
-        // POST request
         let body = serde_json::json!({"name": "test"});
         let response = client.post_json("/users", body).await.unwrap();
         assert!(response.is_success());
+        assert_eq!(response.status, 201);
     }
 
     #[tokio::test]
@@ -245,9 +265,23 @@ mod http_tests {
         assert_eq!(request.query.get("page"), Some(&"1".to_string()));
     }
 
+    #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn test_health_check() {
-        let client = saf::rest_client_with_base_url("https://api.example.com");
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+
+        // RestClient::health_check hits "/" by convention; accept any path to
+        // keep the test decoupled from the exact probe URL.
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let uri = server.uri();
+        let client = saf::rest_client_with_base_url(&uri);
         let health = client.health_check().await.unwrap();
         assert_eq!(health.status, HealthStatus::Healthy);
     }
