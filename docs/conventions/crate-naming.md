@@ -1,7 +1,7 @@
 # Crate Naming Convention
 
 **Scope.** Applies to every Rust crate published under the `swe-*` brand
-across all workspaces (llmboot, vmisolate, security, swedge, …).
+across all workspaces (llmboot, vmisolate, security, edge, …).
 
 ## Rule
 
@@ -12,21 +12,28 @@ umbrella workspace down to the crate root, prefixed by the umbrella name:
 <umbrella>_<domain>_<module>_<submodule>
 ```
 
-The `<umbrella>` token carries `<brand>` + `<project>`, either joined by
-an underscore (`swe_observ`) or contracted into a portmanteau (`swedge`
-= swe + edge). Contraction is preferred when the contracted form reads
-naturally and is unambiguous; otherwise use the underscore form.
+The `<umbrella>` token names the product family. It can be:
+
+- A bare project name (`edge`) when the project's name already reads
+  unambiguously without brand attribution;
+- A brand+project portmanteau (`swedge` = swe + edge) when contraction
+  reads cleanly;
+- A `<brand>_<project>` pair joined by `_` (`swe_observ`, `swe_iam`)
+  when neither form above is natural.
+
+Pick once, keep it stable for the project's lifetime — renaming the
+umbrella renames every downstream crate.
 
 **Each remaining segment corresponds to a real directory level.** You
 never invent a slot to meet a fixed count, and you never duplicate a
 name to pad to a "standard" length.
 
 - In `Cargo.toml`, use the **kebab-case** form:
-  `name = "swedge-gateway"`. This matches Rust ecosystem convention
+  `name = "edge-gateway"`. This matches Rust ecosystem convention
   (`tokio-util`, `async-trait`, `serde-json`) and satisfies the
   struct-engine audit.
 - In module paths, Cargo auto-converts hyphens to underscores:
-  `use swedge_gateway::…`.
+  `use edge_gateway::…`.
 - Throughout this document the structural name is written in the
   underscore form because that is what appears in code.
 
@@ -37,34 +44,36 @@ crate, two spellings — Cargo does the conversion.
 
 | Slot | Role | Example |
 |------|------|---------|
-| `<umbrella>` | Brand + project fused into one token (portmanteau) or joined by `_` | `swedge` (= swe + edge), `swe_observ`, `swe_iam` |
+| `<umbrella>` | Project name — bare, portmanteau, or `<brand>_<project>` | `edge`, `swedge` (= swe + edge), `swe_observ`, `swe_iam` |
 | `<domain>` | Functional area within the umbrella | `gateway`, `controlroom`, `context` |
 | `<module>` | Sub-split of a domain (only if domain has multiple crates) | `contract`, `adapters`, `runtime` |
 | `<submodule>` | Further nesting (rare) | — |
 
 ## Umbrella naming guidance
 
-- Prefer the contracted form (`swedge`) when the join reads naturally and
-  there is no ambiguity. It keeps crate names short.
-- Fall back to the underscore form (`swe_observ`) when contraction would
-  muddle the brand or obscure the project (e.g. `sweobserv` is harder to
-  parse).
+- A bare project name (`edge`) is fine when the project's name is
+  distinctive enough to stand without a brand prefix.
+- A portmanteau (`swedge` = swe + edge) earns its keep when both pieces
+  matter and the contraction reads naturally.
+- The underscore form (`swe_observ`, `swe_iam`) is the fallback when
+  contraction would muddle the brand or obscure the project (e.g.
+  `sweobserv` is harder to parse than `swe_observ`).
 - Whichever form you choose, *keep it stable across the project's
   lifetime* — renaming it renames every downstream crate.
 
 ## Worked examples
 
 ```
-swedge/                                       umbrella=swedge (swe + edge)
+edge/                                       umbrella=edge
 ├── main/
 │   └── features/
-│       ├── gateway/{api,core,saf}      →  swedge_gateway        (2 parts)
-│       └── controlroom/{api,core,saf}  →  swedge_controlroom    (2 parts)
+│       ├── gateway/{api,core,saf}      →  edge_gateway        (2 parts)
+│       └── controlroom/{api,core,saf}  →  edge_controlroom    (2 parts)
 ```
 
 If `gateway` later splits into `gateway/contract/` + `gateway/adapters/`,
-names grow naturally to `swedge_gateway_contract` and
-`swedge_gateway_adapters`. A slot materializes when a real directory
+names grow naturally to `edge_gateway_contract` and
+`edge_gateway_adapters`. A slot materializes when a real directory
 level materializes — never before.
 
 Other umbrellas:
@@ -94,8 +103,8 @@ fix that.
 
 | Name | What it signals | Fix |
 |------|-----------------|-----|
-| `swedge_gateway_edge` | `edge` appears as project and module | Collapse to `swe_edge_gateway` OR rename the module to what it specifically contains (`adapters`, `runtime`) |
-| `swedge_controlroom_controlroom` | Module repeats its parent domain | Collapse to `swe_edge_controlroom` |
+| `edge_gateway_edge` | `edge` appears as umbrella and module | Collapse to `edge_gateway` OR rename the module to what it specifically contains (`adapters`, `runtime`) |
+| `edge_controlroom_controlroom` | Module repeats its parent domain | Collapse to `edge_controlroom` |
 | `swe_edge_observ_observ_context` | Domain and module both `observ` | Collapse or rename the module to what it specifically is |
 
 ## Depth budget

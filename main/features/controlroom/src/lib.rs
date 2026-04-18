@@ -1,4 +1,4 @@
-//! # swedge-controlroom
+//! # edge-controlroom
 //!
 //! The L2 ControlRoom contract — a reusable 5-concern facade sitting between
 //! an inbound gateway and a domain's execution units.
@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! use std::sync::Arc;
-//! use swedge_controlroom::{Handler, HandlerRegistry, new_handler_registry};
+//! use edge_controlroom::{Handler, HandlerRegistry, new_handler_registry};
 //!
 //! // 1. Build a registry and register domain handlers.
 //! let registry: Arc<HandlerRegistry<MyReq, MyResp>> = new_handler_registry();

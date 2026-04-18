@@ -5,12 +5,12 @@
 //! up a one-shot tokio TCP listener that speaks just enough HTTP/1.1
 //! to assert the client actually sends bytes — and that those bytes
 //! match what the caller asked for. This is the regression test for
-//! swedge issue #1, where every outbound call silently returned a
+//! edge issue #1, where every outbound call silently returned a
 //! mock 200 with no network traffic.
 //!
 //! Run:
 //! ```text
-//! cargo test -p swedge-gateway --features reqwest --test http_live_int_test
+//! cargo test -p edge-gateway --features reqwest --test http_live_int_test
 //! ```
 
 #![cfg(feature = "reqwest")]
@@ -23,7 +23,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-use swedge_gateway::{
+use edge_gateway::{
     rest_client_with_base_url, GatewayError, HttpBody, HttpInbound, HttpMethod, HttpOutbound,
     HttpRequest,
 };
@@ -357,8 +357,8 @@ async fn live_response_body_size_cap_rejects_oversized() {
 #[tokio::test]
 async fn live_non_http_scheme_is_rejected_before_dispatch() {
     // No server needed — the scheme guard fires before any I/O.
-    use swedge_gateway::saf::rest_client;
-    use swedge_gateway::HttpConfig;
+    use edge_gateway::saf::rest_client;
+    use edge_gateway::HttpConfig;
     let client = rest_client(HttpConfig::default());
     let req = HttpRequest::get("file:///etc/passwd");
     let err = client.send(req).await.expect_err("must reject file://");
