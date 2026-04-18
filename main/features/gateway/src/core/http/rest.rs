@@ -7,7 +7,7 @@
 //! [`GatewayError::NotSupported`] to fail fast — earlier versions of
 //! this file silently returned a hardcoded 200-OK mock body regardless
 //! of the feature flag, which made every outbound HTTP call appear to
-//! succeed without ever leaving the process. See swedge issue #1.
+//! succeed without ever leaving the process. See edge issue #1.
 //!
 //! The inbound impl is a thin in-process echo intended for unit tests
 //! and local routing scenarios; it never touches the network and is
@@ -431,9 +431,9 @@ impl HttpOutbound for RestClient {
 #[cfg(not(feature = "reqwest"))]
 fn no_reqwest_error() -> GatewayError {
     GatewayError::NotSupported(
-        "swedge-gateway built without the 'reqwest' feature; outbound HTTP is not available. \
+        "edge-gateway built without the 'reqwest' feature; outbound HTTP is not available. \
          Enable it in your Cargo.toml: \
-         swedge-gateway = { ..., features = [\"reqwest\"] }"
+         edge-gateway = { ..., features = [\"reqwest\"] }"
             .to_string(),
     )
 }
@@ -561,6 +561,6 @@ mod tests {
     }
 
     // ----- Outbound, WITH `reqwest`: live integration tests live in
-    //       tests/http_live_int_test.rs so they can `use swedge_gateway`
+    //       tests/http_live_int_test.rs so they can `use edge_gateway`
     //       at the public-API level rather than crate-internal types.   -----
 }
