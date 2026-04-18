@@ -7,26 +7,42 @@ use edge_gateway::prelude::*;
 use edge_gateway::saf::http::HttpRequest;
 use edge_gateway::saf;
 
+#[cfg(feature = "reqwest")]
 #[tokio::test]
 async fn e2e_http_outbound_request_lifecycle() {
-    let client = saf::rest_client_with_base_url("https://api.example.com/v1");
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    // GET request
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET")).and(path("/users"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server).await;
+    Mock::given(method("POST")).and(path("/users"))
+        .respond_with(ResponseTemplate::new(201))
+        .mount(&server).await;
+    Mock::given(method("PUT")).and(path("/users/1"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server).await;
+    Mock::given(method("DELETE")).and(path("/users/1"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server).await;
+
+    let uri = server.uri();
+    let client = saf::rest_client_with_base_url(&uri);
+
     let get_resp = client.get("/users").await.unwrap();
     assert!(get_resp.is_success());
     assert_eq!(get_resp.status, 200);
 
-    // POST with JSON body
     let body = serde_json::json!({"name": "Alice", "email": "alice@example.com"});
     let post_resp = client.post_json("/users", body).await.unwrap();
     assert!(post_resp.is_success());
 
-    // PUT with JSON body
     let update = serde_json::json!({"name": "Alice Updated"});
     let put_resp = client.put_json("/users/1", update).await.unwrap();
     assert!(put_resp.is_success());
 
-    // DELETE
     let del_resp = client.delete("/users/1").await.unwrap();
     assert!(del_resp.is_success());
 }
@@ -50,9 +66,24 @@ async fn e2e_http_inbound_request_handling() {
     assert_eq!(received["url"], "/webhooks");
 }
 
+#[cfg(feature = "reqwest")]
 #[tokio::test]
 async fn e2e_http_send_with_custom_request() {
-    let client = saf::rest_client(saf::http_config_with_base_url("https://api.example.com"));
+    use wiremock::matchers::{method, path, query_param};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/health"))
+        .and(query_param("format", "detailed"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"mock": true})))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let uri = server.uri();
+    let client = saf::rest_client(saf::http_config_with_base_url(&uri));
 
     let request = HttpRequest::get("/health")
         .with_header("Accept", "application/json")
@@ -61,7 +92,6 @@ async fn e2e_http_send_with_custom_request() {
     let response = client.send(request).await.unwrap();
     assert!(response.is_success());
 
-    // Verify mock response has expected structure
     let body: serde_json::Value = response.json().unwrap();
     assert_eq!(body["mock"], true);
 }
@@ -74,9 +104,29 @@ async fn e2e_http_health_check() {
     assert_eq!(health.status, HealthStatus::Healthy);
 }
 
+#[cfg(feature = "reqwest")]
 #[tokio::test]
 async fn e2e_http_multiple_sequential_requests() {
-    let client = saf::rest_client_with_base_url("https://api.example.com");
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST")).and(path("/orders"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"id": 1})))
+        .mount(&server).await;
+    Mock::given(method("GET")).and(path("/orders/1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1, "qty": 5})))
+        .mount(&server).await;
+    Mock::given(method("PUT")).and(path("/orders/1"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server).await;
+    Mock::given(method("DELETE")).and(path("/orders/1"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server).await;
+
+    let uri = server.uri();
+    let client = saf::rest_client_with_base_url(&uri);
 
     // Simulate a typical API workflow:
     // 1. Create a resource

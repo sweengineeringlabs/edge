@@ -24,8 +24,8 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use swe_gateway::prelude::*;
-//! use swe_gateway::saf;
+//! use edge_gateway::prelude::*;
+//! use edge_gateway::saf;
 //!
 //! // Create a memory database
 //! let db = saf::memory_database();
@@ -53,7 +53,7 @@
 //! Use the `spi` module to implement custom gateways:
 //!
 //! ```rust
-//! use swe_gateway::spi::*;
+//! use edge_gateway::spi::*;
 //! use futures::future::BoxFuture;
 //!
 //! struct MyDatabase;

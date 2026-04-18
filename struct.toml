@@ -1,4 +1,5 @@
 # SEA project configuration (L0)
 [project]
 name = "swe-edge"
+workspaces = ["gateway", "controlroom"]
 

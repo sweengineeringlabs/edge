@@ -1,11 +1,11 @@
 [package]
 name = "edge-gateway"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-authors.workspace = true
-rust-version.workspace = true
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/sweengineeringlabs/edge"
+authors = ["SWE Engineering Labs"]
+rust-version = "1.75"
 description = "edge — L1 inbound gateway: Gateway<Req,Resp> contract, Pipeline, hexagonal adapters"
 keywords = ["gateway", "pipeline", "edge", "hexagonal", "swe"]
 categories = ["web-programming", "development-tools"]
@@ -106,3 +106,4 @@ tauri = { version = "2", default-features = false, optional = true }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 tempfile = "3"
 reqwest = { version = "0.12", features = ["json"], default-features = false }
+wiremock = "0.6"
