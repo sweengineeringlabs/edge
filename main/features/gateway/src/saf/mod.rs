@@ -50,10 +50,34 @@ pub use crate::api::middleware::ResponseMiddleware;
 // ── Daemon runner (from core layer) ──
 pub use crate::core::daemon::{DaemonContext, DaemonRunner};
 
-// ── Retry middleware (from core layer) ──
-pub use crate::core::retry::{
-    BackoffStrategy, RetryMiddleware, RetryMiddlewareBuilder, RetryMiddlewareSpec, RetryPredicate,
+// ── Retry middleware ─────────────────────────────────────────────────────
+//
+// Public contract types live in crate::api::retry (rule 160); the
+// runtime impl stays pub(crate) in crate::core::retry (rule 50).
+// saf/ re-exports the api/ types for ergonomics and exposes a factory
+// that returns `impl RequestMiddleware` so consumers never name the
+// core type (rules 47, 159).
+
+pub use crate::api::retry::{
+    default_retry_predicate, BackoffStrategy, RetryMiddlewareBuilder, RetryMiddlewareSpec,
+    RetryPredicate,
 };
+
+use std::sync::Arc;
+
+/// Attach retry behavior to a middleware pipeline.
+///
+/// Consumers construct a [`RetryMiddlewareSpec`] via
+/// [`RetryMiddlewareBuilder`] and pass it here with an inner
+/// middleware. The returned middleware implements
+/// [`crate::api::middleware::RequestMiddleware`] and can be slotted
+/// into any pipeline.
+pub fn wrap_with_retry(
+    spec: RetryMiddlewareSpec,
+    inner: Arc<dyn crate::api::middleware::RequestMiddleware>,
+) -> impl crate::api::middleware::RequestMiddleware {
+    crate::core::retry::build_retry_middleware(spec, inner)
+}
 
 // ── Rate limiter (from core layer) ──
 pub use crate::core::rate_limit::{RateLimiter, RateLimiterBuilder};

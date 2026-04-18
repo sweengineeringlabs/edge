@@ -8,7 +8,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use swe_gateway::prelude::*;
+use edge_gateway::prelude::*;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ const NEAR_ZERO_REFILL: f64 = 0.001;
 
 #[tokio::test]
 async fn test_perf_insert_1000_records_under_1s() {
-    let db = swe_gateway::saf::memory_database();
+    let db = edge_gateway::saf::memory_database();
     let total = 1_000usize;
     let max_duration = Duration::from_secs(1);
 
@@ -57,7 +57,7 @@ async fn test_perf_insert_1000_records_under_1s() {
 
 #[tokio::test]
 async fn test_perf_query_with_filter_10k_records_under_500ms() {
-    let db = swe_gateway::saf::memory_database();
+    let db = edge_gateway::saf::memory_database();
     let total = 10_000usize;
     let max_duration = Duration::from_millis(500);
 
@@ -101,7 +101,7 @@ async fn test_perf_query_with_filter_10k_records_under_500ms() {
 #[tokio::test]
 async fn test_perf_file_read_write_cycle_under_100ms() {
     let temp_dir = tempfile::TempDir::new().expect("failed to create temp dir");
-    let gw = swe_gateway::saf::local_file_gateway(temp_dir.path());
+    let gw = edge_gateway::saf::local_file_gateway(temp_dir.path());
     let max_duration = Duration::from_millis(100);
 
     let content = b"performance-test-payload-with-some-body-data".to_vec();
@@ -134,7 +134,7 @@ async fn test_perf_file_read_write_cycle_under_100ms() {
 #[tokio::test]
 async fn test_perf_rate_limiter_allows_exactly_capacity_requests() {
     let capacity = 500u64;
-    let limiter = swe_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL);
+    let limiter = edge_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL);
     let max_duration = Duration::from_millis(500);
 
     let start = Instant::now();
@@ -267,11 +267,14 @@ async fn test_perf_retry_exponential_backoff_respects_timing_bounds() {
     // Configure: 3 attempts, fixed backoff at 50ms (no jitter for determinism).
     // Expected: attempt 1 fails -> sleep 50ms -> attempt 2 fails -> sleep 50ms -> attempt 3 fails -> return error.
     // Total sleep = 100ms. With overhead, should be between ~80ms and ~500ms.
-    let retry = RetryMiddleware::builder()
+    let spec = RetryMiddlewareBuilder::new()
         .max_attempts(3)
         .fixed_backoff(Duration::from_millis(50))
-        .build()
-        .wrap(Arc::new(AlwaysFailRetryable) as Arc<dyn RequestMiddleware>);
+        .build();
+    let retry = edge_gateway::saf::wrap_with_retry(
+        spec,
+        Arc::new(AlwaysFailRetryable) as Arc<dyn RequestMiddleware>,
+    );
 
     let min_expected = Duration::from_millis(80);
     let max_expected = Duration::from_millis(500);
