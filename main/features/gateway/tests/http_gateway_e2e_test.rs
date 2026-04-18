@@ -4,7 +4,7 @@
 //! configure client -> send requests -> verify responses -> handle inbound.
 
 use edge_gateway::prelude::*;
-use edge_gateway::saf::http::{HttpConfig, HttpRequest};
+use edge_gateway::saf::http::HttpRequest;
 use edge_gateway::saf;
 
 #[tokio::test]
@@ -52,7 +52,7 @@ async fn e2e_http_inbound_request_handling() {
 
 #[tokio::test]
 async fn e2e_http_send_with_custom_request() {
-    let client = saf::rest_client(HttpConfig::with_base_url("https://api.example.com"));
+    let client = saf::rest_client(saf::http_config_with_base_url("https://api.example.com"));
 
     let request = HttpRequest::get("/health")
         .with_header("Accept", "application/json")

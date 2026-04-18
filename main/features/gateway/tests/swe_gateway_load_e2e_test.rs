@@ -239,7 +239,7 @@ async fn test_load_1000_sequential_pipeline_executions() {
         }
     }
 
-    let pipeline = Pipeline::new(
+    let pipeline = edge_gateway::saf::default_pipeline(
         vec![Arc::new(Passthrough) as Arc<dyn RequestMiddleware>],
         Arc::new(EchoRouter) as Arc<dyn Router>,
         vec![],

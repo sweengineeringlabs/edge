@@ -237,7 +237,7 @@ fn expand_opt(field: &mut Option<String>) -> Result<(), ConfigError> {
 
 impl GatewayConfig {
     /// Expands `${VAR}` patterns in all sensitive string fields.
-    pub fn expand_env(&mut self) -> Result<(), ConfigError> {
+    pub(crate) fn expand_env(&mut self) -> Result<(), ConfigError> {
         // database
         expand_opt(&mut self.database.connection_string)?;
         expand_opt(&mut self.database.password)?;
@@ -268,7 +268,7 @@ impl GatewayConfig {
     ///
     /// Returns `Ok(())` when all checks pass, or `ConfigError::Validation`
     /// with an actionable message listing every missing field.
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub(crate) fn validate(&self) -> Result<(), ConfigError> {
         use crate::api::database::DatabaseType;
         use crate::api::file::FileStorageType;
         use crate::api::payment::PaymentProvider;
@@ -344,37 +344,37 @@ impl GatewayConfig {
 
 impl GatewayConfig {
     /// Overrides the file storage configuration via a closure.
-    pub fn with_file(mut self, f: impl FnOnce(&mut FileStorageConfig)) -> Self {
+    pub(crate) fn with_file(mut self, f: impl FnOnce(&mut FileStorageConfig)) -> Self {
         f(&mut self.file);
         self
     }
 
     /// Overrides the database configuration via a closure.
-    pub fn with_database(mut self, f: impl FnOnce(&mut DatabaseConfig)) -> Self {
+    pub(crate) fn with_database(mut self, f: impl FnOnce(&mut DatabaseConfig)) -> Self {
         f(&mut self.database);
         self
     }
 
     /// Overrides the HTTP configuration via a closure.
-    pub fn with_http(mut self, f: impl FnOnce(&mut HttpConfig)) -> Self {
+    pub(crate) fn with_http(mut self, f: impl FnOnce(&mut HttpConfig)) -> Self {
         f(&mut self.http);
         self
     }
 
     /// Overrides the notification configuration via a closure.
-    pub fn with_notification(mut self, f: impl FnOnce(&mut NotificationConfig)) -> Self {
+    pub(crate) fn with_notification(mut self, f: impl FnOnce(&mut NotificationConfig)) -> Self {
         f(&mut self.notification);
         self
     }
 
     /// Overrides the payment configuration via a closure.
-    pub fn with_payment(mut self, f: impl FnOnce(&mut PaymentConfig)) -> Self {
+    pub(crate) fn with_payment(mut self, f: impl FnOnce(&mut PaymentConfig)) -> Self {
         f(&mut self.payment);
         self
     }
 
     /// Overrides the sink configuration via a closure.
-    pub fn with_sink(mut self, f: impl FnOnce(&mut SinkConfig)) -> Self {
+    pub(crate) fn with_sink(mut self, f: impl FnOnce(&mut SinkConfig)) -> Self {
         f(&mut self.sink);
         self
     }
@@ -386,27 +386,27 @@ impl GatewayConfig {
 
 impl GatewayConfig {
     /// Creates a file gateway from the loaded configuration.
-    pub fn file_gateway(&self) -> impl FileGateway {
+    pub(crate) fn file_gateway(&self) -> impl FileGateway {
         builders::local_file_gateway(self.file.base_path.clone())
     }
 
     /// Creates a database gateway from the loaded configuration.
-    pub fn database_gateway(&self) -> impl DatabaseGateway {
+    pub(crate) fn database_gateway(&self) -> impl DatabaseGateway {
         builders::memory_database()
     }
 
     /// Creates an HTTP gateway from the loaded configuration.
-    pub fn http_gateway(&self) -> impl HttpGateway {
+    pub(crate) fn http_gateway(&self) -> impl HttpGateway {
         builders::rest_client(self.http.clone())
     }
 
     /// Creates a notification gateway from the loaded configuration.
-    pub fn notification_gateway(&self) -> impl NotificationGateway {
+    pub(crate) fn notification_gateway(&self) -> impl NotificationGateway {
         builders::console_notifier()
     }
 
     /// Creates a payment gateway from the loaded configuration.
-    pub fn payment_gateway(&self) -> impl PaymentGateway {
+    pub(crate) fn payment_gateway(&self) -> impl PaymentGateway {
         builders::mock_payment_gateway()
     }
 }

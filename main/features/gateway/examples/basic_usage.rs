@@ -3,10 +3,10 @@
 //! Demonstrates gateway creation, CRUD operations, middleware,
 //! streaming, configuration, and DaemonRunner modes.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::database::QueryParams;
-use swe_gateway::saf::file::UploadOptions;
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::database::QueryParams;
+use edge_gateway::saf::file::UploadOptions;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         database_type = "memory"
     "#;
     let config = saf::load_config_from_str(toml_str)?;
-    config.validate()?;
+    saf::validate_config(&config)?;
     println!("Config valid");
 
     // ── DaemonRunner (lightweight, no observability) ────────────────

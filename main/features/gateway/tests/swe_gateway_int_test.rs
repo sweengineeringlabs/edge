@@ -148,13 +148,13 @@ async fn test_pipeline_retry_middleware_recovers_from_transient_failure() {
         .fixed_backoff(Duration::from_millis(1))
         .build();
 
-    let retry_mw: Arc<dyn RequestMiddleware> = Arc::new(retry_spec.wrap(flaky));
+    let retry_mw: Arc<dyn RequestMiddleware> = Arc::new(saf::wrap_with_retry(retry_spec, flaky));
 
-    let router = Arc::new(ClosureRouter::new(|req: &serde_json::Value| {
+    let router = Arc::new(saf::sync_closure_router(|req: &serde_json::Value| {
         Ok(req.clone())
     }));
 
-    let pipeline = Pipeline::new(vec![retry_mw], router as Arc<dyn Router>, vec![]);
+    let pipeline = saf::default_pipeline(vec![retry_mw], router as Arc<dyn Router>, vec![]);
 
     let result = pipeline
         .execute(serde_json::json!({"op": "insert"}))
@@ -175,11 +175,11 @@ async fn test_pipeline_rate_limiter_allows_within_capacity() {
     // Rate limiter with capacity 5, very low refill to prevent refill during test.
     let limiter: Arc<dyn RequestMiddleware> = Arc::new(saf::rate_limiter(5, 0.001));
 
-    let router = Arc::new(ClosureRouter::new(|req: &serde_json::Value| {
+    let router = Arc::new(saf::sync_closure_router(|req: &serde_json::Value| {
         Ok(req.clone())
     }));
 
-    let pipeline = Pipeline::new(vec![limiter.clone()], router as Arc<dyn Router>, vec![]);
+    let pipeline = saf::default_pipeline(vec![limiter.clone()], router as Arc<dyn Router>, vec![]);
 
     // First 5 requests should succeed.
     for i in 0..5 {
@@ -230,8 +230,8 @@ sandbox = true
     let config = saf::load_config_from_str(toml_str).unwrap();
 
     // Build gateways from config.
-    let db = config.database_gateway();
-    let notifier = config.notification_gateway();
+    let db = saf::database_from_config(&config);
+    let notifier = saf::notification_from_config(&config);
 
     // Verify database gateway works: insert + query roundtrip.
     let mut record = saf::database::Record::new();

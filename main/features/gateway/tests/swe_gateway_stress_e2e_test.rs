@@ -9,7 +9,7 @@ use edge_gateway::saf::{self, DatabaseInbound, DatabaseOutbound, FileInbound, Fi
 use edge_gateway::saf::database::{QueryParams, Record};
 use edge_gateway::saf::file::UploadOptions;
 use edge_gateway::saf::{
-    ClosureRouter, GatewayError, Pipeline, RateLimiter, Router,
+    GatewayError, Pipeline, RateLimiter, Router,
 };
 
 use tempfile::TempDir;
@@ -391,7 +391,7 @@ async fn test_file_gateway_concurrent_read_write_same_file_no_crash() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_concurrent_requests_respects_capacity() {
     // Capacity 50, near-zero refill so no tokens regenerate during the test.
-    let limiter = Arc::new(RateLimiter::new(50, 0.001));
+    let limiter = Arc::new(saf::rate_limiter(50, 0.001));
     let allowed = Arc::new(std::sync::atomic::AtomicU64::new(0));
     let rejected = Arc::new(std::sync::atomic::AtomicU64::new(0));
 
@@ -443,7 +443,7 @@ async fn test_rate_limiter_concurrent_requests_respects_capacity() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_pipeline_concurrent_executions_no_state_leakage() {
     // Router that echoes the request with an added "routed: true" field.
-    let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(
+    let router: Arc<dyn Router> = Arc::new(saf::sync_closure_router(
         |req: &serde_json::Value| -> Result<serde_json::Value, GatewayError> {
             let mut out = req.clone();
             out.as_object_mut()
@@ -453,7 +453,7 @@ async fn test_pipeline_concurrent_executions_no_state_leakage() {
         },
     ));
 
-    let pipeline = Arc::new(Pipeline::new(vec![], router, vec![]));
+    let pipeline = Arc::new(saf::default_pipeline(vec![], router, vec![]));
     let mut handles = Vec::new();
 
     for i in 0..100 {

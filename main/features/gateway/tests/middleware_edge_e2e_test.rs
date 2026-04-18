@@ -16,8 +16,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use edge_gateway::saf::{
-    ClosureRouter, FieldExtractor, MetricFields,
-    MetricsCollector, MetricsResponseMiddleware, MiddlewareAction, Pipeline,
+    self, FieldExtractor, MetricFields,
+    MetricsCollector, MiddlewareAction, Pipeline,
     RequestMiddleware, ResponseMiddleware, Router,
 };
 
@@ -153,8 +153,8 @@ fn make_pipeline(
     pre: Vec<Arc<dyn RequestMiddleware<Req, TestError, Resp>>>,
     router: Arc<dyn Router<Req, Resp, TestError>>,
     post: Vec<Arc<dyn ResponseMiddleware<Resp, TestError>>>,
-) -> Pipeline<Req, Resp, TestError> {
-    Pipeline::new(pre, router, post)
+) -> impl Pipeline<Req, Resp, TestError> {
+    saf::default_pipeline(pre, router, post)
 }
 
 // ===========================================================================
@@ -164,11 +164,9 @@ fn make_pipeline(
 #[tokio::test]
 async fn test_execute_zero_middleware_routes_directly_to_router() {
     let router = Arc::new(EchoRouter::new());
-    let pipeline: Pipeline<Req, Resp, TestError> =
-        Pipeline::new(vec![], router.clone(), vec![]);
-
-    assert_eq!(pipeline.pre_middleware_count(), 0);
-    assert_eq!(pipeline.post_middleware_count(), 0);
+    let pipeline = saf::default_pipeline::<Req, Resp, TestError>(
+        vec![], router.clone(), vec![],
+    );
 
     let input = serde_json::json!({"key": "value"});
     let output = pipeline.execute(input.clone()).await.unwrap();
@@ -193,8 +191,6 @@ async fn test_execute_20_pre_middleware_all_execute_in_order() {
 
     let router = Arc::new(EchoRouter::new());
     let pipeline = make_pipeline(middlewares.clone(), router.clone(), vec![]);
-
-    assert_eq!(pipeline.pre_middleware_count(), 20);
 
     let output = pipeline
         .execute(serde_json::json!({"trail": ""}))
@@ -428,13 +424,13 @@ fn sample_extractor() -> FieldExtractor {
 #[tokio::test]
 async fn test_execute_metrics_middleware_records_after_router() {
     let collector = Arc::new(InMemoryCollector::new());
-    let metrics_mw = Arc::new(MetricsResponseMiddleware::new(
+    let metrics_mw = Arc::new(saf::metrics_middleware(
         collector.clone(),
         sample_extractor(),
     ));
 
     // Router that returns a metrics-compatible response.
-    let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(
+    let router: Arc<dyn Router> = Arc::new(saf::sync_closure_router(
         |_req: &serde_json::Value| {
             Ok(serde_json::json!({
                 "provider": "anthropic",
@@ -448,7 +444,7 @@ async fn test_execute_metrics_middleware_records_after_router() {
         },
     ));
 
-    let pipeline: Pipeline = Pipeline::new(
+    let pipeline = saf::default_pipeline(
         vec![],
         router,
         vec![metrics_mw as Arc<dyn ResponseMiddleware>],
@@ -473,17 +469,17 @@ async fn test_execute_metrics_middleware_records_after_router() {
 #[tokio::test]
 async fn test_execute_metrics_middleware_skips_when_extractor_returns_none() {
     let collector = Arc::new(InMemoryCollector::new());
-    let metrics_mw = Arc::new(MetricsResponseMiddleware::new(
+    let metrics_mw = Arc::new(saf::metrics_middleware(
         collector.clone(),
         sample_extractor(),
     ));
 
     // Router returns a response missing required fields.
-    let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(
+    let router: Arc<dyn Router> = Arc::new(saf::sync_closure_router(
         |_req: &serde_json::Value| Ok(serde_json::json!({"status": "ok"})),
     ));
 
-    let pipeline: Pipeline = Pipeline::new(
+    let pipeline = saf::default_pipeline(
         vec![],
         router,
         vec![metrics_mw as Arc<dyn ResponseMiddleware>],
@@ -503,12 +499,12 @@ async fn test_execute_metrics_middleware_skips_when_extractor_returns_none() {
 
 /// Adapter that wraps a Pipeline as a Router, enabling nesting.
 struct PipelineRouter {
-    inner: Pipeline<Req, Resp, TestError>,
+    inner: Box<dyn Pipeline<Req, Resp, TestError>>,
 }
 
 impl PipelineRouter {
-    fn new(inner: Pipeline<Req, Resp, TestError>) -> Self {
-        Self { inner }
+    fn new<P: Pipeline<Req, Resp, TestError> + 'static>(inner: P) -> Self {
+        Self { inner: Box::new(inner) }
     }
 }
 

@@ -21,14 +21,14 @@ pub(crate) struct LocalFileGateway {
 
 impl LocalFileGateway {
     /// Creates a new local file gateway with the given base path.
-    pub fn new(base_path: impl Into<PathBuf>) -> Self {
+    pub(crate) fn new(base_path: impl Into<PathBuf>) -> Self {
         Self {
             base_path: base_path.into(),
         }
     }
 
     /// Creates a gateway using the current directory.
-    pub fn current_dir() -> std::io::Result<Self> {
+    pub(crate) fn current_dir() -> std::io::Result<Self> {
         Ok(Self {
             base_path: std::env::current_dir()?,
         })

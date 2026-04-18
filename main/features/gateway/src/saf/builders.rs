@@ -99,6 +99,35 @@ pub fn mock_payment_gateway_with_failure(
 }
 
 // =============================================================================
+// Config-driven Gateway Builders
+// =============================================================================
+
+/// Creates a database gateway from a loaded `GatewayConfig`.
+pub fn database_from_config(config: &GatewayConfig) -> impl DatabaseGateway {
+    config.database_gateway()
+}
+
+/// Creates a file gateway from a loaded `GatewayConfig`.
+pub fn file_from_config(config: &GatewayConfig) -> impl FileGateway {
+    config.file_gateway()
+}
+
+/// Creates an HTTP gateway from a loaded `GatewayConfig`.
+pub fn http_from_config(config: &GatewayConfig) -> impl HttpGateway {
+    config.http_gateway()
+}
+
+/// Creates a notification gateway from a loaded `GatewayConfig`.
+pub fn notification_from_config(config: &GatewayConfig) -> impl NotificationGateway {
+    config.notification_gateway()
+}
+
+/// Creates a payment gateway from a loaded `GatewayConfig`.
+pub fn payment_from_config(config: &GatewayConfig) -> impl PaymentGateway {
+    config.payment_gateway()
+}
+
+// =============================================================================
 // Rate Limiter Builders
 // =============================================================================
 
@@ -135,8 +164,8 @@ pub fn rate_limiter_builder() -> crate::api::rate_limit::RateLimiterBuilder {
 ///
 /// Useful for CLI tools, test harnesses, or any process that does not
 /// need MDC logging context or the obsrv sidecar.
-pub fn lightweight_daemon(service_name: impl Into<String>) -> crate::core::daemon::DaemonRunner {
-    crate::core::daemon::DaemonRunner::new(service_name).without_observability()
+pub fn lightweight_daemon(service_name: impl Into<String>) -> crate::api::daemon::DaemonRunner {
+    crate::api::daemon::DaemonRunner::new(service_name).without_observability()
 }
 
 // =============================================================================
@@ -161,6 +190,11 @@ pub fn file_storage_config_local(base_path: impl Into<String>) -> FileStorageCon
 /// Creates an S3 file storage configuration.
 pub fn file_storage_config_s3(bucket: impl Into<String>, region: impl Into<String>) -> FileStorageConfig {
     FileStorageConfig::s3(bucket, region)
+}
+
+/// Creates an in-memory file storage configuration (for testing).
+pub fn file_storage_config_memory() -> FileStorageConfig {
+    FileStorageConfig::memory()
 }
 
 /// Creates a default HTTP configuration.

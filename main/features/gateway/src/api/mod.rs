@@ -5,15 +5,18 @@
 //! - Domain types for each gateway
 //! - Common types (errors, results, health checks)
 
+pub mod daemon;
 pub mod database;
 pub mod file;
 pub mod grpc;
 pub mod http;
 pub mod input;
+pub mod metrics;
 pub mod middleware;
 pub mod notification;
 pub mod output;
 pub mod payment;
+pub mod pipeline;
 pub mod process;
 pub mod rate_limit;
 pub mod retry;

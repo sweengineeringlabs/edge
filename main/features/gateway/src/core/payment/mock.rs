@@ -32,18 +32,18 @@ pub(crate) use crate::api::types::MockFailureMode;
 
 impl MockPaymentGateway {
     /// Creates a new mock payment gateway.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Sets the failure mode for testing.
-    pub fn with_failure_mode(self, mode: MockFailureMode) -> Self {
+    pub(crate) fn with_failure_mode(self, mode: MockFailureMode) -> Self {
         *self.failure_mode.write().unwrap() = Some(mode);
         self
     }
 
     /// Clears the failure mode.
-    pub fn clear_failure_mode(&self) {
+    pub(crate) fn clear_failure_mode(&self) {
         *self.failure_mode.write().unwrap() = None;
     }
 
@@ -74,13 +74,13 @@ impl MockPaymentGateway {
     }
 
     /// Pre-seeds the gateway with a customer.
-    pub fn add_customer(&self, customer: Customer) {
+    pub(crate) fn add_customer(&self, customer: Customer) {
         let mut customers = self.customers.write().unwrap();
         customers.insert(customer.id.clone(), customer);
     }
 
     /// Pre-seeds the gateway with a payment.
-    pub fn add_payment(&self, result: PaymentResult) {
+    pub(crate) fn add_payment(&self, result: PaymentResult) {
         let mut payments = self.payments.write().unwrap();
         payments.insert(result.payment_id.clone(), result);
     }

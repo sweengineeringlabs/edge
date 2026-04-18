@@ -1,4 +1,4 @@
-//! DaemonRunner — shared startup sequence for gateway daemons.
+//! Daemon runner — shared startup sequence for gateway daemons.
 //!
 //! Handles the common lifecycle:
 //! 1. Generate daemon ID
@@ -8,6 +8,12 @@
 //! 5. Call user-provided server function with context
 //!
 //! Used by both llmboot (`llm serve`) and microvm (`xkvm daemon`).
+//!
+//! `DaemonContext` and `DaemonRunner` are part of the public contract —
+//! they live in api/ per rule 160 ("all public types declared under api/").
+//! The builder methods compose a runner that encapsulates the lifecycle;
+//! no separate core impl is required because the behavior is fully
+//! specified by the type itself and has no swappable backend.
 
 use std::future::Future;
 use std::net::SocketAddr;

@@ -22,7 +22,7 @@ pub(crate) struct ConsoleNotifier {
 
 impl ConsoleNotifier {
     /// Creates a new console notifier.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             sent: Arc::new(RwLock::new(HashMap::new())),
             verbose: true,
@@ -30,7 +30,7 @@ impl ConsoleNotifier {
     }
 
     /// Creates a silent notifier that doesn't print to console.
-    pub fn silent() -> Self {
+    pub(crate) fn silent() -> Self {
         Self {
             sent: Arc::new(RwLock::new(HashMap::new())),
             verbose: false,
@@ -38,7 +38,7 @@ impl ConsoleNotifier {
     }
 
     /// Sets verbosity.
-    pub fn with_verbose(mut self, verbose: bool) -> Self {
+    pub(crate) fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
     }

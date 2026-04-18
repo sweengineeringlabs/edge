@@ -37,7 +37,7 @@ pub(crate) struct RestClient {
 
 impl RestClient {
     /// Creates a new REST client with the given configuration.
-    pub fn new(config: HttpConfig) -> Self {
+    pub(crate) fn new(config: HttpConfig) -> Self {
         Self {
             #[cfg(feature = "reqwest")]
             client: build_client(&config),
@@ -47,12 +47,12 @@ impl RestClient {
     }
 
     /// Creates a REST client with a base URL.
-    pub fn with_base_url(base_url: impl Into<String>) -> Self {
+    pub(crate) fn with_base_url(base_url: impl Into<String>) -> Self {
         Self::new(HttpConfig::with_base_url(base_url))
     }
 
     /// Sets the authentication method.
-    pub fn with_auth(mut self, auth: HttpAuth) -> Self {
+    pub(crate) fn with_auth(mut self, auth: HttpAuth) -> Self {
         self.auth = auth;
         self
     }

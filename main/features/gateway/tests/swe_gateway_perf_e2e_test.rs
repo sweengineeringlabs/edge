@@ -212,7 +212,7 @@ async fn test_perf_pipeline_10_middleware_layers_under_50ms() {
         })
         .collect();
 
-    let pipeline = Pipeline::new(
+    let pipeline = edge_gateway::saf::default_pipeline(
         pre,
         Arc::new(EchoRouter) as Arc<dyn Router>,
         vec![],

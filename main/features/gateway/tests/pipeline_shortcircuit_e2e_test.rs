@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use edge_gateway::saf::{
-    ClosureRouter, MiddlewareAction, Pipeline, RequestMiddleware,
+    self, MiddlewareAction, Pipeline, RequestMiddleware,
     ResponseMiddleware, Router,
 };
 
@@ -158,8 +158,8 @@ fn make_pipeline(
     pre: Vec<Arc<dyn RequestMiddleware<Req, TestError, Resp>>>,
     router: Arc<dyn Router<Req, Resp, TestError>>,
     post: Vec<Arc<dyn ResponseMiddleware<Resp, TestError>>>,
-) -> Pipeline<Req, Resp, TestError> {
-    Pipeline::new(pre, router, post)
+) -> impl Pipeline<Req, Resp, TestError> {
+    saf::default_pipeline(pre, router, post)
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -313,11 +313,11 @@ async fn test_execute_shortcircuit_with_default_types() {
         }
     }
 
-    let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(|_req: &serde_json::Value| {
+    let router: Arc<dyn Router> = Arc::new(saf::sync_closure_router(|_req: &serde_json::Value| {
         Ok(serde_json::json!({"hit": false}))
     }));
 
-    let pipeline = Pipeline::new(
+    let pipeline = saf::default_pipeline(
         vec![Arc::new(CacheHit) as Arc<dyn RequestMiddleware>],
         router,
         vec![],
@@ -362,8 +362,9 @@ async fn test_execute_shortcircuit_middleware_error_propagates() {
 #[tokio::test]
 async fn test_execute_empty_pre_middleware_routes_directly() {
     let router = Arc::new(EchoRouter::new());
-    let pipeline: Pipeline<Req, Resp, TestError> =
-        Pipeline::new(vec![], router.clone(), vec![]);
+    let pipeline = saf::default_pipeline::<Req, Resp, TestError>(
+        vec![], router.clone(), vec![],
+    );
 
     let output = pipeline
         .execute(serde_json::json!({"direct": true}))

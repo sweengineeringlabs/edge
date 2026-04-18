@@ -12,6 +12,18 @@ pub use config::{
     GatewayConfig, SinkConfig, SinkFormat, SinkType,
 };
 
+/// Validate a [`GatewayConfig`] — verifies all contextually required fields
+/// are present per configuration rules.
+///
+/// Returns `Ok(())` on success, or [`ConfigError::Validation`] with an
+/// actionable message listing every missing field.
+///
+/// This is the public entry point; the underlying implementation is
+/// `pub(crate)` on [`GatewayConfig`] (rule 122).
+pub fn validate_config(config: &GatewayConfig) -> Result<(), ConfigError> {
+    config.validate()
+}
+
 // ── Unified process gateway (from api layer) ──
 pub use crate::api::process::{
     Gateway, InputRequest, OutputResponse, PipelineGateway, PipelineReq, PipelineResp,
@@ -47,8 +59,8 @@ pub use crate::api::middleware::MiddlewareAction;
 pub use crate::api::middleware::RequestMiddleware;
 pub use crate::api::middleware::ResponseMiddleware;
 
-// ── Daemon runner (from core layer) ──
-pub use crate::core::daemon::{DaemonContext, DaemonRunner};
+// ── Daemon runner (from api layer) ──
+pub use crate::api::daemon::{DaemonContext, DaemonRunner};
 
 // ── Retry middleware ─────────────────────────────────────────────────────
 //
@@ -92,11 +104,81 @@ pub fn make_rate_limiter(spec: RateLimiterSpec) -> impl RateLimiter {
     crate::core::rate_limit::build_rate_limiter(spec)
 }
 
-// ── Pipeline (from core layer) ──
-pub use crate::core::pipeline::{PipelineRouter, DefaultPipeline, Pipeline, Router};
-pub use crate::core::metrics_bridge::{
-    FieldExtractor, MetricFields, MetricsCollector, MetricsResponseMiddleware,
-};
+// ── Pipeline (from api layer) ──
+//
+// Traits live in api/pipeline; default impls stay pub(crate) in core/.
+// Factories below return `impl Pipeline` / `impl Router` so consumers
+// never name the concrete core types (rules 47, 159).
+pub use crate::api::pipeline::{Pipeline, Router};
+
+// ── Metrics (from api layer) ──
+//
+// Contract types live in api/metrics; the bridge middleware is
+// pub(crate) in core/metrics_bridge. `metrics_middleware` returns
+// `impl ResponseMiddleware`.
+pub use crate::api::metrics::{FieldExtractor, MetricFields, MetricsCollector};
+
+/// Construct the default pipeline: pre-middleware, router, post-middleware.
+///
+/// Returns `impl Pipeline` so the concrete core type is never named.
+pub fn default_pipeline<
+    Req: Send + Sync + 'static,
+    Resp: Send + Sync + 'static,
+    Err: Send + Sync + 'static,
+>(
+    pre: Vec<Arc<dyn crate::api::middleware::RequestMiddleware<Req, Err, Resp>>>,
+    router: Arc<dyn Router<Req, Resp, Err>>,
+    post: Vec<Arc<dyn crate::api::middleware::ResponseMiddleware<Resp, Err>>>,
+) -> impl Pipeline<Req, Resp, Err> {
+    crate::core::pipeline::DefaultPipeline::new(pre, router, post)
+}
+
+/// Wrap an async closure as a [`Router`].
+///
+/// Returns `impl Router` so the concrete core type is never named.
+pub fn closure_router<F, Req, Resp, Err>(handler: F) -> impl Router<Req, Resp, Err>
+where
+    F: for<'a> Fn(&'a Req) -> futures::future::BoxFuture<'a, Result<Resp, Err>>
+        + Send
+        + Sync
+        + 'static,
+    Req: Send + Sync + 'static,
+    Resp: Send + Sync + 'static,
+    Err: Send + Sync + 'static,
+{
+    crate::core::pipeline::PipelineRouter::new(handler)
+}
+
+/// Wrap a synchronous closure as a [`Router`].
+///
+/// The closure receives a request reference and returns a `Result<Resp, Err>`
+/// directly. Use this when dispatch logic doesn't require awaiting —
+/// the factory wraps the result in a ready future internally.
+///
+/// Returns `impl Router` so the concrete core type is never named.
+pub fn sync_closure_router<F, Req, Resp, Err>(handler: F) -> impl Router<Req, Resp, Err>
+where
+    F: Fn(&Req) -> Result<Resp, Err> + Send + Sync + 'static,
+    Req: Send + Sync + 'static,
+    Resp: Send + Sync + 'static,
+    Err: Send + Sync + 'static,
+{
+    crate::core::pipeline::PipelineRouter::new(move |req: &Req| {
+        let result = handler(req);
+        Box::pin(async move { result })
+    })
+}
+
+/// Construct a metrics response middleware that records fields extracted
+/// from each response via the given collector.
+///
+/// Returns `impl ResponseMiddleware` so the concrete core type is never named.
+pub fn metrics_middleware(
+    collector: Arc<dyn MetricsCollector>,
+    extractor: FieldExtractor,
+) -> impl crate::api::middleware::ResponseMiddleware {
+    crate::core::metrics_bridge::MetricsResponseMiddleware::new(collector, extractor)
+}
 
 // ── Common types (from api layer) ──
 pub use crate::api::types::GatewayError;
