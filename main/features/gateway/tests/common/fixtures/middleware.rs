@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use edge_gateway::saf::{
-    ClosureRouter, GatewayError, MiddlewareAction, Pipeline, RequestMiddleware,
+    self, GatewayError, MiddlewareAction, Pipeline, RequestMiddleware,
     ResponseMiddleware, Router,
 };
 
@@ -203,8 +203,8 @@ pub fn pipeline(
     pre: Vec<Arc<dyn RequestMiddleware<Req, TestError, Resp>>>,
     router: Arc<dyn Router<Req, Resp, TestError>>,
     post: Vec<Arc<dyn ResponseMiddleware<Resp, TestError>>>,
-) -> Pipeline<Req, Resp, TestError> {
-    Pipeline::new(pre, router, post)
+) -> impl Pipeline<Req, Resp, TestError> {
+    saf::default_pipeline(pre, router, post)
 }
 
 /// Build a default-typed pipeline (serde_json::Value, GatewayError).
@@ -212,13 +212,13 @@ pub fn default_pipeline(
     pre: Vec<Arc<dyn RequestMiddleware>>,
     router: Arc<dyn Router>,
     post: Vec<Arc<dyn ResponseMiddleware>>,
-) -> Pipeline {
-    Pipeline::new(pre, router, post)
+) -> impl Pipeline {
+    saf::default_pipeline(pre, router, post)
 }
 
 /// Create a closure-based echo router for default-typed pipelines.
 pub fn echo_closure_router() -> Arc<dyn Router> {
-    Arc::new(ClosureRouter::new(|req: &serde_json::Value| {
+    Arc::new(saf::sync_closure_router(|req: &serde_json::Value| {
         let mut resp = req.clone();
         resp["routed"] = serde_json::json!(true);
         Ok(resp)
