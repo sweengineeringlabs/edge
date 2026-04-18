@@ -106,14 +106,20 @@ pub fn mock_payment_gateway_with_failure(
 ///
 /// - `capacity` — maximum burst size (tokens in the bucket).
 /// - `refill_rate` — tokens added per second.
-pub fn rate_limiter(capacity: u64, refill_rate: f64) -> crate::core::rate_limit::RateLimiter {
-    crate::core::rate_limit::RateLimiter::new(capacity, refill_rate)
+pub fn rate_limiter(capacity: u64, refill_rate: f64) -> impl crate::api::rate_limit::RateLimiter {
+    let spec = crate::api::rate_limit::RateLimiterBuilder::new()
+        .capacity(capacity)
+        .refill_rate(refill_rate)
+        .build();
+    crate::core::rate_limit::build_rate_limiter(spec)
 }
 
-/// Returns a [`RateLimiterBuilder`](crate::core::rate_limit::RateLimiterBuilder)
-/// for step-by-step configuration.
-pub fn rate_limiter_builder() -> crate::core::rate_limit::RateLimiterBuilder {
-    crate::core::rate_limit::RateLimiterBuilder::new()
+/// Returns a `RateLimiterBuilder` for step-by-step configuration.
+///
+/// Call `.build()` to get a `RateLimiterSpec`, then pass it to
+/// `saf::make_rate_limiter`.
+pub fn rate_limiter_builder() -> crate::api::rate_limit::RateLimiterBuilder {
+    crate::api::rate_limit::RateLimiterBuilder::new()
 }
 
 // =============================================================================
