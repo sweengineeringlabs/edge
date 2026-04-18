@@ -79,8 +79,18 @@ pub fn wrap_with_retry(
     crate::core::retry::build_retry_middleware(spec, inner)
 }
 
-// ── Rate limiter (from core layer) ──
-pub use crate::core::rate_limit::{RateLimiter, RateLimiterBuilder};
+// ── Rate limiter ─────────────────────────────────────────────────────────
+//
+// Trait + builder + spec live in crate::api::rate_limit. Concrete bucket
+// stays pub(crate) in crate::core::rate_limit. saf re-exports the api/
+// types and exposes a factory returning `impl RateLimiter`.
+pub use crate::api::rate_limit::{RateLimiter, RateLimiterBuilder, RateLimiterSpec};
+
+/// Construct a rate limiter from a spec. Returned as `impl RateLimiter`
+/// so consumers never name the concrete core type.
+pub fn make_rate_limiter(spec: RateLimiterSpec) -> impl RateLimiter {
+    crate::core::rate_limit::build_rate_limiter(spec)
+}
 
 // ── Pipeline (from core layer) ──
 pub use crate::core::pipeline::{PipelineRouter, DefaultPipeline, Pipeline, Router};
