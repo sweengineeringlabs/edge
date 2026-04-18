@@ -58,6 +58,19 @@ pub struct HttpConfig {
     pub max_redirects: u32,
     /// User agent string.
     pub user_agent: Option<String>,
+    /// Maximum accepted response body size, in bytes. Consumers that
+    /// need to stream unbounded responses should set this to `None`;
+    /// everyone else should rely on the default to defend against an
+    /// upstream that deliberately or accidentally streams forever.
+    #[serde(default = "default_max_response_bytes")]
+    pub max_response_bytes: Option<usize>,
+}
+
+/// Default cap for `HttpConfig::max_response_bytes` — 10 MiB. Big
+/// enough for every reasonable API response, small enough to catch
+/// runaway streams before they exhaust process memory.
+fn default_max_response_bytes() -> Option<usize> {
+    Some(10 * 1024 * 1024)
 }
 
 impl Default for HttpConfig {
@@ -71,6 +84,7 @@ impl Default for HttpConfig {
             follow_redirects: true,
             max_redirects: 10,
             user_agent: Some("swe-gateway/0.1.0".to_string()),
+            max_response_bytes: default_max_response_bytes(),
         }
     }
 }
