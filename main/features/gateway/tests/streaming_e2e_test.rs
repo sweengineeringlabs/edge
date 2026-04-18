@@ -4,10 +4,10 @@
 //! deliver items incrementally and produce the same results as their `Vec`-based
 //! counterparts.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::database::QueryParams;
-use swe_gateway::saf::file::{ListOptions, UploadOptions};
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::database::QueryParams;
+use edge_gateway::saf::file::{ListOptions, UploadOptions};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -255,7 +255,7 @@ async fn test_gateway_stream_type_alias_is_usable() {
     let db = saf::memory_database();
     db.insert("t", make_record("1", "test")).await.unwrap();
 
-    let stream: GatewayStream<'_, swe_gateway::saf::database::Record> =
+    let stream: GatewayStream<'_, edge_gateway::saf::database::Record> =
         db.query_stream("t", QueryParams::new()).await.unwrap();
 
     let items: Vec<_> = stream.collect::<Vec<_>>().await;

@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use swe_gateway::prelude::*;
+use edge_gateway::prelude::*;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ fn make_record(id: usize, payload: &str) -> database::Record {
 
 #[tokio::test]
 async fn test_load_insert_10k_records_and_verify_count() {
-    let db = swe_gateway::saf::memory_database();
+    let db = edge_gateway::saf::memory_database();
     let total = 10_000usize;
 
     for i in 0..total {
@@ -60,7 +60,7 @@ async fn test_load_insert_10k_records_and_verify_count() {
 
 #[tokio::test]
 async fn test_load_query_10k_records_paginated_100_per_page() {
-    let db = swe_gateway::saf::memory_database();
+    let db = edge_gateway::saf::memory_database();
     let total = 10_000usize;
     let page_size = 100usize;
 
@@ -109,7 +109,7 @@ async fn test_load_query_10k_records_paginated_100_per_page() {
 
 #[tokio::test]
 async fn test_load_batch_insert_1000_records() {
-    let db = swe_gateway::saf::memory_database();
+    let db = edge_gateway::saf::memory_database();
     let batch_size = 1_000usize;
 
     let records: Vec<database::Record> =
@@ -149,7 +149,7 @@ async fn test_load_batch_insert_1000_records() {
 #[tokio::test]
 async fn test_load_write_and_read_100_files_sequentially() {
     let temp_dir = tempfile::TempDir::new().expect("failed to create temp dir");
-    let gw = swe_gateway::saf::local_file_gateway(temp_dir.path());
+    let gw = edge_gateway::saf::local_file_gateway(temp_dir.path());
     let file_count = 100usize;
 
     // Write phase.
@@ -182,7 +182,7 @@ async fn test_load_write_and_read_100_files_sequentially() {
 #[tokio::test]
 async fn test_load_list_directory_with_500_plus_files() {
     let temp_dir = tempfile::TempDir::new().expect("failed to create temp dir");
-    let gw = swe_gateway::saf::local_file_gateway(temp_dir.path());
+    let gw = edge_gateway::saf::local_file_gateway(temp_dir.path());
     let file_count = 550usize;
 
     // Create the files.

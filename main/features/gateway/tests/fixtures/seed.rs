@@ -1,7 +1,7 @@
 //! Seed data functions for populating gateways in tests.
 
-use swe_gateway::saf::file::UploadOptions;
-use swe_gateway::saf::{DatabaseOutbound, FileOutbound};
+use edge_gateway::saf::file::UploadOptions;
+use edge_gateway::saf::{DatabaseOutbound, FileOutbound};
 
 use super::records;
 

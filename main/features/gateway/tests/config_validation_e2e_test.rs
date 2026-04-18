@@ -1,7 +1,7 @@
 //! End-to-end tests for configuration validation and environment variable
 //! expansion (BL-006).
 
-use swe_gateway::saf::{expand_env_vars, load_config_from_str, ConfigError, GatewayConfig};
+use edge_gateway::saf::{expand_env_vars, load_config_from_str, ConfigError, GatewayConfig};
 
 // =============================================================================
 // expand_env_vars — unit-level coverage via integration test binary

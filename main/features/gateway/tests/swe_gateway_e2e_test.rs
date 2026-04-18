@@ -3,8 +3,8 @@
 //! Validates that all builder functions, trait re-exports, prelude imports,
 //! error handling, and health checks work through the public API.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
 
 // ── Test 1: All builder functions return usable instances ─────────────────
 

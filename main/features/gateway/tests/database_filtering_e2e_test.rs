@@ -4,9 +4,9 @@
 //! comparison operator filters (__gt, __lt, __gte, __lte, __like, __in),
 //! and combined filter scenarios.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::database::QueryParams;
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::database::QueryParams;
 
 fn make_product(
     id: &str,

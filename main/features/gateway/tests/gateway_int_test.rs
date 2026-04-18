@@ -1,9 +1,9 @@
 // @allow: no_mocks_in_integration — mocks external LLM API boundary
 //! Integration tests for the gateway abstractions.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::{
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::{
     database::QueryParams,
     file::UploadOptions,
     notification::Notification,
@@ -204,7 +204,7 @@ mod file_tests {
 
         // List all files
         let result = gateway
-            .list(swe_gateway::saf::file::ListOptions::default())
+            .list(edge_gateway::saf::file::ListOptions::default())
             .await
             .unwrap();
         assert_eq!(result.files.len(), 3);
@@ -217,7 +217,7 @@ mod file_tests {
 
 mod http_tests {
     use super::*;
-    use swe_gateway::saf::http::HttpRequest;
+    use edge_gateway::saf::http::HttpRequest;
 
     #[tokio::test]
     async fn test_rest_client_mock() {
@@ -259,7 +259,7 @@ mod http_tests {
 
 mod notification_tests {
     use super::*;
-    use swe_gateway::saf::notification::{NotificationChannel, NotificationStatus};
+    use edge_gateway::saf::notification::{NotificationChannel, NotificationStatus};
 
     #[tokio::test]
     async fn test_console_notifier() {
@@ -324,8 +324,8 @@ mod notification_tests {
 
 mod payment_tests {
     use super::*;
-    use swe_gateway::saf::payment::{Customer, PaymentStatus, RefundReason, RefundStatus};
-    use swe_gateway::saf::MockFailureMode;
+    use edge_gateway::saf::payment::{Customer, PaymentStatus, RefundReason, RefundStatus};
+    use edge_gateway::saf::MockFailureMode;
 
     #[tokio::test]
     async fn test_payment_flow() {
@@ -445,7 +445,7 @@ mod integration_tests {
         let payments = saf::mock_payment_gateway();
 
         // 1. Create a customer
-        let customer = swe_gateway::saf::payment::Customer::new("order@example.com")
+        let customer = edge_gateway::saf::payment::Customer::new("order@example.com")
             .with_name("Order Customer");
         payments.create_customer(customer.clone()).await.unwrap();
 

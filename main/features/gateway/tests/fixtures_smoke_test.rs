@@ -5,10 +5,10 @@ mod fixtures;
 use fixtures::gateways::TempFileGateway;
 use fixtures::records;
 use fixtures::seed;
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
-use swe_gateway::saf::database::QueryParams;
-use swe_gateway::saf::file::ListOptions;
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
+use edge_gateway::saf::database::QueryParams;
+use edge_gateway::saf::file::ListOptions;
 
 #[test]
 fn test_record_builders() {

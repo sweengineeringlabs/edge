@@ -5,13 +5,13 @@
 //! special characters, injection via filter keys, memory-exhaustion
 //! payloads, and XSS-like notification content.
 
-use swe_gateway::saf::{
+use edge_gateway::saf::{
     local_file_gateway, memory_database, silent_notifier, DatabaseInbound, DatabaseOutbound,
     FileInbound, FileOutbound, GatewayError, NotificationOutbound,
 };
-use swe_gateway::saf::database::{QueryParams, Record};
-use swe_gateway::saf::file::UploadOptions;
-use swe_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
+use edge_gateway::saf::database::{QueryParams, Record};
+use edge_gateway::saf::file::UploadOptions;
+use edge_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
 use tempfile::TempDir;
 
 // ---------------------------------------------------------------------------
@@ -333,7 +333,7 @@ async fn test_read_unicode_filename_handled() {
 async fn test_list_with_special_prefix_handled() {
     let (gw, _dir) = isolated_file_gateway();
 
-    use swe_gateway::saf::file::ListOptions;
+    use edge_gateway::saf::file::ListOptions;
 
     let dangerous_prefixes: Vec<String> = vec![
         "../".to_string(),
@@ -598,7 +598,7 @@ async fn test_send_notification_xss_body_preserved_verbatim() {
         );
 
         // The gateway must not strip or alter the body.
-        let status = swe_gateway::saf::NotificationInbound::get_status(&notifier, &id)
+        let status = edge_gateway::saf::NotificationInbound::get_status(&notifier, &id)
             .await
             .unwrap();
         assert_eq!(
@@ -641,7 +641,7 @@ async fn test_batch_send_notifications_with_mixed_xss_payloads() {
         Notification::console("<svg/onload=alert('batch')>"),
     ];
 
-    let receipts = swe_gateway::saf::NotificationOutbound::send_batch(&notifier, notifications)
+    let receipts = edge_gateway::saf::NotificationOutbound::send_batch(&notifier, notifications)
         .await
         .unwrap();
 
@@ -706,7 +706,7 @@ async fn test_delete_path_traversal_stays_within_base() {
 
     // Attempt to delete via traversal — the target does not exist, so we
     // mainly verify no panic and no escape.
-    let result = swe_gateway::saf::FileOutbound::delete(&gw, "../../../etc/passwd").await;
+    let result = edge_gateway::saf::FileOutbound::delete(&gw, "../../../etc/passwd").await;
 
     // Must not panic. Either error (NotFound) or no-op.
     let _ = result;

@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use futures::future::BoxFuture;
-use swe_gateway::saf::grpc::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode};
-use swe_gateway::saf::{
+use edge_gateway::saf::grpc::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode};
+use edge_gateway::saf::{
     GatewayError, GatewayErrorCode, GatewayResult, GrpcGateway, GrpcInbound, GrpcOutbound,
     HealthCheck, HealthStatus,
 };

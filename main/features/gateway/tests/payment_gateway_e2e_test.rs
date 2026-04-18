@@ -3,9 +3,9 @@
 //! Exercises the combined PaymentGateway trait through realistic payment flows:
 //! create customer -> charge -> capture -> refund -> verify status.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::payment::{Customer, Money, Payment, PaymentStatus, Refund, RefundStatus};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::payment::{Customer, Money, Payment, PaymentStatus, Refund, RefundStatus};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_payment_full_charge_and_refund_lifecycle() {

@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf;
 
 // ── Test 1: Database insert -> query -> stream -> verify same data ────────
 

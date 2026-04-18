@@ -4,9 +4,9 @@
 //! Results are verified using FileInbound (read, exists, metadata) on the
 //! same combined gateway instance.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::file::UploadOptions;
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::file::UploadOptions;
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_file_outbound_write_and_delete() {

@@ -4,9 +4,9 @@
 //! Results are verified using NotificationInbound (get_status, list_sent) on the
 //! same combined gateway instance.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_notification_outbound_send_single_and_verify() {

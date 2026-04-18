@@ -6,7 +6,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use swe_gateway::prelude::*;
+use edge_gateway::prelude::*;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

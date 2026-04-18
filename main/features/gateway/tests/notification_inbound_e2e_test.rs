@@ -4,9 +4,9 @@
 //! Notifications are first sent using NotificationOutbound (via the combined gateway),
 //! then only NotificationInbound methods are exercised.
 
-use swe_gateway::prelude::*;
-use swe_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
-use swe_gateway::saf;
+use edge_gateway::prelude::*;
+use edge_gateway::saf::notification::{Notification, NotificationChannel, NotificationStatus};
+use edge_gateway::saf;
 
 #[tokio::test]
 async fn e2e_notification_inbound_get_status_after_send() {

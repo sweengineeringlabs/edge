@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use swe_gateway::prelude::*;
+use edge_gateway::prelude::*;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ const NEAR_ZERO_REFILL: f64 = 0.001;
 
 #[tokio::test]
 async fn test_process_request_within_capacity_passes_through() {
-    let limiter = swe_gateway::saf::rate_limiter(5, NEAR_ZERO_REFILL);
+    let limiter = edge_gateway::saf::rate_limiter(5, NEAR_ZERO_REFILL);
 
     for i in 0..5 {
         let input = serde_json::json!({"seq": i});
@@ -30,7 +30,7 @@ async fn test_process_request_within_capacity_passes_through() {
 
 #[tokio::test]
 async fn test_process_request_rejects_when_tokens_exhausted() {
-    let limiter = swe_gateway::saf::rate_limiter(2, NEAR_ZERO_REFILL);
+    let limiter = edge_gateway::saf::rate_limiter(2, NEAR_ZERO_REFILL);
     let payload = serde_json::json!({"model": "gpt-4"});
 
     // Consume all tokens.
@@ -51,7 +51,7 @@ async fn test_process_request_rejects_when_tokens_exhausted() {
 #[tokio::test]
 async fn test_tokens_refill_over_time() {
     // 100 tokens/s => 1 token every 10ms.  With capacity 1, exhaust then wait.
-    let limiter = swe_gateway::saf::rate_limiter(1, 100.0);
+    let limiter = edge_gateway::saf::rate_limiter(1, 100.0);
     let payload = serde_json::json!({"x": 1});
 
     limiter.process_request(payload.clone()).await.unwrap();
@@ -73,7 +73,7 @@ async fn test_tokens_refill_over_time() {
 
 #[tokio::test]
 async fn test_builder_produces_working_limiter() {
-    let limiter = swe_gateway::saf::rate_limiter_builder()
+    let limiter = edge_gateway::saf::rate_limiter_builder()
         .capacity(3)
         .refill_rate(NEAR_ZERO_REFILL)
         .build();
@@ -95,7 +95,7 @@ async fn test_builder_produces_working_limiter() {
 #[tokio::test]
 async fn test_rate_limiter_in_pipeline_rejects_excess_requests() {
     let limiter: Arc<dyn RequestMiddleware> =
-        Arc::new(swe_gateway::saf::rate_limiter(2, NEAR_ZERO_REFILL));
+        Arc::new(edge_gateway::saf::rate_limiter(2, NEAR_ZERO_REFILL));
 
     let router: Arc<dyn Router> = Arc::new(ClosureRouter::new(|req: &serde_json::Value| {
         Ok(req.clone())
@@ -117,7 +117,7 @@ async fn test_rate_limiter_in_pipeline_rejects_excess_requests() {
 #[test]
 fn test_concurrent_access_total_grants_equals_capacity() {
     let capacity = 50u64;
-    let limiter = Arc::new(swe_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL));
+    let limiter = Arc::new(edge_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL));
     let success_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
 
     let mut handles = Vec::new();
@@ -151,7 +151,7 @@ fn test_concurrent_access_total_grants_equals_capacity() {
 #[tokio::test]
 async fn test_concurrent_async_tasks_respect_capacity() {
     let capacity = 20u64;
-    let limiter = Arc::new(swe_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL));
+    let limiter = Arc::new(edge_gateway::saf::rate_limiter(capacity, NEAR_ZERO_REFILL));
     let success_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
 
     let mut tasks = Vec::new();

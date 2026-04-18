@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use swe_gateway::saf::{
+use edge_gateway::saf::{
     ClosureRouter, MiddlewareAction, Pipeline, RequestMiddleware,
     ResponseMiddleware, Router,
 };
@@ -290,7 +290,7 @@ async fn test_execute_no_shortcircuit_preserves_existing_behavior() {
 /// Default-typed pipeline with short-circuit.
 #[tokio::test]
 async fn test_execute_shortcircuit_with_default_types() {
-    use swe_gateway::saf::GatewayError;
+    use edge_gateway::saf::GatewayError;
 
     struct CacheHit;
 

@@ -2,7 +2,7 @@
 //!
 //! Validates BL-007: DaemonRunner observability fallback.
 
-use swe_gateway::saf::{lightweight_daemon, DaemonRunner};
+use edge_gateway::saf::{lightweight_daemon, DaemonRunner};
 
 // ---------------------------------------------------------------------------
 // Builder configuration tests

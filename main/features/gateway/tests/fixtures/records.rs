@@ -1,8 +1,8 @@
 //! Record and domain object builders for tests.
 
-use swe_gateway::saf::database::Record;
-use swe_gateway::saf::notification::{Notification, NotificationChannel};
-use swe_gateway::saf::payment::{Currency, Customer, Money};
+use edge_gateway::saf::database::Record;
+use edge_gateway::saf::notification::{Notification, NotificationChannel};
+use edge_gateway::saf::payment::{Currency, Customer, Money};
 
 // =============================================================================
 // Database Records
