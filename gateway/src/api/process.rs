@@ -285,11 +285,11 @@ where
         let start = std::time::Instant::now();
         let request_id = request.metadata.request_id.clone();
 
-        let log_ctx = mdc_logging::LogContext::builder()
+        let log_ctx = swe_justobserv_context::LogContext::builder()
             .session_id(request_id.clone())
             .build();
 
-        mdc_logging::with_log_context(log_ctx, async {
+        swe_justobserv_context::with_log_context(log_ctx, async {
             let pipe_req = Self::into_pipeline_req(request);
             let pipe_resp = self.pipeline().execute(pipe_req).await?;
             let duration_ms = start.elapsed().as_millis() as u64;
