@@ -22,9 +22,14 @@ mod tests {
 
     /// @covers: NoopHttpTls
     #[test]
-    fn test_noop_returns_no_identity() {
+    fn test_describe() {
+        let p = NoopHttpTls;
+        assert_eq!(p.describe(), "noop");
+    }
+
+    #[test]
+    fn test_identity() {
         let p = NoopHttpTls;
         assert!(p.identity().unwrap().is_none());
-        assert_eq!(p.describe(), "noop");
     }
 }

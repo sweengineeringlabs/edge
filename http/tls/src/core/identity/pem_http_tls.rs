@@ -72,11 +72,20 @@ mod tests {
 
     /// @covers: PemHttpTls::describe
     #[test]
-    fn test_describe_returns_pem() {
+    fn test_describe() {
         let p = PemHttpTls {
             pem_bytes: vec![],
             path: "<stub>".into(),
         };
         assert_eq!(p.describe(), "pem");
+    }
+
+    #[test]
+    fn test_fmt() {
+        let p = PemHttpTls {
+            pem_bytes: vec![],
+            path: "<stub>".into(),
+        };
+        let _ = format!("{:?}", p);
     }
 }

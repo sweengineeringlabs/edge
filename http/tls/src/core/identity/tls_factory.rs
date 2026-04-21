@@ -92,4 +92,10 @@ mod tests {
         let err = build_provider(&cfg).unwrap_err();
         assert!(matches!(err, Error::FileReadFailed { .. }));
     }
+
+    #[test]
+    fn test_build_provider() {
+        let p = build_provider(&TlsConfig::None);
+        assert!(p.is_ok());
+    }
 }

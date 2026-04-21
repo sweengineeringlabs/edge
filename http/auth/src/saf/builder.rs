@@ -25,11 +25,7 @@ pub fn builder() -> Result<Builder, Error> {
     Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle. Opaque — knobs live on the config.
-pub struct Builder {
-    config: AuthConfig,
-    resolver: Box<dyn CredentialResolver>,
-}
+pub use crate::api::builder::Builder;
 
 impl std::fmt::Debug for Builder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -13,7 +13,7 @@
 
 /// The rate crate's primary trait. Every middleware layer
 /// produced by this crate implements it.
-pub(crate) trait HttpRate: Send + Sync {
+pub trait HttpRate: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
     /// Returns the crate's canonical name (e.g. `\"swe_http_rate\"`).

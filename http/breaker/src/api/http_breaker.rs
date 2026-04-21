@@ -13,7 +13,7 @@
 
 /// The breaker crate's primary trait. Every middleware layer
 /// produced by this crate implements it.
-pub(crate) trait HttpBreaker: Send + Sync {
+pub trait HttpBreaker: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
     /// Returns the crate's canonical name (e.g. `\"swe_http_breaker\"`).

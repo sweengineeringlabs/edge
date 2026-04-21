@@ -16,18 +16,7 @@ pub fn builder() -> Result<Builder, Error> {
     Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle.
-pub struct Builder {
-    config: TlsConfig,
-}
-
-impl std::fmt::Debug for Builder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Builder")
-            .field("config", &self.config)
-            .finish()
-    }
-}
+pub use crate::api::builder::Builder;
 
 impl Builder {
     /// Construct from a caller-supplied config.

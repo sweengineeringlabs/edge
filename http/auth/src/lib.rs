@@ -6,9 +6,7 @@
 //! config itself stores only the env-var NAME, never the raw
 //! credential.
 //!
-//! **Status: scaffolded, not yet implemented.** Schema + config
-//! surface is stable; the `Middleware` impl that actually
-//! attaches the header lands in follow-up work.
+
 
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
@@ -16,6 +14,7 @@
 
 mod api;
 mod core;
+pub(crate) mod gateway;
 mod saf;
 
 pub use saf::*;

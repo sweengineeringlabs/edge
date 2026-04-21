@@ -13,11 +13,7 @@ pub fn builder() -> Result<Builder, Error> {
     Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle.
-#[derive(Debug)]
-pub struct Builder {
-    config: RetryConfig,
-}
+pub use crate::api::builder::Builder;
 
 impl Builder {
     /// Construct from a caller-supplied config.

@@ -1,12 +1,3 @@
-//! Re-export hub — see rule 161's resolution note for rule 48.
-//!
-//! The re-export makes the primary trait discoverable at
-//! `crate::api::traits::HttpBreaker` — which is where rule 48 +
-//! rule 153 look. Consumers of the trait inside the crate may
-//! import from either path; the direct path
-//! (`crate::api::http_breaker::HttpBreaker`) is preferred for
-//! clarity, which is why this re-export is allowed to appear
-//! \"unused\" to rustc.
-#![allow(unused_imports)]
+//! Primary trait re-export hub for `swe_http_breaker`.
 
-pub(crate) use crate::api::http_breaker::HttpBreaker;
+pub(crate) type HttpBreakerTrait = dyn crate::api::http_breaker::HttpBreaker;

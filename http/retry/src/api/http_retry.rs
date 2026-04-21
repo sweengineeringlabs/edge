@@ -13,7 +13,7 @@
 
 /// The retry crate's primary trait. Every middleware layer
 /// produced by this crate implements it.
-pub(crate) trait HttpRetry: Send + Sync {
+pub trait HttpRetry: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
     /// Returns the crate's canonical name (e.g. `\"swe_http_retry\"`).

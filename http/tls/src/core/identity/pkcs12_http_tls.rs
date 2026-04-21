@@ -96,12 +96,22 @@ mod tests {
 
     /// @covers: Pkcs12HttpTls::describe
     #[test]
-    fn test_describe_returns_pkcs12() {
+    fn test_describe() {
         let p = Pkcs12HttpTls {
             der_bytes: vec![],
             password: None,
             path: "<stub>".into(),
         };
         assert_eq!(p.describe(), "pkcs12");
+    }
+
+    #[test]
+    fn test_fmt() {
+        let p = Pkcs12HttpTls {
+            der_bytes: vec![],
+            password: None,
+            path: "<stub>".into(),
+        };
+        let _ = format!("{:?}", p);
     }
 }

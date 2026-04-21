@@ -17,16 +17,15 @@ pub fn builder() -> Result<Builder, Error> {
     Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle.
-#[derive(Debug)]
-pub struct Builder {
-    config: CassetteConfig,
-}
+pub use crate::api::builder::Builder;
 
 impl Builder {
     /// Construct from a caller-supplied config.
     pub fn with_config(config: CassetteConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            cassette_name: String::new(),
+        }
     }
 
     /// Borrow the current policy.

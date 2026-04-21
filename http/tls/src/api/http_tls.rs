@@ -9,7 +9,7 @@ use crate::api::error::Error;
 /// [`reqwest::Identity`] on demand — the factory resolves the
 /// config once at build time, then calls `identity()` to hand
 /// the concrete value to [`reqwest::ClientBuilder::identity`].
-pub(crate) trait HttpTls: Send + Sync + std::fmt::Debug {
+pub trait HttpTls: Send + Sync + std::fmt::Debug {
     /// Identify this provider in log / trace output.
     fn describe(&self) -> &'static str;
 

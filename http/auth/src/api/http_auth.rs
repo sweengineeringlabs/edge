@@ -13,7 +13,7 @@ use crate::api::error::Error;
 /// Auth processor contract. Every middleware layer this crate
 /// produces implements it.
 #[async_trait]
-pub(crate) trait HttpAuth: Send + Sync + std::fmt::Debug {
+pub trait HttpAuth: Send + Sync + std::fmt::Debug {
     /// Identify this processor in log / trace output.
     fn describe(&self) -> &'static str;
 
