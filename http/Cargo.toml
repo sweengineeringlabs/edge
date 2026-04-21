@@ -51,6 +51,16 @@ http-cache-reqwest = "0.14"
 # Background sweep / eviction for rate + breaker state.
 moka = { version = "0.12", features = ["future"] }
 
+# Secret-wrapping for credential values. Blocks accidental
+# Debug/Display; requires explicit `.expose_secret()` to read.
+# Used by swe_http_auth to carry resolved env-var values through
+# the strategy stack without risk of logging them.
+secrecy = "0.10"
+
+# Base64 encoding — Basic auth scheme, and anywhere else
+# credential-looking bytes hit the wire as an ASCII header value.
+base64 = "0.22"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"

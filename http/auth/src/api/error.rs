@@ -26,6 +26,24 @@ pub enum Error {
         kind: String,
     },
 
+    /// Credential value can't be encoded as a valid HTTP header
+    /// value. Per RFC 7230 header values must be US-ASCII
+    /// visible characters + HTAB; CR/LF/NUL are forbidden.
+    /// Wraps the underlying parse error for diagnostics.
+    #[error("swe_http_auth: credential is not a valid HTTP header value — {0}")]
+    InvalidHeaderValue(String),
+
+    /// Config's `name` (for the custom Header scheme) can't be
+    /// parsed as a valid HTTP header name. Must be a
+    /// token-per-RFC-7230 (alphanumerics + a few symbols).
+    #[error("swe_http_auth: invalid header name {name:?} — {reason}")]
+    InvalidHeaderName {
+        /// The offending name string.
+        name: String,
+        /// Underlying parse error.
+        reason: String,
+    },
+
     /// Middleware behavior not yet implemented (scaffold phase).
     #[error("swe_http_auth: not implemented — {0}")]
     NotImplemented(&'static str),
