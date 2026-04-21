@@ -36,6 +36,11 @@ tracing = { version = "0.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+# TOML parsing for the `from_config` loader in each middleware
+# crate. Policy lives in `config/default.toml` files (per-crate)
+# + `http/main/config/application.toml` (workspace) + consumer
+# config — never in source as `Default::default()` literals.
+toml = "0.8"
 
 # --- External middleware we wrap (not re-implemented) ---
 # Retry wrapper — we ship defaults + typed configs over it.

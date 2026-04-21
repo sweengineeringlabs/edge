@@ -1,0 +1,20 @@
+# SWE default circuit-breaker policy.
+#
+# Trips after 5 consecutive failures, probes every 30s, closes
+# after 3 probe successes. Conservative enough not to flip-flop
+# under spiky LLM-provider latency; aggressive enough to shed
+# traffic from a legitimately-down upstream within seconds.
+
+# Consecutive failure count that trips the breaker open.
+failure_threshold = 5
+
+# Seconds to wait after opening before allowing a probe request.
+half_open_after_seconds = 30
+
+# Consecutive probe successes required to close the breaker.
+reset_after_successes = 3
+
+# HTTP status codes counted as "failures" for threshold tracking.
+# 4xx client errors are NOT here because they reflect caller
+# bugs, not upstream health.
+failure_statuses = [500, 502, 503, 504]

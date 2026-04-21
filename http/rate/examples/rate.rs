@@ -1,10 +1,12 @@
-//! Minimal usage: build the middleware layer. Scaffold phase:
-//! `build()` returns NotImplemented. Once implemented, the
-//! returned layer plugs into a `reqwest_middleware::ClientBuilder`.
+//! Minimal usage: load the SWE baseline and build the layer.
+//! Scaffold phase: `build()` returns NotImplemented.
 
 fn main() {
-    match swe_http_rate::builder().build() {
-        Ok(_) => println!("swe_http_rate layer built"),
-        Err(e) => println!("swe_http_rate: {e}"),
+    match swe_http_rate::builder() {
+        Err(e) => println!("swe_http_rate: baseline parse failed: {e}"),
+        Ok(b) => match b.build() {
+            Ok(_) => println!("swe_http_rate layer built"),
+            Err(e) => println!("swe_http_rate: {e}"),
+        },
     }
 }

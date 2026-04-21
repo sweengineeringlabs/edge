@@ -1,0 +1,23 @@
+# SWE default HTTP-cache policy.
+#
+# Conservative: respects upstream Cache-Control headers and won't
+# cache responses marked private. Large in-memory bucket suited
+# to edge-gateway workloads that read the same upstream resources
+# often.
+
+# Fallback TTL in seconds when the upstream response has no
+# Cache-Control max-age. Set to 0 to refuse caching on
+# non-annotated responses (stricter, fewer hits).
+default_ttl_seconds = 300
+
+# Maximum entries in the in-memory store (LRU eviction via moka).
+max_entries = 10000
+
+# Honor the upstream response's Cache-Control header (no-store,
+# max-age, etc.). When false (not recommended), TTL is always
+# default_ttl_seconds.
+respect_cache_control = true
+
+# Cache responses marked Cache-Control: private. False is safer
+# for shared-infrastructure deployments (gateway, edge).
+cache_private = false

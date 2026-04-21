@@ -1,0 +1,54 @@
+# SWE default retry policy.
+#
+# Calibrated for LLM providers' rate limits: the default 3-attempt
+# exponential backoff spans ~8 seconds total, which fits inside
+# Anthropic's 60-second rolling window without tripping the hard
+# cap, and stays under OpenAI's per-key RPM ceilings on the
+# shared-tier accounts we ship.
+#
+# Consumers override by loading their own TOML and passing it to
+# `RetryConfig::from_config(...)`. The workspace-level
+# `edge/http/main/config/application.toml` can carry org-wide
+# overrides under a `[retry]` section.
+
+# Maximum attempts per request (1 = no retry, just the original
+# call). 3 is the standard SWE value — catches single transient
+# blips without extending tail latency beyond the LLM call's own
+# timeout budget.
+max_retries = 3
+
+# Delay before the first retry, in milliseconds. 200ms matches
+# most public-cloud SLA floors for transient-error recovery.
+initial_interval_ms = 200
+
+# Upper bound on any single retry interval, in milliseconds.
+# Prevents late retries from exceeding an agent-level deadline
+# when max_retries is raised.
+max_interval_ms = 10000
+
+# Exponential backoff base. 2.0 produces 200ms, 400ms, 800ms for
+# the three standard attempts — a common choice and easy to
+# reason about in log traces.
+multiplier = 2.0
+
+# HTTP status codes that trigger a retry. Narrow by design —
+# retrying 4xx errors the client caused (400, 401, 403) is
+# usually wrong. These are the transient-server + rate-limit
+# codes that have a reasonable chance of succeeding on retry.
+#
+#   408 Request Timeout
+#   425 Too Early
+#   429 Too Many Requests (rate limit)
+#   500 Internal Server Error
+#   502 Bad Gateway
+#   503 Service Unavailable
+#   504 Gateway Timeout
+retryable_statuses = [408, 425, 429, 500, 502, 503, 504]
+
+# HTTP methods that can safely be retried. Idempotent verbs only
+# by default — retrying a POST risks double-billing (LLM
+# completion charges, payment endpoints) since the server may
+# have processed the request before the client saw the failure.
+# Consumers whose POSTs are known-idempotent can add "POST" to
+# their override.
+retryable_methods = ["GET", "HEAD", "PUT", "DELETE"]

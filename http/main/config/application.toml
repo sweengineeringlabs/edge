@@ -1,39 +1,75 @@
 # Workspace-level application configuration for edge/http/.
 #
-# Per rs.rules.toml §15 rule 151 — any deployment-variable knob
-# goes here rather than being hardcoded in source. Today the
-# http/ workspace has no runtime state of its own; each
-# middleware crate (cache, cassette, breaker, rate, retry) is
-# configured at the call site by the consumer composing its
-# builder. This file exists so:
+# This is the SECOND layer in the config override chain — the
+# last-wins order is:
 #
-#   1. rs.rules audit has a `config/application.toml` to point
-#      at for the workspace.
-#   2. Future workspace-wide knobs (e.g. a default
-#      `RetryConfig` override, a default cache TTL, a global
-#      tracing-feature toggle) have an obvious home.
+#   1. Each crate's `config/default.toml`            (SWE baseline)
+#   2. THIS FILE — `edge/http/main/config/application.toml`  (org-wide overrides)
+#   3. Consumer binary's own config                  (per-deployment overrides)
+#   4. Programmatic `Builder::with_config(..)`       (last-mile test overrides)
 #
-# When a knob lands here, also document it in the per-crate
-# README so consumers see it alongside the builder API.
+# Per the config-driven design principle: no middleware policy
+# lives in Rust source. The per-crate `config/default.toml`
+# files carry the SWE baseline; this file carries overrides the
+# org wants applied across all `edge/http/*` consumers; the
+# consumer binary's own config carries per-deployment overrides.
+#
+# To enable a section here: uncomment it, set the keys you want
+# to override, and leave the rest to fall through to the crate
+# baseline. Consumers that load this file via
+# `<CrateConfig>::from_config(fs::read_to_string("path")?)` will
+# see the merge as a single TOML table.
 
 [application]
 name = "swe-edge-http"
 version = "0.1.0"
 
-# Placeholder. Uncomment + populate as workspace-level defaults
-# get introduced:
+# ─── Per-crate overrides (commented out — crate baselines apply) ───
 #
+# Each section below mirrors the schema of the corresponding
+# crate's `config/default.toml`. Uncomment keys to override.
+
 # [retry]
-# # Override the SWE default max-attempts (currently 3 in
-# # swe_http_retry::RetryConfig::default()).
+# # Crate baseline: 3 attempts, 200ms initial, 10s cap, 2.0 multiplier.
 # # max_retries = 3
-#
+# # initial_interval_ms = 200
+# # max_interval_ms = 10000
+# # multiplier = 2.0
+# # retryable_statuses = [408, 425, 429, 500, 502, 503, 504]
+# # retryable_methods = ["GET", "HEAD", "PUT", "DELETE"]
+
 # [cache]
-# # Override the SWE default cache TTL (currently 300s in
-# # swe_http_cache::CacheConfig::default()).
+# # Crate baseline: 300s TTL, 10k entries, respects Cache-Control.
 # # default_ttl_seconds = 300
-#
+# # max_entries = 10000
+# # respect_cache_control = true
+# # cache_private = false
+
+# [cassette]
+# # Crate baseline: replay mode, tests/cassettes/, scrub common
+# # auth headers. Most commonly overridden in CI to force "replay"
+# # and locally to "auto".
+# # mode = "replay"
+# # cassette_dir = "tests/cassettes"
+# # match_on = ["method", "url", "body_hash"]
+# # scrub_headers = ["authorization", "x-api-key", "cookie", "set-cookie", "proxy-authorization"]
+# # scrub_body_paths = []
+
+# [breaker]
+# # Crate baseline: 5 consecutive failures to open, 30s half-open
+# # wait, 3 successes to close.
+# # failure_threshold = 5
+# # half_open_after_seconds = 30
+# # reset_after_successes = 3
+# # failure_statuses = [500, 502, 503, 504]
+
+# [rate]
+# # Crate baseline: 10 tokens/s, 20 burst, per-host bucketing.
+# # tokens_per_second = 10
+# # burst_capacity = 20
+# # per_host = true
+
 # [observability]
-# # Enable the per-crate `tracing` feature at composition time
-# # rather than per-crate in each Cargo.toml.
+# # Future knob: enable the per-crate `tracing` feature at
+# # composition time rather than per-crate in each Cargo.toml.
 # # emit_spans = true

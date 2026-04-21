@@ -25,6 +25,8 @@ async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+# `from_config` loads policy from TOML.
+toml = { workspace = true }
 tokio = { workspace = true, features = ["fs", "sync"] }
 tracing = { workspace = true, optional = true }
 

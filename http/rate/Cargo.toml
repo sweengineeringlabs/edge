@@ -21,6 +21,12 @@ path = "src/lib.rs"
 reqwest-middleware = { workspace = true }
 http = { workspace = true }
 thiserror = { workspace = true }
+# `from_config` loads policy from TOML. `serde` derives the
+# schema; `toml` parses it. Policy values live in
+# `config/default.toml` + consumer overrides — never as hardcoded
+# literals in source.
+serde = { workspace = true }
+toml = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true, features = ["sync", "time"] }
 moka = { workspace = true }

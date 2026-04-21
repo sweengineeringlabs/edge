@@ -1,0 +1,17 @@
+# SWE default client-side rate-limiting policy.
+#
+# Token-bucket with 10 tokens/second refill, 20-token burst — an
+# uncontroversial starting point that stays well under most
+# upstream quotas. Per-host isolation keeps a noisy neighbor from
+# consuming the budget of another host.
+
+# Sustained refill rate, in tokens per second.
+tokens_per_second = 10
+
+# Maximum tokens in the bucket (burst tolerance). Higher values
+# let callers sprint before being throttled.
+burst_capacity = 20
+
+# When true, each host (scheme + authority) gets its own bucket.
+# When false, one global bucket throttles all outbound traffic.
+per_host = true

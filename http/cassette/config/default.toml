@@ -1,0 +1,36 @@
+# SWE default cassette (record/replay) policy.
+#
+# Defaults target deterministic CI replay with local recording on
+# miss. Secret scrubbing is non-negotiable: headers listed below
+# are stripped from the recorded cassette before it hits disk, so
+# committing a cassette to git can't leak credentials.
+
+# Operating mode:
+#   "replay" — read-only, fail loudly on cache miss (CI default)
+#   "record" — always hit the real upstream, overwrite cassette
+#   "auto"   — replay on hit, record on miss (local dev default)
+mode = "replay"
+
+# Directory cassettes live in, relative to CARGO_MANIFEST_DIR of
+# the test binary loading them.
+cassette_dir = "tests/cassettes"
+
+# Request components included in the match key. Dropping
+# "body_hash" is useful when request bodies have
+# non-deterministic fields that aren't worth scrubbing.
+match_on = ["method", "url", "body_hash"]
+
+# Headers stripped before writing the cassette. Must cover every
+# credentials-bearing header the downstream consumer uses.
+scrub_headers = [
+    "authorization",
+    "x-api-key",
+    "cookie",
+    "set-cookie",
+    "proxy-authorization",
+]
+
+# JSON paths inside the request body to zero out before hashing.
+# Useful for SDK-injected UUIDs / trace IDs that would otherwise
+# break exact-match on replay.
+scrub_body_paths = []

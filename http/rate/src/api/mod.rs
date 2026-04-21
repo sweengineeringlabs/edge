@@ -1,2 +1,3 @@
-//! API layer — public error contract.
+//! API layer — public error + config schema contracts.
+pub(crate) mod config;
 pub(crate) mod error;
