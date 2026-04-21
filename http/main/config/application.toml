@@ -75,6 +75,20 @@ version = "0.1.0"
 # # burst_capacity = 20
 # # per_host = true
 
+# [tls]
+# # Sibling crate swe_http_tls — mTLS client identity for the
+# # reqwest::ClientBuilder (NOT middleware — applied before TLS
+# # handshake, not after). Baseline: kind = "none" (pass-through).
+# #
+# # kind = "pkcs12"
+# # path = "/etc/edge/client.p12"
+# # password_env = "EDGE_TLS_PASSWORD"
+# #
+# # OR:
+# #
+# # kind = "pem"
+# # path = "/etc/edge/client-combined.pem"
+
 # [observability]
 # # Future knob: enable the per-crate `tracing` feature at
 # # composition time rather than per-crate in each Cargo.toml.
