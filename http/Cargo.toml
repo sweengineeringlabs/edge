@@ -48,7 +48,8 @@ toml = "0.8"
 # Retry wrapper — we ship defaults + typed configs over it.
 reqwest-retry = "0.6"
 # HTTP cache wrapper — we ship an edge-friendly config over it.
-http-cache-reqwest = "0.14"
+# `manager-moka` enables the MokaManager storage backend.
+http-cache-reqwest = { version = "0.14", features = ["manager-moka"] }
 # Background sweep / eviction for rate + breaker state.
 moka = { version = "0.12", features = ["future"] }
 

@@ -18,10 +18,13 @@ service_type = "processor"
 path = "src/lib.rs"
 
 [dependencies]
+reqwest = { workspace = true }
 reqwest-middleware = { workspace = true }
 http-cache-reqwest = { workspace = true }
+http = { workspace = true }
 moka = { workspace = true }
 thiserror = { workspace = true }
+async-trait = { workspace = true }
 # `from_config` loads policy from TOML. `serde` derives the
 # schema; `toml` parses it. Policy values live in
 # `config/default.toml` + consumer overrides — never as hardcoded

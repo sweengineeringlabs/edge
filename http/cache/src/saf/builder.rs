@@ -1,23 +1,19 @@
 //! Public builder entry point.
-//!
-//! Consumers construct a [`CacheConfig`] — usually via
-//! [`CacheConfig::swe_default`] or [`CacheConfig::from_config`]
-//! with their own TOML — then hand it to the builder. Policy
-//! lives in config files, not in chained method calls.
 
 use crate::api::cache_config::CacheConfig;
+use crate::api::cache_layer::CacheLayer;
 use crate::api::error::Error;
 
-/// Start configuring the middleware with the SWE baseline loaded
-/// from the crate-shipped `config/default.toml`. For non-default
-/// policy, construct a [`CacheConfig`] directly and use
-/// [`Builder::with_config`].
+use crate::core::cache_layer as _;
+
+/// Start configuring the cache with the SWE baseline loaded
+/// from the crate-shipped `config/application.toml`.
 pub fn builder() -> Result<Builder, Error> {
     let cfg = CacheConfig::swe_default()?;
-    Ok(Builder { config: cfg })
+    Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle. Opaque — knobs live on the config.
+/// Builder handle.
 #[derive(Debug)]
 pub struct Builder {
     config: CacheConfig,
@@ -34,10 +30,9 @@ impl Builder {
         &self.config
     }
 
-    /// Finalize into the middleware layer. Scaffold phase:
-    /// returns NotImplemented until the real impl lands.
-    pub fn build(self) -> Result<(), Error> {
-        Err(Error::NotImplemented("builder"))
+    /// Finalize into the [`CacheLayer`].
+    pub fn build(self) -> Result<CacheLayer, Error> {
+        Ok(CacheLayer::new(self.config))
     }
 }
 
@@ -47,25 +42,16 @@ mod tests {
 
     /// @covers: builder
     #[test]
-    fn test_builder_loads_swe_default_config() {
-        let _b = builder().expect("baseline must parse");
-    }
-
-    /// @covers: Builder::with_config
-    #[test]
-    fn test_with_config_holds_baseline_policy() {
-        // Reuse the baseline as a valid config for this test —
-        // the point is that the type round-trips through the
-        // builder, not that we supply novel values.
-        let cfg = CacheConfig::swe_default().expect("baseline parses");
-        let _b = Builder::with_config(cfg);
+    fn test_builder_loads_swe_default() {
+        let b = builder().expect("baseline parses");
+        assert!(b.config().max_entries > 0);
     }
 
     /// @covers: Builder::build
     #[test]
-    fn test_build_returns_not_implemented_during_scaffold_phase() {
-        let b = builder().expect("baseline parses");
-        let err = b.build().unwrap_err();
-        assert!(matches!(err, Error::NotImplemented(_)));
+    fn test_build_returns_cache_layer() {
+        let layer = builder().expect("baseline").build().expect("build ok");
+        let s = format!("{layer:?}");
+        assert!(s.contains("CacheLayer"));
     }
 }

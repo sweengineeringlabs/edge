@@ -3,5 +3,6 @@
 mod builder;
 
 pub use crate::api::cache_config::CacheConfig;
+pub use crate::api::cache_layer::CacheLayer;
 pub use crate::api::error::Error;
 pub use builder::{builder, Builder};
