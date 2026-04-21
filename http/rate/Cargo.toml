@@ -18,6 +18,7 @@ service_type = "processor"
 path = "src/lib.rs"
 
 [dependencies]
+reqwest = { workspace = true }
 reqwest-middleware = { workspace = true }
 http = { workspace = true }
 thiserror = { workspace = true }
