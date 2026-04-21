@@ -2,18 +2,19 @@
 
 use std::sync::Arc;
 
+use moka::future::Cache;
+
 use crate::api::cache_config::CacheConfig;
 
 /// HTTP cache middleware. Attach to a
 /// `reqwest_middleware::ClientBuilder` via `.with(layer)`.
 ///
-/// Honors RFC 7234 cache semantics via the underlying
-/// `http-cache-reqwest` crate. The policy we apply on top:
-/// max_entries (moka eviction), CacheMode selection based on
-/// `respect_cache_control`.
+/// Simple TTL-based cache — see `core::cache_layer` module
+/// docs for the covered + uncovered RFC 7234 semantics.
 pub struct CacheLayer {
     pub(crate) config: Arc<CacheConfig>,
-    pub(crate) inner: http_cache_reqwest::Cache<http_cache_reqwest::MokaManager>,
+    pub(crate) store:
+        Cache<String, crate::core::cache_layer::CachedEntry>,
 }
 
 impl std::fmt::Debug for CacheLayer {

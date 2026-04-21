@@ -18,20 +18,34 @@
 //! the next request's `prepare()` call refetches. Curl and other
 //! mature HTTP clients use essentially the same approach.
 //!
-//! ## Algorithm (RFC 7616 §3.4.1, MD5)
+//! ## Algorithms (RFC 7616 §3.2)
 //!
-//!   HA1 = MD5(username : realm : password)
-//!   HA2 = MD5(method : uri)
-//!   response = MD5(HA1 : nonce : nc : cnonce : qop : HA2)
+//! Six values accepted on the server's `algorithm=` parameter:
+//!
+//! - `MD5` (default if omitted) — RFC 2617 legacy
+//! - `MD5-sess`
+//! - `SHA-256` — RFC 7616 §3.2
+//! - `SHA-256-sess`
+//! - `SHA-512-256`
+//! - `SHA-512-256-sess`
+//!
+//! `-sess` variants redefine HA1 to include the server nonce +
+//! client nonce (RFC 7616 §3.4.1.2):
+//!
+//!   HA1 = H(H(username : realm : password) : nonce : cnonce)
+//!
+//! For non-`-sess`:
+//!
+//!   HA1 = H(username : realm : password)
+//!
+//! HA2 and response formulas are unchanged across algorithms —
+//! only the hash function swaps.
 //!
 //! ## Not yet supported
 //!
-//! - SHA-256 / SHA-512-256 algorithms (RFC 7616 §3.2) — MD5 is
-//!   still the most widely deployed default. Implementation hook
-//!   is the `algorithm` field on `Challenge`.
 //! - `auth-int` quality of protection — requires body hashing;
 //!   `auth` (default) is what 99% of servers use.
-//! - `userhash = true` per RFC 7616 §3.4 — rare.
+//! - `userhash = true` per RFC 7616 §3.4.4 — rare.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -41,6 +55,7 @@ use async_trait::async_trait;
 use md5::{Digest as Md5Digest, Md5};
 use reqwest::header::{HeaderName, HeaderValue, AUTHORIZATION, WWW_AUTHENTICATE};
 use secrecy::{ExposeSecret, SecretString};
+use sha2::{Sha256, Sha512_256};
 
 use crate::api::auth_strategy::AuthStrategy;
 use crate::api::error::Error;
@@ -160,8 +175,14 @@ impl DigestStrategy {
         let nc = format!("{:08x}", cached.nc);
         let cnonce = generate_cnonce();
 
-        // HA1 = MD5(username:realm:password)
-        let ha1 = md5_hex(
+        // Pick the hash function per RFC 7616 §3.2 + decide
+        // whether `-sess` variant applies (which redefines HA1).
+        let algo = DigestAlgorithm::parse(&cached.challenge.algorithm)?;
+
+        // HA1 per RFC 7616 §3.4.1.
+        // Base: H(username:realm:password).
+        // For -sess variants: H(base:nonce:cnonce).
+        let ha1_base = algo.hash(
             format!(
                 "{}:{}:{}",
                 self.username.expose_secret(),
@@ -170,18 +191,26 @@ impl DigestStrategy {
             )
             .as_bytes(),
         );
-        // HA2 = MD5(method:uri)
-        let ha2 = md5_hex(format!("{method}:{uri}").as_bytes());
+        let ha1 = if algo.is_sess() {
+            algo.hash(format!("{ha1_base}:{nonce}:{cnonce}").as_bytes())
+        } else {
+            ha1_base
+        };
+
+        // HA2 = H(method:uri). `auth-int` qop would change
+        // this to include a body hash — not implemented (see
+        // module docs).
+        let ha2 = algo.hash(format!("{method}:{uri}").as_bytes());
 
         let response = match &cached.challenge.qop {
-            Some(qop) => md5_hex(
+            Some(qop) => algo.hash(
                 format!("{ha1}:{nonce}:{nc}:{cnonce}:{qop}:{ha2}").as_bytes(),
             ),
             None => {
                 // Legacy RFC 2069 form — no qop, no nc/cnonce
                 // in response. Kept for servers that don't
                 // advertise qop.
-                md5_hex(format!("{ha1}:{nonce}:{ha2}").as_bytes())
+                algo.hash(format!("{ha1}:{nonce}:{ha2}").as_bytes())
             }
         };
 
@@ -203,6 +232,60 @@ impl DigestStrategy {
             header.push_str(&format!(r#", opaque="{opaque}""#));
         }
         Ok(header)
+    }
+}
+
+/// Digest hash algorithm + `-sess` flag, parsed from the
+/// server's `algorithm=` parameter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DigestAlgorithm {
+    Md5,
+    Md5Sess,
+    Sha256,
+    Sha256Sess,
+    Sha512_256,
+    Sha512_256Sess,
+}
+
+impl DigestAlgorithm {
+    fn parse(s: &str) -> Result<Self, Error> {
+        // RFC 7616 §3.3: algorithm matching is case-insensitive.
+        match s.to_ascii_uppercase().as_str() {
+            "MD5" => Ok(Self::Md5),
+            "MD5-SESS" => Ok(Self::Md5Sess),
+            "SHA-256" => Ok(Self::Sha256),
+            "SHA-256-SESS" => Ok(Self::Sha256Sess),
+            "SHA-512-256" => Ok(Self::Sha512_256),
+            "SHA-512-256-SESS" => Ok(Self::Sha512_256Sess),
+            other => Err(Error::InvalidHeaderValue(format!(
+                "unsupported Digest algorithm: {other}"
+            ))),
+        }
+    }
+
+    fn is_sess(&self) -> bool {
+        matches!(
+            self,
+            Self::Md5Sess | Self::Sha256Sess | Self::Sha512_256Sess
+        )
+    }
+
+    /// Hash + hex-encode with the algorithm-specific function.
+    fn hash(&self, input: &[u8]) -> String {
+        use sha2::Digest as Sha2Digest;
+        match self {
+            Self::Md5 | Self::Md5Sess => md5_hex(input),
+            Self::Sha256 | Self::Sha256Sess => {
+                let mut h = Sha256::new();
+                h.update(input);
+                hex::encode(h.finalize())
+            }
+            Self::Sha512_256 | Self::Sha512_256Sess => {
+                let mut h = Sha512_256::new();
+                h.update(input);
+                hex::encode(h.finalize())
+            }
+        }
     }
 }
 
@@ -430,6 +513,154 @@ mod tests {
         // RFC 1321 test vector: MD5("") = d41d8cd98f00b204e9800998ecf8427e
         assert_eq!(md5_hex(b""), "d41d8cd98f00b204e9800998ecf8427e");
         assert_eq!(md5_hex(b"a"), "0cc175b9c0f1b6a831c399e269772661");
+    }
+
+    /// @covers: DigestAlgorithm::parse
+    #[test]
+    fn test_parse_algorithm_accepts_all_rfc7616_variants() {
+        assert_eq!(DigestAlgorithm::parse("MD5").unwrap(), DigestAlgorithm::Md5);
+        assert_eq!(DigestAlgorithm::parse("MD5-sess").unwrap(), DigestAlgorithm::Md5Sess);
+        assert_eq!(DigestAlgorithm::parse("SHA-256").unwrap(), DigestAlgorithm::Sha256);
+        assert_eq!(DigestAlgorithm::parse("SHA-256-sess").unwrap(), DigestAlgorithm::Sha256Sess);
+        assert_eq!(DigestAlgorithm::parse("SHA-512-256").unwrap(), DigestAlgorithm::Sha512_256);
+        assert_eq!(
+            DigestAlgorithm::parse("SHA-512-256-sess").unwrap(),
+            DigestAlgorithm::Sha512_256Sess
+        );
+    }
+
+    /// @covers: DigestAlgorithm::parse
+    #[test]
+    fn test_parse_algorithm_is_case_insensitive() {
+        assert_eq!(DigestAlgorithm::parse("md5").unwrap(), DigestAlgorithm::Md5);
+        assert_eq!(DigestAlgorithm::parse("sha-256").unwrap(), DigestAlgorithm::Sha256);
+        assert_eq!(DigestAlgorithm::parse("Sha-512-256").unwrap(), DigestAlgorithm::Sha512_256);
+    }
+
+    /// @covers: DigestAlgorithm::parse
+    #[test]
+    fn test_parse_algorithm_rejects_unknown() {
+        let err = DigestAlgorithm::parse("BLAKE3").unwrap_err();
+        assert!(err.to_string().contains("BLAKE3"));
+    }
+
+    /// @covers: DigestAlgorithm::is_sess
+    #[test]
+    fn test_is_sess_identifies_session_variants() {
+        assert!(!DigestAlgorithm::Md5.is_sess());
+        assert!(!DigestAlgorithm::Sha256.is_sess());
+        assert!(!DigestAlgorithm::Sha512_256.is_sess());
+        assert!(DigestAlgorithm::Md5Sess.is_sess());
+        assert!(DigestAlgorithm::Sha256Sess.is_sess());
+        assert!(DigestAlgorithm::Sha512_256Sess.is_sess());
+    }
+
+    /// @covers: DigestAlgorithm::hash
+    #[test]
+    fn test_hash_md5_matches_md5_hex_function() {
+        assert_eq!(DigestAlgorithm::Md5.hash(b"hello"), md5_hex(b"hello"));
+    }
+
+    /// @covers: DigestAlgorithm::hash
+    #[test]
+    fn test_hash_sha256_known_vector() {
+        // NIST FIPS 180-4 test vector: SHA256("abc") begins
+        // with ba7816bf...
+        let h = DigestAlgorithm::Sha256.hash(b"abc");
+        assert_eq!(
+            h,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    /// @covers: DigestAlgorithm::hash
+    #[test]
+    fn test_hash_sha512_256_known_vector() {
+        // NIST: SHA-512/256("abc") = 53048e2681...
+        let h = DigestAlgorithm::Sha512_256.hash(b"abc");
+        assert_eq!(
+            h,
+            "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"
+        );
+    }
+
+    /// @covers: DigestAlgorithm::hash
+    #[test]
+    fn test_hash_differs_across_algorithms_for_same_input() {
+        let md5 = DigestAlgorithm::Md5.hash(b"test");
+        let sha256 = DigestAlgorithm::Sha256.hash(b"test");
+        let sha512_256 = DigestAlgorithm::Sha512_256.hash(b"test");
+        assert_ne!(md5, sha256);
+        assert_ne!(md5, sha512_256);
+        assert_ne!(sha256, sha512_256);
+    }
+
+    #[test]
+    fn test_build_authorization_header_uses_sha256_when_configured() {
+        let s = DigestStrategy::new(
+            SecretString::from("u".to_string()),
+            SecretString::from("p".to_string()),
+            None,
+        )
+        .unwrap();
+        let mut cached = CachedNonce {
+            challenge: Challenge {
+                realm: "r".into(),
+                nonce: "n".into(),
+                qop: Some("auth".into()),
+                opaque: None,
+                algorithm: "SHA-256".into(),
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let h = s.build_authorization_header("GET", "/", &mut cached).unwrap();
+        // SHA-256 response digest is 64 hex chars (vs MD5's 32).
+        // Extract the response=... value and assert on its length.
+        let response_val = h.split(r#"response=""#).nth(1).unwrap();
+        let response_val = response_val.split('"').next().unwrap();
+        assert_eq!(response_val.len(), 64);
+    }
+
+    #[test]
+    fn test_build_authorization_header_sess_variant_differs_from_non_sess() {
+        // Same inputs, -sess vs non-sess → different response.
+        let s = DigestStrategy::new(
+            SecretString::from("u".to_string()),
+            SecretString::from("p".to_string()),
+            None,
+        )
+        .unwrap();
+        let mut c1 = CachedNonce {
+            challenge: Challenge {
+                realm: "r".into(),
+                nonce: "n".into(),
+                qop: Some("auth".into()),
+                opaque: None,
+                algorithm: "MD5".into(),
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let mut c2 = CachedNonce {
+            challenge: Challenge {
+                realm: "r".into(),
+                nonce: "n".into(),
+                qop: Some("auth".into()),
+                opaque: None,
+                algorithm: "MD5-sess".into(),
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let h1 = s.build_authorization_header("GET", "/", &mut c1).unwrap();
+        let h2 = s.build_authorization_header("GET", "/", &mut c2).unwrap();
+        // Non-sess HA1 ≠ -sess HA1 (sess folds cnonce into HA1)
+        // → different final response. cnonce differs per call
+        // anyway, so this doesn't give a deterministic diff;
+        // the property is that the algorithm=... field differs.
+        assert!(h1.contains("algorithm=MD5,"));
+        assert!(h2.contains("algorithm=MD5-sess,"));
     }
 
     #[test]

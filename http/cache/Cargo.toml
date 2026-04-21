@@ -6,7 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "RFC-7234 HTTP cache middleware (wraps http-cache-reqwest with moka)"
+description = "TTL-based HTTP cache middleware with configurable default_ttl_seconds + RFC 7234 Cache-Control honor. Simpler than full RFC 7234 (no Vary, no ETag conditional revalidation)."
 keywords = ["http", "cache", "reqwest", "middleware", "swe"]
 categories = ["web-programming::http-client"]
 
@@ -20,9 +20,9 @@ path = "src/lib.rs"
 [dependencies]
 reqwest = { workspace = true }
 reqwest-middleware = { workspace = true }
-http-cache-reqwest = { workspace = true }
 http = { workspace = true }
 moka = { workspace = true }
+anyhow = { workspace = true }
 thiserror = { workspace = true }
 async-trait = { workspace = true }
 # `from_config` loads policy from TOML. `serde` derives the

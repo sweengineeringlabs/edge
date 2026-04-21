@@ -14,6 +14,7 @@ use crate::api::cassette_config::CassetteConfig;
 use crate::api::cassette_layer::CassetteLayer;
 use crate::api::error::Error;
 
+use super::body_scrubber::scrub_body;
 use super::recorded_interaction::{
     RecordedInteraction, RecordedRequest, RecordedResponse,
 };
@@ -37,6 +38,11 @@ impl CassetteLayer {
     }
 
     /// Compute the match key for a request per `config.match_on`.
+    ///
+    /// When `match_on` includes `body_hash`, the body is first
+    /// scrubbed per `config.scrub_body_paths` — so
+    /// non-deterministic fields (SDK-injected request IDs,
+    /// trace IDs) don't break exact-match on replay.
     fn match_key(&self, req: &reqwest::Request) -> String {
         let mut parts: Vec<String> = Vec::new();
         for m in &self.config.match_on {
@@ -44,7 +50,9 @@ impl CassetteLayer {
                 "method" => parts.push(format!("method={}", req.method())),
                 "url" => parts.push(format!("url={}", req.url())),
                 "body_hash" => {
-                    let body_hex = body_sha256_hex(req.body().and_then(|b| b.as_bytes()));
+                    let raw = req.body().and_then(|b| b.as_bytes()).unwrap_or(&[]);
+                    let scrubbed = scrub_body(raw, &self.config.scrub_body_paths);
+                    let body_hex = sha256_hex(&scrubbed);
                     parts.push(format!("body_hash={body_hex}"));
                 }
                 _ => { /* unknown match component — ignored */ }
@@ -142,7 +150,9 @@ impl reqwest_middleware::Middleware for CassetteLayer {
             method: req.method().to_string(),
             url: req.url().to_string(),
             body_hash: if self.config.match_on.iter().any(|m| m == "body_hash") {
-                Some(body_sha256_hex(req.body().and_then(|b| b.as_bytes())))
+                let raw = req.body().and_then(|b| b.as_bytes()).unwrap_or(&[]);
+                let scrubbed = scrub_body(raw, &self.config.scrub_body_paths);
+                Some(sha256_hex(&scrubbed))
             } else {
                 None
             },
@@ -234,13 +244,12 @@ fn reconstruct_response(recorded: &RecordedResponse) -> anyhow::Result<reqwest::
     Ok(reqwest::Response::from(http_resp))
 }
 
-/// SHA256 hex of a request body, or the empty-string hash when
-/// the body is missing / non-cloneable.
-fn body_sha256_hex(body_bytes: Option<&[u8]>) -> String {
+/// SHA256 hex of a byte slice. Used for request-body hashing
+/// AFTER scrubbing has been applied. An empty slice hashes to
+/// the well-known SHA256("") = e3b0c442...
+fn sha256_hex(bytes: &[u8]) -> String {
     let mut h = Sha256::new();
-    if let Some(b) = body_bytes {
-        h.update(b);
-    }
+    h.update(bytes);
     hex::encode(h.finalize())
 }
 
@@ -266,18 +275,17 @@ mod tests {
         CassetteConfig::from_config(&toml).unwrap()
     }
 
-    /// @covers: body_sha256_hex
+    /// @covers: sha256_hex
     #[test]
     fn test_empty_body_hash_is_sha256_of_empty_string() {
         // Known: SHA256("") = e3b0c442...
-        assert!(body_sha256_hex(None).starts_with("e3b0c442"));
-        assert!(body_sha256_hex(Some(&[])).starts_with("e3b0c442"));
+        assert!(sha256_hex(&[]).starts_with("e3b0c442"));
     }
 
-    /// @covers: body_sha256_hex
+    /// @covers: sha256_hex
     #[test]
     fn test_body_hash_differs_for_different_bodies() {
-        assert_ne!(body_sha256_hex(Some(b"a")), body_sha256_hex(Some(b"b")));
+        assert_ne!(sha256_hex(b"a"), sha256_hex(b"b"));
     }
 
     /// @covers: CassetteLayer::match_key
@@ -296,6 +304,62 @@ mod tests {
         let key = layer.match_key(&req);
         assert!(key.contains("method=GET"));
         assert!(key.contains("url=https://api.example.test/foo"));
+    }
+
+    /// @covers: CassetteLayer::match_key
+    #[test]
+    fn test_match_key_body_hash_stable_across_scrubbed_fields() {
+        // Two requests differing only in a scrubbed field
+        // must produce the same match key (proving the scrub
+        // path flows into the body hash).
+        let dir = tempfile::tempdir().unwrap();
+        let dir_toml_safe = dir.path().to_str().unwrap().replace('\\', "/");
+        let toml = format!(
+            r#"
+                mode = "replay"
+                cassette_dir = "{dir_toml_safe}"
+                match_on = ["method", "url", "body_hash"]
+                scrub_headers = []
+                scrub_body_paths = ["request_id"]
+            "#
+        );
+        let cfg = CassetteConfig::from_config(&toml).unwrap();
+        let layer = CassetteLayer::new(cfg, "test").unwrap();
+
+        let url = "https://example.test/api";
+        let mut r1 = reqwest::Request::new(Method::POST, Url::parse(url).unwrap());
+        *r1.body_mut() = Some(br#"{"request_id":"first","payload":"data"}"#.to_vec().into());
+        let mut r2 = reqwest::Request::new(Method::POST, Url::parse(url).unwrap());
+        *r2.body_mut() = Some(br#"{"request_id":"second","payload":"data"}"#.to_vec().into());
+
+        assert_eq!(layer.match_key(&r1), layer.match_key(&r2));
+    }
+
+    /// @covers: CassetteLayer::match_key
+    #[test]
+    fn test_match_key_body_hash_differs_for_unscrubbed_field_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let dir_toml_safe = dir.path().to_str().unwrap().replace('\\', "/");
+        let toml = format!(
+            r#"
+                mode = "replay"
+                cassette_dir = "{dir_toml_safe}"
+                match_on = ["method", "url", "body_hash"]
+                scrub_headers = []
+                scrub_body_paths = ["request_id"]
+            "#
+        );
+        let cfg = CassetteConfig::from_config(&toml).unwrap();
+        let layer = CassetteLayer::new(cfg, "test").unwrap();
+
+        let url = "https://example.test/api";
+        let mut r1 = reqwest::Request::new(Method::POST, Url::parse(url).unwrap());
+        *r1.body_mut() = Some(br#"{"request_id":"x","payload":"A"}"#.to_vec().into());
+        let mut r2 = reqwest::Request::new(Method::POST, Url::parse(url).unwrap());
+        *r2.body_mut() = Some(br#"{"request_id":"x","payload":"B"}"#.to_vec().into());
+
+        // Different payload (not scrubbed) → different key.
+        assert_ne!(layer.match_key(&r1), layer.match_key(&r2));
     }
 
     /// @covers: CassetteLayer::match_key
