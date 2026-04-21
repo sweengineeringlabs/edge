@@ -5,7 +5,7 @@
 //! with their own TOML — then hand it to the builder. Policy
 //! lives in config files, not in chained method calls.
 
-use crate::api::config::CassetteConfig;
+use crate::api::cassette_config::CassetteConfig;
 use crate::api::error::Error;
 
 /// Start configuring the middleware with the SWE baseline loaded

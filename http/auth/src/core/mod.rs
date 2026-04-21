@@ -1,1 +1,2 @@
-//! Core layer — middleware impl (pending).
+//! Core layer.
+pub(crate) mod default_http_auth;

@@ -1,5 +1,5 @@
 //! Client-side rate-limiter policy schema. Values live in
-//! `config/default.toml`.
+//! `config/application.toml`.
 
 use serde::Deserialize;
 
@@ -25,7 +25,7 @@ impl RateConfig {
 
     /// Load the crate-shipped SWE baseline.
     pub fn swe_default() -> Result<Self, Error> {
-        Self::from_config(include_str!("../../config/default.toml"))
+        Self::from_config(include_str!("../../config/application.toml"))
     }
 }
 

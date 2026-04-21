@@ -12,7 +12,7 @@ categories = ["web-programming::http-client"]
 
 [package.metadata.struct-engine]
 application_type = "lib"
-service_type = "middleware"
+service_type = "processor"
 
 [lib]
 path = "src/lib.rs"

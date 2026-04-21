@@ -1,7 +1,7 @@
 //! Cache policy schema — the struct layout, nothing else.
 //!
 //! Policy **values** live in TOML:
-//! - crate-shipped baseline: `config/default.toml`
+//! - crate-shipped baseline: `config/application.toml`
 //! - workspace override: `edge/http/main/config/application.toml` under `[cache]`
 //! - consumer override: whatever TOML the binary loads
 //!
@@ -36,7 +36,7 @@ impl CacheConfig {
 
     /// Load the crate-shipped SWE baseline.
     pub fn swe_default() -> Result<Self, Error> {
-        Self::from_config(include_str!("../../config/default.toml"))
+        Self::from_config(include_str!("../../config/application.toml"))
     }
 }
 

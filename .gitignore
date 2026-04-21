@@ -12,5 +12,10 @@
 # own `<peer>/Cargo.lock`.
 **/Cargo.lock
 
+# Auto-generated audit output from `swe-architect arch audit --rs`.
+# Timestamped JSON reports that regenerate on each run — history
+# noise with no reproducibility value.
+**/docs/7-operations/compliance/structural_audit_report_*.json
+
 *.swp
 .DS_Store

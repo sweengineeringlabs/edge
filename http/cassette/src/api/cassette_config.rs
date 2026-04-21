@@ -1,4 +1,4 @@
-//! Cassette policy schema. Values live in `config/default.toml`.
+//! Cassette policy schema. Values live in `config/application.toml`.
 
 use serde::Deserialize;
 
@@ -29,7 +29,7 @@ impl CassetteConfig {
 
     /// Load the crate-shipped SWE baseline.
     pub fn swe_default() -> Result<Self, Error> {
-        Self::from_config(include_str!("../../config/default.toml"))
+        Self::from_config(include_str!("../../config/application.toml"))
     }
 }
 

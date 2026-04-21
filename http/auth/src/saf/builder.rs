@@ -6,7 +6,7 @@
 //! it to the builder. Policy lives in config files, not in
 //! chained method calls.
 
-use crate::api::config::AuthConfig;
+use crate::api::auth_config::AuthConfig;
 use crate::api::error::Error;
 
 /// Start configuring the auth middleware with the SWE baseline

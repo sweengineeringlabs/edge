@@ -2,6 +2,6 @@
 
 mod builder;
 
-pub use crate::api::config::CassetteConfig;
+pub use crate::api::cassette_config::CassetteConfig;
 pub use crate::api::error::Error;
 pub use builder::{builder, Builder};

@@ -1,7 +1,7 @@
 //! Retry policy schema — the struct layout, nothing else.
 //!
 //! Policy **values** live in TOML:
-//! - crate-shipped baseline: `config/default.toml`
+//! - crate-shipped baseline: `config/application.toml`
 //! - workspace override: `edge/http/main/config/application.toml` under `[retry]`
 //! - consumer override: whatever TOML the binary loads and passes
 //!   to `RetryConfig::from_config`.
@@ -52,11 +52,11 @@ impl RetryConfig {
     }
 
     /// Load the SWE-standard baseline (the crate-shipped
-    /// `config/default.toml`). The file is embedded at build
+    /// `config/application.toml`). The file is embedded at build
     /// time via `include_str!`; if that file stops parsing, the
     /// crate's own test suite catches it.
     pub fn swe_default() -> Result<Self, Error> {
-        Self::from_config(include_str!("../../config/default.toml"))
+        Self::from_config(include_str!("../../config/application.toml"))
     }
 }
 
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_swe_default_loads_crate_baseline() {
         let cfg = RetryConfig::swe_default().expect("baseline must parse");
-        // Values come from config/default.toml — NOT asserted
+        // Values come from config/application.toml — NOT asserted
         // against hardcoded numbers here. The point of the test
         // is that the file exists and parses cleanly.
         assert!(cfg.max_retries >= 1, "baseline must allow at least one attempt");

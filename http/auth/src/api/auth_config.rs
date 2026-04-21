@@ -1,4 +1,4 @@
-//! Auth policy schema. Values live in `config/default.toml`.
+//! Auth policy schema. Values live in `config/application.toml`.
 //!
 //! **Credential resolution is env-var-only.** The config stores
 //! the NAME of the env var holding the credential, not the
@@ -57,7 +57,7 @@ impl AuthConfig {
 
     /// Load the crate-shipped SWE baseline (`kind = "none"`).
     pub fn swe_default() -> Result<Self, Error> {
-        Self::from_config(include_str!("../../config/default.toml"))
+        Self::from_config(include_str!("../../config/application.toml"))
     }
 }
 

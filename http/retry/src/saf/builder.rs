@@ -8,7 +8,7 @@
 //! calls. Last-mile programmatic tweaks mutate the `RetryConfig`
 //! before passing it in.
 
-use crate::api::config::RetryConfig;
+use crate::api::retry_config::RetryConfig;
 use crate::api::error::Error;
 
 /// Start configuring the retry middleware with the SWE baseline

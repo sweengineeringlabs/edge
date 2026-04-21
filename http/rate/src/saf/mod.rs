@@ -2,6 +2,6 @@
 
 mod builder;
 
-pub use crate::api::config::RateConfig;
+pub use crate::api::rate_config::RateConfig;
 pub use crate::api::error::Error;
 pub use builder::{builder, Builder};
