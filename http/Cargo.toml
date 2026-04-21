@@ -77,6 +77,13 @@ time = { version = "0.3", features = ["formatting", "macros"] }
 # URL percent-encoding for SigV4 canonical-request construction.
 percent-encoding = "2.3"
 
+# Anyhow — required to construct
+# `reqwest_middleware::Error::Middleware(anyhow::Error)` when a
+# middleware layer surfaces its own error type (breaker-open,
+# rate-limit-exhausted, etc.) through the reqwest-middleware
+# chain.
+anyhow = "1"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"
