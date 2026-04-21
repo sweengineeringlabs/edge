@@ -1,0 +1,53 @@
+[workspace]
+resolver = "2"
+members = [
+    "cache",
+    "cassette",
+    "breaker",
+    "rate",
+    "retry",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.75"
+authors = ["SWE Engineering Labs"]
+repository = "https://github.com/sweengineeringlabs/edge"
+
+[workspace.dependencies]
+# Base HTTP transport — every middleware crate wraps/uses this.
+reqwest = { version = "0.12", features = ["json", "stream"], default-features = false }
+# Middleware composition layer (TrueLayer). Each crate here implements
+# the Middleware trait from this crate.
+reqwest-middleware = "0.3"
+# Used internally by some middleware impls (retry, rate).
+http = "1"
+# Common middleware error/result shape.
+thiserror = "2"
+# Async trait for the Middleware impls.
+async-trait = "0.1"
+# Runtime for impls that need timers (rate, breaker).
+tokio = { version = "1", default-features = false }
+# Span emission for observability — consumers opt in, not required.
+tracing = { version = "0.1", default-features = false }
+# Serialization for cassette fixtures.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# --- External middleware we wrap (not re-implemented) ---
+# Retry wrapper — we ship defaults + typed configs over it.
+reqwest-retry = "0.6"
+# HTTP cache wrapper — we ship an edge-friendly config over it.
+http-cache-reqwest = "0.14"
+# Background sweep / eviction for rate + breaker state.
+moka = { version = "0.12", features = ["future"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
