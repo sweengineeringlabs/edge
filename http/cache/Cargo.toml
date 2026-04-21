@@ -32,6 +32,10 @@ async-trait = { workspace = true }
 serde = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true, optional = true }
+# `tokio::spawn` fires the stale-while-revalidate background
+# refresh task. Only `rt` is needed at runtime — the caller's
+# runtime (tokio itself, typically) executes the spawned future.
+tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 reqwest = { workspace = true }

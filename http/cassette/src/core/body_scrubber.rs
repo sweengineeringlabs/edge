@@ -3,20 +3,21 @@
 //! (request_id, trace_id, timestamps) don't break exact-match
 //! on replay.
 //!
-//! Path syntax: dot-separated object keys, e.g. `"request_id"`
-//! or `"metadata.trace_id"`. Each path is interpreted as a
-//! chain of object field lookups. Terminal segment's field is
-//! removed (`Map::remove`). Non-existent paths are no-ops.
+//! Path syntax: dot-separated segments, e.g. `"request_id"`,
+//! `"metadata.trace_id"`, or `"results.0.id"`. Each segment is
+//! either an object key or, when the current value is a JSON
+//! array and the segment parses as `usize`, an array index. The
+//! terminal segment's field is removed (`Map::remove`) or, for
+//! arrays, the element at that index (`Vec::remove`). Non-existent
+//! paths and out-of-bounds indices are no-ops.
 //!
 //! ## Limitations
 //!
-//! - Array indexing is NOT supported — `"results.0.id"` won't
-//!   descend into array index 0. If a body has non-deterministic
-//!   fields inside an array, either scrub at a higher level
-//!   (remove the whole array with `"results"`) or scrub the
-//!   entire object containing it.
 //! - Only JSON bodies are scrubbed. Non-JSON bodies (binary,
 //!   form-encoded, plain text) hash as-is.
+//! - Array segments must be numeric strings — a non-numeric
+//!   segment into an array is a no-op (we bail rather than
+//!   pretending it matched).
 
 /// Apply each path to the raw body and return the resulting
 /// bytes. If the body isn't valid JSON, returns the raw bytes
@@ -40,8 +41,11 @@ pub(crate) fn scrub_body(raw: &[u8], paths: &[String]) -> Vec<u8> {
 }
 
 /// Descend into `value` following `path` (dot-separated) and
-/// remove the terminal field. No-op if the path doesn't exist
-/// or any intermediate segment isn't an object.
+/// remove the terminal field or element. No-op if the path
+/// doesn't exist, an intermediate segment doesn't match the
+/// current value's shape (object key missing, array index OOB,
+/// non-numeric segment into an array, scalar encountered
+/// mid-path), or the terminal is missing.
 fn remove_path(value: &mut serde_json::Value, path: &str) {
     let mut segments: Vec<&str> = path.split('.').collect();
     if segments.is_empty() {
@@ -55,11 +59,36 @@ fn remove_path(value: &mut serde_json::Value, path: &str) {
                 Some(next) => current = next,
                 None => return, // path doesn't exist, no-op
             },
-            _ => return, // not an object, bail
+            serde_json::Value::Array(arr) => {
+                // Array descent: segment must parse as usize and
+                // be in bounds. Non-numeric or OOB → bail.
+                let idx: usize = match seg.parse() {
+                    Ok(i) => i,
+                    Err(_) => return,
+                };
+                match arr.get_mut(idx) {
+                    Some(next) => current = next,
+                    None => return,
+                }
+            }
+            _ => return, // scalar mid-path, bail
         }
     }
-    if let serde_json::Value::Object(map) = current {
-        map.remove(terminal);
+    match current {
+        serde_json::Value::Object(map) => {
+            map.remove(terminal);
+        }
+        serde_json::Value::Array(arr) => {
+            // Terminal array removal: numeric in-bounds removes
+            // the element (array shrinks). Anything else is a
+            // no-op.
+            if let Ok(idx) = terminal.parse::<usize>() {
+                if idx < arr.len() {
+                    arr.remove(idx);
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -155,6 +184,70 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_slice(&scrubbed).unwrap();
         assert!(parsed.get("metadata").is_none());
         assert_eq!(parsed.get("payload").and_then(|v| v.as_str()), Some("ok"));
+    }
+
+    /// @covers: scrub_body
+    #[test]
+    fn test_removes_field_inside_array_element() {
+        // Numeric segment descends into the array; the terminal
+        // key is then removed from the object at that index.
+        let body = br#"{"results":[{"id":1,"name":"a"},{"id":2}]}"#;
+        let paths = vec!["results.0.id".to_string()];
+        let scrubbed = scrub_body(body, &paths);
+        let parsed: serde_json::Value = serde_json::from_slice(&scrubbed).unwrap();
+        let arr = parsed.get("results").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(arr.len(), 2);
+        let first = arr.first().unwrap();
+        assert!(first.get("id").is_none(), "id should be removed from results[0]");
+        assert_eq!(first.get("name").and_then(|v| v.as_str()), Some("a"));
+        // results[1] untouched.
+        assert_eq!(arr[1].get("id").and_then(|v| v.as_i64()), Some(2));
+    }
+
+    /// @covers: scrub_body
+    #[test]
+    fn test_removes_entire_array_element_by_index() {
+        // Terminal numeric segment on an array removes the
+        // element at that index; the array shrinks.
+        let body = br#"{"results":[{"a":1},{"b":2}]}"#;
+        let paths = vec!["results.0".to_string()];
+        let scrubbed = scrub_body(body, &paths);
+        let parsed: serde_json::Value = serde_json::from_slice(&scrubbed).unwrap();
+        let arr = parsed.get("results").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(arr.len(), 1, "array should shrink by one");
+        let remaining = arr.first().unwrap();
+        assert!(remaining.get("a").is_none(), "first element {{a:1}} was removed");
+        assert_eq!(remaining.get("b").and_then(|v| v.as_i64()), Some(2));
+    }
+
+    /// @covers: scrub_body
+    #[test]
+    fn test_out_of_bounds_index_is_noop() {
+        // Index 99 doesn't exist in a one-element array → bail
+        // without mutating anything.
+        let body = br#"{"results":[{"id":1}]}"#;
+        let paths = vec!["results.99.id".to_string()];
+        let scrubbed = scrub_body(body, &paths);
+        let parsed: serde_json::Value = serde_json::from_slice(&scrubbed).unwrap();
+        let arr = parsed.get("results").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0].get("id").and_then(|v| v.as_i64()), Some(1));
+    }
+
+    /// @covers: scrub_body
+    #[test]
+    fn test_non_numeric_segment_into_array_is_noop() {
+        // "nope" is neither a usize nor a valid array op → bail
+        // without touching the array.
+        let body = br#"{"results":[1,2,3]}"#;
+        let paths = vec!["results.nope".to_string()];
+        let scrubbed = scrub_body(body, &paths);
+        let parsed: serde_json::Value = serde_json::from_slice(&scrubbed).unwrap();
+        let arr = parsed.get("results").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(arr.len(), 3);
+        assert_eq!(arr[0].as_i64(), Some(1));
+        assert_eq!(arr[1].as_i64(), Some(2));
+        assert_eq!(arr[2].as_i64(), Some(3));
     }
 
     /// @covers: scrub_body

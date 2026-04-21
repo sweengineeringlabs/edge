@@ -5,6 +5,7 @@ use std::sync::Arc;
 use moka::future::Cache;
 
 use crate::api::cache_config::CacheConfig;
+use crate::core::cached_entry::CachedEntry;
 
 /// HTTP cache middleware. Attach to a
 /// `reqwest_middleware::ClientBuilder` via `.with(layer)`.
@@ -13,8 +14,18 @@ use crate::api::cache_config::CacheConfig;
 /// docs for the covered + uncovered RFC 7234 semantics.
 pub struct CacheLayer {
     pub(crate) config: Arc<CacheConfig>,
-    pub(crate) store:
-        Cache<String, crate::core::cache_layer::CachedEntry>,
+    /// Primary store: `(method, url)` → Vec of CachedEntry variants
+    /// (one variant per observed `Vary` combination). Wrapped in
+    /// `Arc` so the moka value type stays cheap to clone on
+    /// read-side copies.
+    pub(crate) store: Cache<String, Arc<Vec<CachedEntry>>>,
+    /// Client used for `stale-while-revalidate` background
+    /// refreshes. The spawned refresh task cannot re-enter the
+    /// middleware chain (`reqwest_middleware::Next<'a>` is
+    /// non-`'static`), so SWR refreshes go out over this bare
+    /// client — bypassing any other middleware in the chain.
+    /// This is a documented limitation.
+    pub(crate) swr_client: Arc<reqwest::Client>,
 }
 
 impl std::fmt::Debug for CacheLayer {

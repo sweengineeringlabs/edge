@@ -41,11 +41,22 @@
 //! HA2 and response formulas are unchanged across algorithms —
 //! only the hash function swaps.
 //!
-//! ## Not yet supported
+//! ## qop selection (RFC 7616 §3.4.2)
 //!
-//! - `auth-int` quality of protection — requires body hashing;
-//!   `auth` (default) is what 99% of servers use.
-//! - `userhash = true` per RFC 7616 §3.4.4 — rare.
+//! If the server advertises both `auth` and `auth-int`, we
+//! prefer `auth` — matches what 99% of clients do, and avoids
+//! the per-request body hash. `auth-int` is only selected when
+//! the server advertises it as the sole option. When omitted
+//! from the challenge entirely, we fall back to the legacy RFC
+//! 2069 form (no qop, no nc/cnonce in the response digest).
+//!
+//! ## userhash (RFC 7616 §3.4.4)
+//!
+//! When the server advertises `userhash=true`, the `username=`
+//! field in the Authorization header carries `H(username:realm)`
+//! instead of the plaintext username, and `userhash=true` is
+//! echoed back. HA1 is unchanged — it still uses the plaintext
+//! username internally.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -72,9 +83,17 @@ const NONCE_TTL: Duration = Duration::from_secs(5 * 60);
 struct Challenge {
     realm: String,
     nonce: String,
+    /// Raw `qop` value as advertised by the server. May be a
+    /// single token (`auth` / `auth-int`) or a comma-separated
+    /// list (`"auth, auth-int"`). `None` = legacy RFC 2069, no
+    /// qop negotiation.
     qop: Option<String>,
     opaque: Option<String>,
     algorithm: String,
+    /// RFC 7616 §3.4.4 opt-in: if `true`, the client sends
+    /// `H(username:realm)` in the `username=` field of the
+    /// Authorization header and echoes `userhash=true` back.
+    userhash: bool,
 }
 
 /// Cached challenge + fetch timestamp + client-nonce counter.
@@ -163,10 +182,19 @@ impl DigestStrategy {
     }
 
     /// Build the Digest Authorization header using cached state.
+    ///
+    /// `body` is the serialized request body used only when the
+    /// negotiated qop is `auth-int` (RFC 7616 §3.4.2): HA2 then
+    /// becomes `H(method:uri:H(body))`. `None` means the request
+    /// has no body handle available (e.g. a streaming body with
+    /// no `as_bytes()`); we fall back to the algorithm's hash of
+    /// the empty string, which matches what the server computes
+    /// when no body is sent.
     fn build_authorization_header(
         &self,
         method: &str,
         uri: &str,
+        body: Option<&[u8]>,
         cached: &mut CachedNonce,
     ) -> Result<String, Error> {
         let realm = &cached.challenge.realm;
@@ -197,12 +225,42 @@ impl DigestStrategy {
             ha1_base
         };
 
-        // HA2 = H(method:uri). `auth-int` qop would change
-        // this to include a body hash — not implemented (see
-        // module docs).
-        let ha2 = algo.hash(format!("{method}:{uri}").as_bytes());
+        // Negotiate the qop value we'll echo back. None = RFC
+        // 2069 legacy. `selected_qop` is the single token the
+        // client commits to (never a list).
+        let selected_qop = cached
+            .challenge
+            .qop
+            .as_deref()
+            .map(select_qop);
 
-        let response = match &cached.challenge.qop {
+        // HA2 per RFC 7616 §3.4.2.
+        //   qop == "auth" (or unset): H(method:uri)
+        //   qop == "auth-int":        H(method:uri:H(body))
+        let ha2 = if selected_qop.as_deref() == Some("auth-int") {
+            let body_hash = match body {
+                Some(bytes) => algo.hash(bytes),
+                None => {
+                    // Streaming body with no byte handle — the
+                    // best we can do is hash the empty string,
+                    // which matches what the server computes
+                    // when no body is sent. Warn in tracing
+                    // builds so this isn't a silent mismatch.
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        "Digest auth-int: request body bytes unavailable; \
+                         using empty-body hash (server will reject if the \
+                         body is non-empty)"
+                    );
+                    algo.hash(b"")
+                }
+            };
+            algo.hash(format!("{method}:{uri}:{body_hash}").as_bytes())
+        } else {
+            algo.hash(format!("{method}:{uri}").as_bytes())
+        };
+
+        let response = match &selected_qop {
             Some(qop) => algo.hash(
                 format!("{ha1}:{nonce}:{nc}:{cnonce}:{qop}:{ha2}").as_bytes(),
             ),
@@ -214,22 +272,37 @@ impl DigestStrategy {
             }
         };
 
+        // Per RFC 7616 §3.4.4, when userhash=true the `username=`
+        // field carries H(username:realm); HA1 above still used
+        // the plaintext username (the hash is a presentation-
+        // layer privacy feature, not a credential-layer change).
+        let username_field = if cached.challenge.userhash {
+            algo.hash(
+                format!("{}:{}", self.username.expose_secret(), realm).as_bytes(),
+            )
+        } else {
+            self.username.expose_secret().to_string()
+        };
+
         let mut header = format!(
             r#"Digest username="{}", realm="{}", nonce="{}", uri="{}", algorithm={}, response="{}""#,
-            self.username.expose_secret(),
+            username_field,
             realm,
             nonce,
             uri,
             cached.challenge.algorithm,
             response,
         );
-        if let Some(qop) = &cached.challenge.qop {
+        if let Some(qop) = &selected_qop {
             header.push_str(&format!(
                 r#", qop={qop}, nc={nc}, cnonce="{cnonce}""#,
             ));
         }
         if let Some(opaque) = &cached.challenge.opaque {
             header.push_str(&format!(r#", opaque="{opaque}""#));
+        }
+        if cached.challenge.userhash {
+            header.push_str(", userhash=true");
         }
         Ok(header)
     }
@@ -345,12 +418,25 @@ impl AuthStrategy for DigestStrategy {
             req.url().path().to_string()
         };
 
+        // Capture body bytes BEFORE taking the cache lock, so we
+        // don't hold the mutex across the body accessor. For
+        // streaming bodies with no `as_bytes()` handle we pass
+        // `None` and `build_authorization_header` falls back to
+        // the empty-body hash (only relevant for `auth-int`).
+        let body_bytes: Option<Vec<u8>> =
+            req.body().and_then(|b| b.as_bytes().map(<[u8]>::to_vec));
+
         let mut cache = self.nonce_cache.lock().unwrap();
         let cached = cache.get_mut(&host).ok_or_else(|| Error::InvalidHeaderValue(
             "Digest authorize called without successful prepare — cached nonce missing".into(),
         ))?;
 
-        let auth_value = self.build_authorization_header(&method, &uri, cached)?;
+        let auth_value = self.build_authorization_header(
+            &method,
+            &uri,
+            body_bytes.as_deref(),
+            cached,
+        )?;
         let mut hv = HeaderValue::from_str(&auth_value)
             .map_err(|e| Error::InvalidHeaderValue(e.to_string()))?;
         hv.set_sensitive(true);
@@ -376,6 +462,7 @@ fn parse_challenge(header: &str) -> Result<Challenge, Error> {
     let mut qop = None;
     let mut opaque = None;
     let mut algorithm = "MD5".to_string();
+    let mut userhash = false;
 
     for part in split_csv_respecting_quotes(rest) {
         let part = part.trim();
@@ -389,6 +476,20 @@ fn parse_challenge(header: &str) -> Result<Challenge, Error> {
             "qop" => qop = Some(value),
             "opaque" => opaque = Some(value),
             "algorithm" => algorithm = value,
+            "userhash" => {
+                // RFC 7616 §3.4.4 defines the token as unquoted
+                // `true`/`false`, but some servers quote it. Accept
+                // both. Any other value is a protocol error.
+                match value.to_ascii_lowercase().as_str() {
+                    "true" => userhash = true,
+                    "false" => userhash = false,
+                    other => {
+                        return Err(Error::InvalidHeaderValue(format!(
+                            "Digest challenge has invalid userhash value: {other:?}"
+                        )));
+                    }
+                }
+            }
             _ => { /* unknown params are ignored per RFC */ }
         }
     }
@@ -406,7 +507,39 @@ fn parse_challenge(header: &str) -> Result<Challenge, Error> {
         qop,
         opaque,
         algorithm,
+        userhash,
     })
+}
+
+/// Negotiate the qop value the client echoes back in the
+/// Authorization header (RFC 7616 §3.4.2).
+///
+/// The server's `qop` parameter can be a single token or a
+/// comma-separated list. We scan the offered tokens and:
+///
+/// - If `auth` is offered, pick `auth` (cheap, no body hash).
+/// - Else if `auth-int` is the sole recognized option, pick
+///   `auth-int`.
+/// - Else fall back to the raw trimmed value — an unknown qop
+///   will still be echoed back so the server can reject it
+///   predictably rather than us silently substituting `auth`.
+pub(crate) fn select_qop(raw: &str) -> String {
+    let mut saw_auth = false;
+    let mut saw_auth_int = false;
+    for tok in raw.split(',') {
+        match tok.trim().to_ascii_lowercase().as_str() {
+            "auth" => saw_auth = true,
+            "auth-int" => saw_auth_int = true,
+            _ => {}
+        }
+    }
+    if saw_auth {
+        "auth".to_string()
+    } else if saw_auth_int {
+        "auth-int".to_string()
+    } else {
+        raw.trim().to_string()
+    }
 }
 
 fn split_csv_respecting_quotes(s: &str) -> Vec<String> {
@@ -610,11 +743,12 @@ mod tests {
                 qop: Some("auth".into()),
                 opaque: None,
                 algorithm: "SHA-256".into(),
+                userhash: false,
             },
             fetched_at: Instant::now(),
             nc: 0,
         };
-        let h = s.build_authorization_header("GET", "/", &mut cached).unwrap();
+        let h = s.build_authorization_header("GET", "/", None, &mut cached).unwrap();
         // SHA-256 response digest is 64 hex chars (vs MD5's 32).
         // Extract the response=... value and assert on its length.
         let response_val = h.split(r#"response=""#).nth(1).unwrap();
@@ -638,6 +772,7 @@ mod tests {
                 qop: Some("auth".into()),
                 opaque: None,
                 algorithm: "MD5".into(),
+                userhash: false,
             },
             fetched_at: Instant::now(),
             nc: 0,
@@ -649,12 +784,13 @@ mod tests {
                 qop: Some("auth".into()),
                 opaque: None,
                 algorithm: "MD5-sess".into(),
+                userhash: false,
             },
             fetched_at: Instant::now(),
             nc: 0,
         };
-        let h1 = s.build_authorization_header("GET", "/", &mut c1).unwrap();
-        let h2 = s.build_authorization_header("GET", "/", &mut c2).unwrap();
+        let h1 = s.build_authorization_header("GET", "/", None, &mut c1).unwrap();
+        let h2 = s.build_authorization_header("GET", "/", None, &mut c2).unwrap();
         // Non-sess HA1 ≠ -sess HA1 (sess folds cnonce into HA1)
         // → different final response. cnonce differs per call
         // anyway, so this doesn't give a deterministic diff;
@@ -698,11 +834,12 @@ mod tests {
                 qop: Some("auth".into()),
                 opaque: Some("op".into()),
                 algorithm: "MD5".into(),
+                userhash: false,
             },
             fetched_at: Instant::now(),
             nc: 0,
         };
-        let h = s.build_authorization_header("GET", "/dir/index.html", &mut cached).unwrap();
+        let h = s.build_authorization_header("GET", "/dir/index.html", None, &mut cached).unwrap();
         assert!(h.starts_with("Digest "));
         assert!(h.contains(r#"username="alice""#));
         assert!(h.contains(r#"realm="testrealm""#));
@@ -730,12 +867,13 @@ mod tests {
                 qop: Some("auth".into()),
                 opaque: None,
                 algorithm: "MD5".into(),
+                userhash: false,
             },
             fetched_at: Instant::now(),
             nc: 0,
         };
-        s.build_authorization_header("GET", "/", &mut cached).unwrap();
-        s.build_authorization_header("GET", "/", &mut cached).unwrap();
+        s.build_authorization_header("GET", "/", None, &mut cached).unwrap();
+        s.build_authorization_header("GET", "/", None, &mut cached).unwrap();
         assert_eq!(cached.nc, 2);
     }
 
@@ -767,5 +905,234 @@ mod tests {
         );
         let err = s.authorize(&mut req).unwrap_err();
         assert!(err.to_string().contains("prepare"));
+    }
+
+    /// Extract the `key="value"` or `key=value` token from a
+    /// Digest Authorization header. Returns the raw value,
+    /// unquoted. Test helper only.
+    fn extract_header_param(header: &str, key: &str) -> String {
+        // Try quoted form first: key="...".
+        let quoted_prefix = format!(r#"{key}=""#);
+        if let Some(rest) = header.split(&quoted_prefix).nth(1) {
+            return rest.split('"').next().unwrap().to_string();
+        }
+        // Fall back to unquoted: key=token (token ends at ',' or
+        // end-of-string).
+        let prefix = format!("{key}=");
+        let rest = header
+            .split(&prefix)
+            .nth(1)
+            .unwrap_or_else(|| panic!("header missing key {key:?}: {header}"));
+        rest.split(',').next().unwrap().trim().to_string()
+    }
+
+    /// @covers: parse_challenge
+    #[test]
+    fn test_parse_challenge_parses_userhash_true() {
+        // RFC 7616 §3.4.4 — unquoted form.
+        let header = r#"Digest realm="r", nonce="n", userhash=true"#;
+        let c = parse_challenge(header).unwrap();
+        assert!(c.userhash);
+
+        // Quoted form — some servers quote it.
+        let header_quoted = r#"Digest realm="r", nonce="n", userhash="true""#;
+        let c = parse_challenge(header_quoted).unwrap();
+        assert!(c.userhash);
+    }
+
+    /// @covers: parse_challenge
+    #[test]
+    fn test_parse_challenge_userhash_default_false() {
+        // Param absent entirely → false.
+        let header = r#"Digest realm="r", nonce="n", qop="auth""#;
+        let c = parse_challenge(header).unwrap();
+        assert!(!c.userhash);
+
+        // Param explicitly false → false.
+        let header_explicit = r#"Digest realm="r", nonce="n", userhash=false"#;
+        let c = parse_challenge(header_explicit).unwrap();
+        assert!(!c.userhash);
+    }
+
+    /// @covers: DigestStrategy::build_authorization_header
+    #[test]
+    fn test_build_authorization_header_userhash_hashes_username() {
+        let s = DigestStrategy::new(
+            SecretString::from("alice".to_string()),
+            SecretString::from("p".to_string()),
+            None,
+        )
+        .unwrap();
+        let mut cached = CachedNonce {
+            challenge: Challenge {
+                realm: "testrealm".into(),
+                nonce: "n".into(),
+                qop: Some("auth".into()),
+                opaque: None,
+                algorithm: "SHA-256".into(),
+                userhash: true,
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let h = s.build_authorization_header("GET", "/", None, &mut cached).unwrap();
+
+        // The `username=` field must be the hex hash of
+        // "alice:testrealm", NOT the plaintext "alice".
+        let username_val = extract_header_param(&h, "username");
+        let expected = DigestAlgorithm::Sha256.hash(b"alice:testrealm");
+        assert_eq!(username_val, expected);
+        assert_eq!(username_val.len(), 64); // SHA-256 hex = 64 chars
+        assert!(username_val.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(!h.contains(r#"username="alice""#));
+
+        // Header MUST echo userhash=true back per RFC 7616 §3.4.4.
+        assert!(
+            h.contains("userhash=true"),
+            "header missing userhash=true echo: {h}"
+        );
+
+        // Sanity check for MD5 length too.
+        let mut cached_md5 = CachedNonce {
+            challenge: Challenge {
+                realm: "testrealm".into(),
+                nonce: "n".into(),
+                qop: Some("auth".into()),
+                opaque: None,
+                algorithm: "MD5".into(),
+                userhash: true,
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let h_md5 = s
+            .build_authorization_header("GET", "/", None, &mut cached_md5)
+            .unwrap();
+        let username_md5 = extract_header_param(&h_md5, "username");
+        assert_eq!(username_md5.len(), 32); // MD5 hex = 32 chars
+    }
+
+    /// @covers: DigestStrategy::build_authorization_header
+    #[test]
+    fn test_build_authorization_header_auth_int_includes_body_hash() {
+        let s = DigestStrategy::new(
+            SecretString::from("u".to_string()),
+            SecretString::from("p".to_string()),
+            None,
+        )
+        .unwrap();
+
+        // Same fixed nonce on both builds; cnonce is random, so
+        // we can't compare `response=` values directly. Instead
+        // compute HA2 by hand for each path and verify the final
+        // digest matches: this proves the body actually reached
+        // HA2 rather than just "some difference happened".
+        let build = |body: Option<&[u8]>| {
+            let mut cached = CachedNonce {
+                challenge: Challenge {
+                    realm: "r".into(),
+                    nonce: "fixed-nonce".into(),
+                    qop: Some("auth-int".into()),
+                    opaque: None,
+                    algorithm: "MD5".into(),
+                    userhash: false,
+                },
+                fetched_at: Instant::now(),
+                nc: 0,
+            };
+            let h = s
+                .build_authorization_header("POST", "/submit", body, &mut cached)
+                .unwrap();
+            (
+                extract_header_param(&h, "response"),
+                extract_header_param(&h, "cnonce"),
+                extract_header_param(&h, "qop"),
+                h,
+            )
+        };
+
+        let (resp_none, cnonce_none, qop_none, h_none) = build(None);
+        let (resp_body, cnonce_body, qop_body, h_body) = build(Some(b"hello=world"));
+
+        // qop must be echoed as auth-int in both cases.
+        assert_eq!(qop_none, "auth-int");
+        assert_eq!(qop_body, "auth-int");
+
+        // The response digest MUST differ because HA2 folded in
+        // H(body) vs H(empty). Since cnonce is random this test
+        // on its own isn't iron-clad, so re-derive the expected
+        // digests manually and assert equality.
+        let algo = DigestAlgorithm::Md5;
+        let ha1 = algo.hash(b"u:r:p");
+
+        let body_hash_none = algo.hash(b"");
+        let ha2_none = algo.hash(format!("POST:/submit:{body_hash_none}").as_bytes());
+        let expected_none = algo.hash(
+            format!("{ha1}:fixed-nonce:00000001:{cnonce_none}:auth-int:{ha2_none}")
+                .as_bytes(),
+        );
+        assert_eq!(resp_none, expected_none, "header: {h_none}");
+
+        let body_hash_real = algo.hash(b"hello=world");
+        let ha2_body = algo.hash(format!("POST:/submit:{body_hash_real}").as_bytes());
+        let expected_body = algo.hash(
+            format!("{ha1}:fixed-nonce:00000001:{cnonce_body}:auth-int:{ha2_body}")
+                .as_bytes(),
+        );
+        assert_eq!(resp_body, expected_body, "header: {h_body}");
+
+        // And the two response digests MUST differ: empty-body
+        // hash != hash("hello=world"), so HA2 differs, so the
+        // final digest differs. (cnonce differs per call but HA2
+        // is the only cnonce-independent factor we care about
+        // here; the re-derivation above already proved body was
+        // folded in — this assertion is a belt-and-braces check.)
+        assert_ne!(resp_none, resp_body);
+    }
+
+    /// @covers: DigestStrategy::build_authorization_header
+    /// @covers: select_qop
+    #[test]
+    fn test_build_authorization_header_prefers_auth_when_both_qops_offered() {
+        let s = DigestStrategy::new(
+            SecretString::from("u".to_string()),
+            SecretString::from("p".to_string()),
+            None,
+        )
+        .unwrap();
+        let mut cached = CachedNonce {
+            challenge: Challenge {
+                realm: "r".into(),
+                nonce: "n".into(),
+                // Both offered, with whitespace between — matches
+                // how servers typically advertise the list.
+                qop: Some("auth, auth-int".into()),
+                opaque: None,
+                algorithm: "MD5".into(),
+                userhash: false,
+            },
+            fetched_at: Instant::now(),
+            nc: 0,
+        };
+        let h = s
+            .build_authorization_header("POST", "/", Some(b"body"), &mut cached)
+            .unwrap();
+        let qop_val = extract_header_param(&h, "qop");
+        assert_eq!(qop_val, "auth", "header: {h}");
+        // Belt-and-braces: auth-int MUST NOT appear as the qop
+        // token. (It may appear nowhere else in the header, so
+        // a substring check is safe.)
+        assert!(!h.contains("auth-int"), "header should not contain auth-int: {h}");
+    }
+
+    /// @covers: select_qop
+    #[test]
+    fn test_select_qop_picks_auth_int_when_sole_option() {
+        assert_eq!(select_qop("auth-int"), "auth-int");
+        assert_eq!(select_qop("  auth-int  "), "auth-int");
+        // Both offered → prefer auth.
+        assert_eq!(select_qop("auth, auth-int"), "auth");
+        assert_eq!(select_qop("auth-int, auth"), "auth");
+        assert_eq!(select_qop("auth"), "auth");
     }
 }
