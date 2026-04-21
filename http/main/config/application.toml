@@ -1,0 +1,39 @@
+# Workspace-level application configuration for edge/http/.
+#
+# Per rs.rules.toml §15 rule 151 — any deployment-variable knob
+# goes here rather than being hardcoded in source. Today the
+# http/ workspace has no runtime state of its own; each
+# middleware crate (cache, cassette, breaker, rate, retry) is
+# configured at the call site by the consumer composing its
+# builder. This file exists so:
+#
+#   1. rs.rules audit has a `config/application.toml` to point
+#      at for the workspace.
+#   2. Future workspace-wide knobs (e.g. a default
+#      `RetryConfig` override, a default cache TTL, a global
+#      tracing-feature toggle) have an obvious home.
+#
+# When a knob lands here, also document it in the per-crate
+# README so consumers see it alongside the builder API.
+
+[application]
+name = "swe-edge-http"
+version = "0.1.0"
+
+# Placeholder. Uncomment + populate as workspace-level defaults
+# get introduced:
+#
+# [retry]
+# # Override the SWE default max-attempts (currently 3 in
+# # swe_http_retry::RetryConfig::default()).
+# # max_retries = 3
+#
+# [cache]
+# # Override the SWE default cache TTL (currently 300s in
+# # swe_http_cache::CacheConfig::default()).
+# # default_ttl_seconds = 300
+#
+# [observability]
+# # Enable the per-crate `tracing` feature at composition time
+# # rather than per-crate in each Cargo.toml.
+# # emit_spans = true
