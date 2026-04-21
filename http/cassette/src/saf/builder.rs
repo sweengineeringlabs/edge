@@ -1,23 +1,23 @@
 //! Public builder entry point.
 //!
-//! Consumers construct a [`CassetteConfig`] — usually via
-//! [`CassetteConfig::swe_default`] or [`CassetteConfig::from_config`]
-//! with their own TOML — then hand it to the builder. Policy
-//! lives in config files, not in chained method calls.
+//! Cassette is slightly different from the other middleware
+//! crates — each test case typically has its own named
+//! cassette file, so `build()` takes a `cassette_name` that
+//! becomes part of the on-disk path.
 
 use crate::api::cassette_config::CassetteConfig;
+use crate::api::cassette_layer::CassetteLayer;
 use crate::api::error::Error;
 
-/// Start configuring the middleware with the SWE baseline loaded
-/// from the crate-shipped `config/default.toml`. For non-default
-/// policy, construct a [`CassetteConfig`] directly and use
-/// [`Builder::with_config`].
+use crate::core::cassette_layer as _;
+
+/// Start configuring the cassette with the SWE baseline.
 pub fn builder() -> Result<Builder, Error> {
     let cfg = CassetteConfig::swe_default()?;
-    Ok(Builder { config: cfg })
+    Ok(Builder::with_config(cfg))
 }
 
-/// Builder handle. Opaque — knobs live on the config.
+/// Builder handle.
 #[derive(Debug)]
 pub struct Builder {
     config: CassetteConfig,
@@ -34,10 +34,13 @@ impl Builder {
         &self.config
     }
 
-    /// Finalize into the middleware layer. Scaffold phase:
-    /// returns NotImplemented until the real impl lands.
-    pub fn build(self) -> Result<(), Error> {
-        Err(Error::NotImplemented("builder"))
+    /// Finalize into the [`CassetteLayer`].
+    ///
+    /// `cassette_name` identifies the on-disk fixture file
+    /// (usually one per test case). Appended to
+    /// `config.cassette_dir` as `<cassette_name>.yaml`.
+    pub fn build(self, cassette_name: &str) -> Result<CassetteLayer, Error> {
+        CassetteLayer::new(self.config, cassette_name)
     }
 }
 
@@ -47,25 +50,29 @@ mod tests {
 
     /// @covers: builder
     #[test]
-    fn test_builder_loads_swe_default_config() {
-        let _b = builder().expect("baseline must parse");
-    }
-
-    /// @covers: Builder::with_config
-    #[test]
-    fn test_with_config_holds_baseline_policy() {
-        // Reuse the baseline as a valid config for this test —
-        // the point is that the type round-trips through the
-        // builder, not that we supply novel values.
-        let cfg = CassetteConfig::swe_default().expect("baseline parses");
-        let _b = Builder::with_config(cfg);
+    fn test_builder_loads_swe_default() {
+        let b = builder().expect("baseline parses");
+        assert_eq!(b.config().mode, "replay");
     }
 
     /// @covers: Builder::build
     #[test]
-    fn test_build_returns_not_implemented_during_scaffold_phase() {
-        let b = builder().expect("baseline parses");
-        let err = b.build().unwrap_err();
-        assert!(matches!(err, Error::NotImplemented(_)));
+    fn test_build_with_nonexistent_cassette_file_starts_empty() {
+        // Use a path that definitely doesn't exist to verify
+        // the "no fixture file yet" path.
+        let tmpdir = tempfile::tempdir().unwrap();
+        // Windows backslash → forward slash for TOML safety.
+        let dir_toml_safe = tmpdir.path().to_str().unwrap().replace('\\', "/");
+        let toml = format!(
+            r#"
+                mode = "auto"
+                cassette_dir = "{dir_toml_safe}"
+                match_on = ["method", "url"]
+                scrub_headers = []
+                scrub_body_paths = []
+            "#
+        );
+        let cfg = CassetteConfig::from_config(&toml).unwrap();
+        let _layer = Builder::with_config(cfg).build("fresh_case").expect("build ok");
     }
 }

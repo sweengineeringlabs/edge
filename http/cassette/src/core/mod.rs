@@ -1,4 +1,6 @@
-//! Core layer — middleware impl (pending) + default impl of the
-//! primary api trait.
+//! Core layer — cassette storage + middleware impl + default
+//! impl of the primary api trait.
 
+pub(crate) mod cassette_layer;
 pub(crate) mod default_http_cassette;
+pub(crate) mod recorded_interaction;
