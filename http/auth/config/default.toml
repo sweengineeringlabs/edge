@@ -1,0 +1,39 @@
+# SWE default HTTP auth policy.
+#
+# The only honest SWE "default" for auth is **none** — there is
+# no universal credential this crate should attach to every
+# request. A `kind = "none"` baseline makes the middleware a
+# pass-through until a consumer explicitly configures a scheme.
+#
+# Credentials are referenced by env-var NAME, not stored
+# inline. This is strict by design:
+#   - TOML files get committed to git; env vars don't.
+#   - Consumers can inject creds via their existing secrets
+#     plumbing (Docker secrets, Kubernetes envFrom, .env loader)
+#     without the middleware caring where they came from.
+#
+# To activate, uncomment one block below and set `kind`.
+
+# Pass-through (middleware attached but does nothing).
+kind = "none"
+
+# --- bearer scheme -------------------------------------------
+# kind = "bearer"
+# # Environment variable name holding the token. The middleware
+# # reads this at config-load time and caches the value; changes
+# # to the env var after load require re-building the middleware.
+# token_env = "EDGE_API_TOKEN"
+
+# --- basic scheme --------------------------------------------
+# kind = "basic"
+# user_env = "EDGE_BASIC_USER"
+# pass_env = "EDGE_BASIC_PASS"
+
+# --- custom header scheme ------------------------------------
+# For APIs that use a non-standard header (x-api-key, x-auth,
+# x-goog-api-key, etc.) instead of Authorization.
+# kind = "header"
+# # The header name to set.
+# name = "x-api-key"
+# # Environment variable name holding the credential value.
+# value_env = "EDGE_API_KEY"

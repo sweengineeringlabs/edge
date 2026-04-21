@@ -29,6 +29,12 @@ version = "0.1.0"
 # Each section below mirrors the schema of the corresponding
 # crate's `config/default.toml`. Uncomment keys to override.
 
+# [auth]
+# # Crate baseline: kind = "none" (pass-through). Credentials are
+# # referenced by env-var NAME; never stored inline.
+# # kind = "bearer"
+# # token_env = "EDGE_API_TOKEN"
+
 # [retry]
 # # Crate baseline: 3 attempts, 200ms initial, 10s cap, 2.0 multiplier.
 # # max_retries = 3
