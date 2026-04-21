@@ -11,8 +11,10 @@ use crate::api::credential_resolver::CredentialResolver;
 use crate::api::credential_source::CredentialSource;
 use crate::api::error::Error;
 
+use super::aws_sigv4_strategy::AwsSigV4Strategy;
 use super::basic_strategy::BasicStrategy;
 use super::bearer_strategy::BearerStrategy;
+use super::digest_strategy::DigestStrategy;
 use super::header_strategy::HeaderStrategy;
 use super::noop_strategy::NoopStrategy;
 
@@ -44,6 +46,42 @@ pub(crate) fn build_strategy(
         AuthConfig::Header { name, value_env } => {
             let value = resolver.resolve(&CredentialSource::EnvVar(value_env.clone()))?;
             Ok(Box::new(HeaderStrategy::new(name.clone(), value)?))
+        }
+
+        AuthConfig::Digest {
+            user_env,
+            password_env,
+            realm,
+        } => {
+            let user = resolver.resolve(&CredentialSource::EnvVar(user_env.clone()))?;
+            let password = resolver.resolve(&CredentialSource::EnvVar(password_env.clone()))?;
+            Ok(Box::new(DigestStrategy::new(user, password, realm.clone())?))
+        }
+
+        AuthConfig::AwsSigV4 {
+            access_key_env,
+            secret_key_env,
+            session_token_env,
+            region,
+            service,
+        } => {
+            let access_key =
+                resolver.resolve(&CredentialSource::EnvVar(access_key_env.clone()))?;
+            let secret_key =
+                resolver.resolve(&CredentialSource::EnvVar(secret_key_env.clone()))?;
+            let session_token = match session_token_env {
+                Some(var) => Some(
+                    resolver.resolve(&CredentialSource::EnvVar(var.clone()))?,
+                ),
+                None => None,
+            };
+            Ok(Box::new(AwsSigV4Strategy::new(
+                access_key,
+                secret_key,
+                session_token,
+                region.clone(),
+                service.clone(),
+            )))
         }
     }
 }

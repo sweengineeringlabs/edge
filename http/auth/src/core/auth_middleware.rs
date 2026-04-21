@@ -28,7 +28,7 @@ impl reqwest_middleware::Middleware for AuthMiddleware {
         ext: &mut http::Extensions,
         next: reqwest_middleware::Next<'_>,
     ) -> reqwest_middleware::Result<reqwest::Response> {
-        if let Err(e) = self.processor.process(&mut req) {
+        if let Err(e) = self.processor.process(&mut req).await {
             return Err(reqwest_middleware::Error::Middleware(e.into()));
         }
         next.run(req, ext).await
@@ -49,11 +49,12 @@ mod tests {
         calls: AtomicUsize,
     }
 
+    #[async_trait::async_trait]
     impl HttpAuth for CountingHttpAuth {
         fn describe(&self) -> &'static str {
             "counting-stub"
         }
-        fn process(&self, req: &mut reqwest::Request) -> Result<(), Error> {
+        async fn process(&self, req: &mut reqwest::Request) -> Result<(), Error> {
             self.calls.fetch_add(1, Ordering::SeqCst);
             req.headers_mut().insert(
                 "x-auth-applied",

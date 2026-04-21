@@ -62,6 +62,21 @@ secrecy = "0.10"
 # credential-looking bytes hit the wire as an ASCII header value.
 base64 = "0.22"
 
+# Cryptographic primitives for auth signing.
+# sha2 / hmac — AWS SigV4 signature computation.
+# md-5 — RFC 7616 Digest default hash algorithm.
+# hex — lower-hex encoding of hash/MAC outputs.
+sha2 = "0.10"
+hmac = "0.12"
+md-5 = "0.10"
+hex = "0.4"
+
+# Timezone-aware timestamp for AWS SigV4's X-Amz-Date header.
+time = { version = "0.3", features = ["formatting", "macros"] }
+
+# URL percent-encoding for SigV4 canonical-request construction.
+percent-encoding = "2.3"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"

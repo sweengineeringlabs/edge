@@ -1,5 +1,7 @@
 //! Pass-through strategy for `AuthConfig::None`.
 
+use async_trait::async_trait;
+
 use crate::api::auth_strategy::AuthStrategy;
 use crate::api::error::Error;
 
@@ -8,6 +10,7 @@ use crate::api::error::Error;
 #[derive(Debug, Default)]
 pub(crate) struct NoopStrategy;
 
+#[async_trait]
 impl AuthStrategy for NoopStrategy {
     fn authorize(&self, _req: &mut reqwest::Request) -> Result<(), Error> {
         Ok(())

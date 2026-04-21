@@ -4,6 +4,7 @@
 //! request. Pre-computes the header value at construction so
 //! the hot path on each request is a header insert.
 
+use async_trait::async_trait;
 use http::header::{HeaderValue, AUTHORIZATION};
 use secrecy::{ExposeSecret, SecretString};
 
@@ -42,6 +43,7 @@ impl BearerStrategy {
     }
 }
 
+#[async_trait]
 impl AuthStrategy for BearerStrategy {
     fn authorize(&self, req: &mut reqwest::Request) -> Result<(), Error> {
         req.headers_mut()

@@ -4,6 +4,8 @@
 //! `build()` time from the config + resolver) and delegates
 //! `process()` to it on every request.
 
+use async_trait::async_trait;
+
 use crate::api::auth_config::AuthConfig;
 use crate::api::auth_strategy::AuthStrategy;
 use crate::api::credential_resolver::CredentialResolver;
@@ -46,12 +48,17 @@ impl DefaultHttpAuth {
     }
 }
 
+#[async_trait]
 impl HttpAuth for DefaultHttpAuth {
     fn describe(&self) -> &'static str {
         "swe_http_auth"
     }
 
-    fn process(&self, req: &mut reqwest::Request) -> Result<(), Error> {
+    async fn process(&self, req: &mut reqwest::Request) -> Result<(), Error> {
+        // Two-phase: first, any strategy-specific setup (Digest
+        // fetches nonce here), then attach header.
+        let host = req.url().host_str();
+        self.strategy.prepare(host).await?;
         self.strategy.authorize(req)
     }
 }
@@ -85,23 +92,23 @@ mod tests {
     }
 
     /// @covers: DefaultHttpAuth::process
-    #[test]
-    fn test_process_with_none_config_adds_no_header() {
+    #[tokio::test]
+    async fn test_process_with_none_config_adds_no_header() {
         let d = DefaultHttpAuth::build(AuthConfig::None, &StubResolver("x")).unwrap();
         let mut req = stub_request();
-        d.process(&mut req).unwrap();
+        d.process(&mut req).await.unwrap();
         assert!(req.headers().get("authorization").is_none());
     }
 
     /// @covers: DefaultHttpAuth::process
-    #[test]
-    fn test_process_with_bearer_config_attaches_authorization() {
+    #[tokio::test]
+    async fn test_process_with_bearer_config_attaches_authorization() {
         let cfg = AuthConfig::Bearer {
             token_env: "X".into(),
         };
         let d = DefaultHttpAuth::build(cfg, &StubResolver("tok-7")).unwrap();
         let mut req = stub_request();
-        d.process(&mut req).unwrap();
+        d.process(&mut req).await.unwrap();
         assert_eq!(
             req.headers().get("authorization").unwrap().to_str().unwrap(),
             "Bearer tok-7"

@@ -11,6 +11,7 @@
 //! don't need a separate `charset=UTF-8` header parameter.
 
 use base64::Engine;
+use async_trait::async_trait;
 use http::header::{HeaderValue, AUTHORIZATION};
 use secrecy::{ExposeSecret, SecretString};
 
@@ -47,6 +48,7 @@ impl BasicStrategy {
     }
 }
 
+#[async_trait]
 impl AuthStrategy for BasicStrategy {
     fn authorize(&self, req: &mut reqwest::Request) -> Result<(), Error> {
         req.headers_mut()

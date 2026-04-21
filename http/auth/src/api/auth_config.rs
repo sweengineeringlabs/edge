@@ -47,6 +47,47 @@ pub enum AuthConfig {
         /// Env var holding the credential value.
         value_env: String,
     },
+
+    /// HTTP Digest Access Authentication per RFC 7616.
+    ///
+    /// Uses a nonce-based challenge-response: the strategy
+    /// fetches a nonce from the target host via a side-channel
+    /// request, caches it, and computes per-request response
+    /// hashes. Handles stale nonces by invalidating + refetching.
+    Digest {
+        /// Env var holding the username.
+        user_env: String,
+        /// Env var holding the password.
+        password_env: String,
+        /// Expected realm. Optional — when provided, the
+        /// strategy validates the server's `realm=` parameter
+        /// matches, guarding against misconfiguration against
+        /// the wrong host.
+        #[serde(default)]
+        realm: Option<String>,
+    },
+
+    /// AWS Signature Version 4 — signs each request with
+    /// HMAC-SHA256 using the access-key / secret-key pair
+    /// derived from env vars. Suitable for AWS service APIs and
+    /// SigV4-compatible endpoints (S3-compatible stores like
+    /// MinIO, R2, Ceph RGW).
+    AwsSigV4 {
+        /// Env var holding the AWS access key ID.
+        access_key_env: String,
+        /// Env var holding the AWS secret access key.
+        secret_key_env: String,
+        /// Env var holding the session token for temporary
+        /// credentials (STS, IMDSv2). Optional — omit for
+        /// long-term credentials.
+        #[serde(default)]
+        session_token_env: Option<String>,
+        /// AWS region (e.g. `"us-east-1"`).
+        region: String,
+        /// AWS service name (e.g. `"s3"`, `"sts"`,
+        /// `"execute-api"`).
+        service: String,
+    },
 }
 
 impl AuthConfig {
@@ -125,10 +166,13 @@ mod tests {
     /// @covers: from_config
     #[test]
     fn test_from_config_unknown_kind_is_error() {
-        let err = AuthConfig::from_config(r#"kind = "digest""#).unwrap_err();
+        // Use a kind that ISN'T an AuthConfig variant. If this
+        // test ever starts passing because we added `ntlm`,
+        // pick a different unused kind name. The point is to
+        // lock in that unknown kinds fail loudly.
+        let err = AuthConfig::from_config(r#"kind = "ntlm""#).unwrap_err();
         let s = err.to_string();
-        // serde tagged-enum rejection names the variant list.
-        assert!(s.contains("digest") || s.contains("variant"));
+        assert!(s.contains("ntlm") || s.contains("variant"));
     }
 
     /// @covers: from_config
