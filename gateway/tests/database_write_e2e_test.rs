@@ -1,7 +1,7 @@
-//! End-to-end tests for DatabaseOutbound sub-trait.
+//! End-to-end tests for DatabaseWrite sub-trait.
 //!
-//! Exercises only the DatabaseOutbound write operations through the SAF factory.
-//! Verification uses DatabaseInbound methods (get_by_id, exists, count) on the
+//! Exercises only the DatabaseWrite write operations through the SAF factory.
+//! Verification uses DatabaseRead methods (get_by_id, exists, count) on the
 //! same combined gateway instance.
 
 use edge_gateway::prelude::*;
@@ -20,7 +20,7 @@ fn make_record(id: &str, name: &str, status: &str) -> serde_json::Map<String, se
 async fn e2e_database_outbound_insert_and_update() {
     let db = saf::memory_database();
 
-    // --- DatabaseOutbound: insert ---
+    // --- DatabaseWrite: insert ---
     let result = db.insert("users", make_record("u1", "Alice", "active")).await.unwrap();
     assert_eq!(result.rows_affected, 1);
     assert_eq!(result.inserted_id, Some("u1".to_string()));
@@ -32,7 +32,7 @@ async fn e2e_database_outbound_insert_and_update() {
     let total = db.count("users", QueryParams::new()).await.unwrap();
     assert_eq!(total, 3);
 
-    // --- DatabaseOutbound: update ---
+    // --- DatabaseWrite: update ---
     let mut updates = serde_json::Map::new();
     updates.insert("status".into(), serde_json::json!("suspended"));
     let update_result = db.update("users", "u2", updates).await.unwrap();
@@ -51,7 +51,7 @@ async fn e2e_database_outbound_insert_and_update() {
 async fn e2e_database_outbound_delete_and_batch_insert() {
     let db = saf::memory_database();
 
-    // --- DatabaseOutbound: batch_insert ---
+    // --- DatabaseWrite: batch_insert ---
     let records: Vec<_> = (1..=8)
         .map(|i| make_record(&format!("r{}", i), &format!("Record {}", i), "new"))
         .collect();
@@ -62,7 +62,7 @@ async fn e2e_database_outbound_delete_and_batch_insert() {
     let count = db.count("records", QueryParams::new()).await.unwrap();
     assert_eq!(count, 8);
 
-    // --- DatabaseOutbound: delete ---
+    // --- DatabaseWrite: delete ---
     let del_result = db.delete("records", "r3").await.unwrap();
     assert_eq!(del_result.rows_affected, 1);
 
@@ -92,7 +92,7 @@ async fn e2e_database_outbound_update_where_and_delete_where() {
         .unwrap();
     }
 
-    // --- DatabaseOutbound: update_where ---
+    // --- DatabaseWrite: update_where ---
     let mut archive_update = serde_json::Map::new();
     archive_update.insert("status".into(), serde_json::json!("archived"));
     let updated = db
@@ -114,7 +114,7 @@ async fn e2e_database_outbound_update_where_and_delete_where() {
         .unwrap();
     assert_eq!(archived_count, 3);
 
-    // --- DatabaseOutbound: delete_where ---
+    // --- DatabaseWrite: delete_where ---
     let deleted = db
         .delete_where("posts", QueryParams::new().filter("status", "archived"))
         .await

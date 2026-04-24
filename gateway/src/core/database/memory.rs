@@ -6,7 +6,7 @@ use std::sync::RwLock;
 
 use crate::api::{
     database::{QueryParams, Record, WriteResult},
-    traits::{DatabaseGateway, DatabaseInbound, DatabaseOutbound},
+    traits::{DatabaseGateway, DatabaseRead, DatabaseWrite},
     types::{GatewayError, GatewayResult, HealthCheck},
 };
 
@@ -231,7 +231,7 @@ impl MemoryDatabase {
     }
 }
 
-impl DatabaseInbound for MemoryDatabase {
+impl DatabaseRead for MemoryDatabase {
     fn query(
         &self,
         table: &str,
@@ -309,7 +309,7 @@ impl DatabaseInbound for MemoryDatabase {
     }
 }
 
-impl DatabaseOutbound for MemoryDatabase {
+impl DatabaseWrite for MemoryDatabase {
     fn insert(
         &self,
         table: &str,

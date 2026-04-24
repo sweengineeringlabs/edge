@@ -6,7 +6,7 @@
 //! payloads, and XSS-like notification content.
 
 use edge_gateway::saf::{
-    local_file_gateway, memory_database, silent_notifier, DatabaseInbound, DatabaseOutbound,
+    local_file_gateway, memory_database, silent_notifier, DatabaseRead, DatabaseWrite,
     FileInbound, FileOutbound, GatewayError, NotificationOutbound,
 };
 use edge_gateway::saf::database::{QueryParams, Record};

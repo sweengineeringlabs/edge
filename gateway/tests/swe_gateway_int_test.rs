@@ -20,7 +20,7 @@ async fn test_database_insert_query_stream_roundtrip() {
     record.insert("name".to_string(), serde_json::json!("Alice"));
     record.insert("age".to_string(), serde_json::json!(30));
 
-    let write_result = DatabaseOutbound::insert(&db, "users", record.clone()).await.unwrap();
+    let write_result = DatabaseWrite::insert(&db, "users", record.clone()).await.unwrap();
     assert_eq!(
         write_result.rows_affected, 1,
         "insert must affect exactly 1 row"
@@ -28,7 +28,7 @@ async fn test_database_insert_query_stream_roundtrip() {
 
     // Query the record back.
     let params = saf::database::QueryParams::new().filter("id", "user-1");
-    let rows = DatabaseInbound::query(&db, "users", params).await.unwrap();
+    let rows = DatabaseRead::query(&db, "users", params).await.unwrap();
     assert_eq!(rows.len(), 1, "query must return the inserted record");
     assert_eq!(
         rows[0].get("name").and_then(|v| v.as_str()),
@@ -38,7 +38,7 @@ async fn test_database_insert_query_stream_roundtrip() {
 
     // Stream all records from the table.
     let stream_params = saf::database::QueryParams::new();
-    let mut stream = DatabaseInbound::query_stream(&db, "users", stream_params)
+    let mut stream = DatabaseRead::query_stream(&db, "users", stream_params)
         .await
         .unwrap();
 
@@ -238,10 +238,10 @@ sandbox = true
     record.insert("id".to_string(), serde_json::json!("cfg-1"));
     record.insert("status".to_string(), serde_json::json!("active"));
 
-    DatabaseOutbound::insert(&db, "items", record).await.unwrap();
+    DatabaseWrite::insert(&db, "items", record).await.unwrap();
 
     let params = saf::database::QueryParams::new().filter("id", "cfg-1");
-    let results = DatabaseInbound::query(&db, "items", params).await.unwrap();
+    let results = DatabaseRead::query(&db, "items", params).await.unwrap();
     assert_eq!(results.len(), 1, "config-driven db must support insert+query");
 
     // Verify notification gateway works: send a console notification.
@@ -271,11 +271,11 @@ async fn test_multi_gateway_workflow_db_file_notification() {
     record.insert("product".to_string(), serde_json::json!("Widget"));
     record.insert("quantity".to_string(), serde_json::json!(10));
 
-    DatabaseOutbound::insert(&db, "orders", record).await.unwrap();
+    DatabaseWrite::insert(&db, "orders", record).await.unwrap();
 
     // Step 2: Query the record back.
     let params = saf::database::QueryParams::new().filter("id", "order-42");
-    let orders = DatabaseInbound::query(&db, "orders", params).await.unwrap();
+    let orders = DatabaseRead::query(&db, "orders", params).await.unwrap();
     assert_eq!(orders.len(), 1);
 
     // Step 3: Write the order as a JSON file.
@@ -306,6 +306,6 @@ async fn test_multi_gateway_workflow_db_file_notification() {
     );
 
     // Step 6: Verify the database still has the record (no side effects from file ops).
-    let exists = DatabaseInbound::exists(&db, "orders", "order-42").await.unwrap();
+    let exists = DatabaseRead::exists(&db, "orders", "order-42").await.unwrap();
     assert!(exists, "database record must persist across file operations");
 }

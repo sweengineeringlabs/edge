@@ -6,7 +6,7 @@
 - `RetryMiddleware` with `BackoffStrategy` (Fixed, Exponential with jitter) and `RetryMiddlewareBuilder`. Respects `GatewayError::is_retryable()` by default, supports custom predicates. Factory: `saf::retry_middleware()`. (BL-002)
 - `RateLimiter` token-bucket implementation as `RequestMiddleware`. Thread-safe via `parking_lot::Mutex`. Factory: `saf::rate_limiter()`, `saf::rate_limiter_builder()`. (BL-003)
 - `MemoryDatabase` type-aware numeric sorting (no longer string-based) and comparison operator filtering: `__gt`, `__lt`, `__gte`, `__lte`, `__like` (case-insensitive substring), `__in` (value-in-array). Nulls sort last. Backward compatible — plain keys remain equality. (BL-004)
-- `DatabaseInbound::query_stream()` and `FileInbound::list_stream()` for async streaming of large result sets. Default implementations convert Vec to Stream. `GatewayStream<'a, T>` type alias and `StreamExt` re-exported via saf. (BL-005)
+- `DatabaseRead::query_stream()` and `FileInbound::list_stream()` for async streaming of large result sets. Default implementations convert Vec to Stream. `GatewayStream<'a, T>` type alias and `StreamExt` re-exported via saf. (BL-005)
 - `GatewayConfig::validate()` for checking required fields per active backend. `expand_env_vars()` supporting `${VAR}` and `${VAR:-default}` syntax in TOML config strings. (BL-006)
 - `DaemonRunner::without_observability()` for lightweight mode (skips MDC context and sidecar). `saf::lightweight_daemon()` convenience builder. (BL-007)
 - `MiddlewareAction` enum (`Continue`, `ShortCircuit`) and `RequestMiddleware::process_request_action()` for pipeline short-circuit support. Post-middleware still runs on short-circuited responses. Backward compatible via default `Resp` type parameter. (BL-008)

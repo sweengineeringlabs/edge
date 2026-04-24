@@ -25,7 +25,7 @@ use crate::api::{
 // =============================================================================
 
 /// Inbound operations for database access (read operations).
-pub trait DatabaseInbound: Send + Sync {
+pub trait DatabaseRead: Send + Sync {
     /// Queries records from a table/collection.
     fn query(
         &self,
@@ -71,7 +71,7 @@ pub trait DatabaseInbound: Send + Sync {
 }
 
 /// Outbound operations for database access (write operations).
-pub trait DatabaseOutbound: Send + Sync {
+pub trait DatabaseWrite: Send + Sync {
     /// Inserts a new record.
     fn insert(
         &self,
@@ -114,7 +114,7 @@ pub trait DatabaseOutbound: Send + Sync {
 }
 
 /// Combined database gateway trait.
-pub trait DatabaseGateway: DatabaseInbound + DatabaseOutbound {}
+pub trait DatabaseGateway: DatabaseRead + DatabaseWrite {}
 
 // =============================================================================
 // File Gateway
