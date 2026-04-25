@@ -1,0 +1,57 @@
+[package]
+name = "swe_edge_ingress"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.75"
+authors = ["SWE Engineering Labs"]
+repository = "https://github.com/sweengineeringlabs/edge"
+description = "edge — L1 ingress gateway: inbound adapters (HTTP server, file read, gRPC server, queue consumer)."
+keywords = ["gateway", "ingress", "inbound", "sea", "swe"]
+categories = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "gateway"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+reqwest = ["dep:reqwest"]
+full = ["reqwest"]
+
+[dependencies]
+# Core
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+thiserror = "2"
+async-trait = "0.1"
+futures = "0.3"
+
+# Async runtime
+tokio = { version = "1.0", features = ["rt", "sync", "fs", "io-util"] }
+
+# Sync primitives
+parking_lot = "0.12"
+
+# File system
+walkdir = "2"
+
+# Utilities
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+swe_justobserv_context = { git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
+swe-observ-processes = { package = "swe_justobserv_processes", git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
+mime_guess = "2"
+base64 = "0.22"
+
+# Optional: HTTP client
+reqwest = { version = "0.12", features = ["json"], default-features = false, optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+tempfile = "3"
