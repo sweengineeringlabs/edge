@@ -23,12 +23,12 @@ pub struct CassetteConfig {
 
 impl CassetteConfig {
     /// Parse from TOML text.
-    pub fn from_config(toml_text: &str) -> Result<Self, Error> {
+    pub(crate) fn from_config(toml_text: &str) -> Result<Self, Error> {
         toml::from_str(toml_text).map_err(|e| Error::ParseFailed(e.to_string()))
     }
 
     /// Load the crate-shipped SWE baseline.
-    pub fn swe_default() -> Result<Self, Error> {
+    pub(crate) fn swe_default() -> Result<Self, Error> {
         Self::from_config(include_str!("../../config/application.toml"))
     }
 }

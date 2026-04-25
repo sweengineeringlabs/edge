@@ -8,7 +8,9 @@ members = [
     "rate",
     "retry",
     "tls",
+    "main",
 ]
+
 
 [workspace.package]
 version = "0.1.0"

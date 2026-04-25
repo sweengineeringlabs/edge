@@ -8,6 +8,7 @@
 use std::time::{Duration, Instant};
 
 use crate::api::rate_config::RateConfig;
+use crate::api::traits::RateBucketOps;
 
 /// Token bucket state. Not thread-safe on its own — wrap in a
 /// mutex for concurrent use (the middleware does this via moka
@@ -22,10 +23,19 @@ pub(crate) struct TokenBucket {
     last_refill: Instant,
 }
 
+impl RateBucketOps for TokenBucket {
+    fn try_consume(
+        &mut self,
+        config: &crate::api::rate_config::RateConfig,
+    ) -> Result<(), std::time::Duration> {
+        self.try_acquire(config)
+    }
+}
+
 impl TokenBucket {
     /// Construct a full bucket (consumers shouldn't be
     /// artificially throttled on startup).
-    pub(crate) fn full(config: &RateConfig) -> Self {
+    pub(crate) fn new(config: &RateConfig) -> Self {
         Self {
             tokens: config.burst_capacity as f64,
             last_refill: Instant::now(),
@@ -47,7 +57,7 @@ impl TokenBucket {
     /// Returns `Ok(())` if a token was available + consumed.
     /// Returns `Err(wait)` if the bucket is empty; `wait` is
     /// the time until one token will be available.
-    pub(crate) fn try_acquire(
+    fn try_acquire(
         &mut self,
         config: &RateConfig,
     ) -> Result<(), Duration> {
@@ -83,19 +93,69 @@ mod tests {
         .unwrap()
     }
 
-    /// @covers: TokenBucket::full
+    /// @covers: TokenBucket::new
+    #[test]
+    fn test_new_initialises_to_burst_capacity() {
+        let cfg = test_config();
+        let b = TokenBucket::new(&cfg);
+        assert_eq!(b.tokens(), cfg.burst_capacity as f64);
+    }
+
+    /// @covers: TokenBucket::try_acquire
+    #[test]
+    fn test_try_acquire_consumes_one_token_on_success() {
+        let cfg = test_config();
+        let mut b = TokenBucket::new(&cfg);
+        let before = b.tokens();
+        b.try_acquire(&cfg).unwrap();
+        assert!(b.tokens() < before, "one token must be consumed");
+    }
+
+    /// @covers: TokenBucket::new
     #[test]
     fn test_full_starts_at_burst_capacity() {
         let cfg = test_config();
-        let b = TokenBucket::full(&cfg);
+        let b = TokenBucket::new(&cfg);
         assert_eq!(b.tokens(), 20.0);
+    }
+
+    /// @covers: TokenBucket::try_consume (delegates to try_acquire via RateBucketOps)
+    #[test]
+    fn test_try_consume_succeeds_on_fresh_bucket() {
+        let cfg = test_config();
+        let mut b = TokenBucket::new(&cfg);
+        // try_consume is the RateBucketOps impl; it delegates to try_acquire.
+        // A fresh bucket has tokens → must return Ok.
+        let result = b.try_consume(&cfg);
+        assert!(result.is_ok(), "try_consume must succeed on a fresh bucket");
+        // One token was consumed.
+        assert!(b.tokens() < 20.0, "token count must decrease after consume");
+    }
+
+    /// @covers: TokenBucket::try_consume
+    #[test]
+    fn test_try_consume_returns_wait_on_exhausted_bucket() {
+        let cfg = test_config();
+        let mut b = TokenBucket::new(&cfg);
+        // Drain the bucket via try_consume (same path as the middleware).
+        for _ in 0..20 {
+            b.try_consume(&cfg).unwrap();
+        }
+        // Empty → must return Err with a positive wait.
+        match b.try_consume(&cfg) {
+            Err(wait) => assert!(
+                wait > Duration::from_millis(0),
+                "wait must be positive when bucket exhausted"
+            ),
+            Ok(_) => panic!("expected Err(wait) on exhausted bucket"),
+        }
     }
 
     /// @covers: TokenBucket::try_acquire
     #[test]
     fn test_acquire_succeeds_when_tokens_available() {
         let cfg = test_config();
-        let mut b = TokenBucket::full(&cfg);
+        let mut b = TokenBucket::new(&cfg);
         assert!(b.try_acquire(&cfg).is_ok());
         assert!(b.tokens() < 20.0);
     }
@@ -104,7 +164,7 @@ mod tests {
     #[test]
     fn test_acquire_exhausts_bucket_and_returns_wait() {
         let cfg = test_config();
-        let mut b = TokenBucket::full(&cfg);
+        let mut b = TokenBucket::new(&cfg);
         // Drain the bucket (20 tokens).
         for _ in 0..20 {
             assert!(b.try_acquire(&cfg).is_ok());
@@ -120,7 +180,7 @@ mod tests {
     #[test]
     fn test_refill_caps_at_burst_capacity() {
         let cfg = test_config();
-        let mut b = TokenBucket::full(&cfg);
+        let mut b = TokenBucket::new(&cfg);
         // Simulate time passing by backdating last_refill.
         b.last_refill = Instant::now() - Duration::from_secs(100);
         // Next acquire should refill but cap.
@@ -134,7 +194,7 @@ mod tests {
     #[test]
     fn test_refill_restores_tokens_proportional_to_elapsed_time() {
         let cfg = test_config();
-        let mut b = TokenBucket::full(&cfg);
+        let mut b = TokenBucket::new(&cfg);
         // Drain fully.
         for _ in 0..20 {
             b.try_acquire(&cfg).unwrap();

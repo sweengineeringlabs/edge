@@ -3,6 +3,7 @@
 
 use crate::api::error::Error;
 use crate::api::http_tls::HttpTls;
+use crate::api::traits::TlsIdentityProvider;
 
 pub(crate) struct PemHttpTls {
     pem_bytes: Vec<u8>,
@@ -20,7 +21,7 @@ impl std::fmt::Debug for PemHttpTls {
 
 impl PemHttpTls {
     /// Construct by reading the .pem file into memory.
-    pub(crate) fn load(path: String) -> Result<Self, Error> {
+    pub(crate) fn new(path: String) -> Result<Self, Error> {
         let pem_bytes = std::fs::read(&path).map_err(|e| Error::FileReadFailed {
             path: path.clone(),
             reason: e.to_string(),
@@ -28,6 +29,8 @@ impl PemHttpTls {
         Ok(Self { pem_bytes, path })
     }
 }
+
+impl TlsIdentityProvider for PemHttpTls {}
 
 impl HttpTls for PemHttpTls {
     fn describe(&self) -> &'static str {
@@ -49,10 +52,23 @@ impl HttpTls for PemHttpTls {
 mod tests {
     use super::*;
 
-    /// @covers: PemHttpTls::load
+    /// @covers: PemHttpTls::new
+    #[test]
+    fn test_new_reads_file_bytes_into_struct() {
+        // Write a temp file with known bytes and verify new() loads them.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.pem");
+        std::fs::write(&path, b"fake-pem-content").unwrap();
+        let p = PemHttpTls::new(path.to_str().unwrap().to_string()).unwrap();
+        // The path is stored for Debug output.
+        let dbg = format!("{p:?}");
+        assert!(dbg.contains("16 bytes"), "debug must show byte count: {dbg}");
+    }
+
+    /// @covers: PemHttpTls::new
     #[test]
     fn test_load_missing_file_returns_file_read_failed() {
-        let err = PemHttpTls::load("/path/definitely/does/not/exist.pem".into()).unwrap_err();
+        let err = PemHttpTls::new("/path/definitely/does/not/exist.pem".into()).unwrap_err();
         assert!(matches!(err, Error::FileReadFailed { .. }));
     }
 

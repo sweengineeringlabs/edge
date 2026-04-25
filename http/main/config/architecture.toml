@@ -1,0 +1,4 @@
+# SEA project configuration (L0)
+[project]
+name = "swe-edge"
+workspaces = ["auth", "breaker", "cache", "cassette", "main", "rate", "retry", "tls"]

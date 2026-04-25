@@ -8,6 +8,8 @@
 use std::time::{Duration, Instant};
 
 use crate::api::breaker_config::BreakerConfig;
+use crate::api::breaker_state::{Admission, Outcome};
+use crate::api::traits::CircuitBreakerNode;
 
 /// Breaker state for a single host. Protected by an async
 /// `Mutex` inside [`BreakerLayer`](crate::api::breaker_layer::BreakerLayer)
@@ -39,52 +41,18 @@ pub(crate) enum State {
     HalfOpen,
 }
 
-/// Outcome of an outbound request, as seen by the breaker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Outcome {
-    Success,
-    Failure,
-}
-
-/// Decision returned when a new request is admitted through
-/// the breaker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Admission {
-    /// Pass through — record the outcome afterward via
-    /// [`HostBreaker::record`].
-    Proceed,
-    /// Breaker is open — fail fast without calling the
-    /// upstream.
-    RejectOpen,
-}
-
-impl HostBreaker {
-    pub(crate) fn new() -> Self {
-        Self {
-            state: State::Closed,
-            consecutive_failures: 0,
-            consecutive_successes: 0,
-        }
+impl CircuitBreakerNode for HostBreaker {
+    fn is_open(&self) -> bool {
+        matches!(self.state, State::Open { .. })
     }
 
-    /// Observability hook — expose current state for
-    /// diagnostics / tests.
-    #[allow(dead_code)]
-    pub(crate) fn state(&self) -> State {
-        self.state
-    }
-
-    /// Called BEFORE dispatching a request. Tells the caller
-    /// whether to proceed or fail fast. Mutates the state when
-    /// Open → HalfOpen promotion is due.
-    pub(crate) fn admit(&mut self, config: &BreakerConfig) -> Admission {
+    fn admit(&mut self, config: &BreakerConfig) -> Admission {
         match self.state {
             State::Closed => Admission::Proceed,
             State::Open { since } => {
                 let elapsed = since.elapsed();
                 let wait = Duration::from_secs(config.half_open_after_seconds);
                 if elapsed >= wait {
-                    // Promote: let the next request probe.
                     self.state = State::HalfOpen;
                     self.consecutive_successes = 0;
                     Admission::Proceed
@@ -96,9 +64,7 @@ impl HostBreaker {
         }
     }
 
-    /// Called AFTER dispatching a request that `admit` approved.
-    /// Updates state based on outcome.
-    pub(crate) fn record(&mut self, config: &BreakerConfig, outcome: Outcome) {
+    fn record(&mut self, config: &BreakerConfig, outcome: Outcome) {
         match (self.state, outcome) {
             (State::Closed, Outcome::Success) => {
                 self.consecutive_failures = 0;
@@ -128,10 +94,25 @@ impl HostBreaker {
                 self.consecutive_successes = 0;
             }
             (State::Open { .. }, _) => {
-                // `record` called while Open — caller should
+                // record called while Open — caller should
                 // not dispatch in this state. Ignore.
             }
         }
+    }
+}
+
+impl HostBreaker {
+    pub(crate) fn new() -> Self {
+        Self {
+            state: State::Closed,
+            consecutive_failures: 0,
+            consecutive_successes: 0,
+        }
+    }
+
+    /// Observability hook — expose current state for diagnostics / tests.
+    fn state(&self) -> State {
+        self.state
     }
 }
 
@@ -158,7 +139,7 @@ mod tests {
         assert_eq!(b.state(), State::Closed);
     }
 
-    /// @covers: HostBreaker::admit
+    /// @covers: CircuitBreakerNode::admit
     #[test]
     fn test_closed_admits_traffic() {
         let cfg = test_config();
@@ -166,18 +147,29 @@ mod tests {
         assert_eq!(b.admit(&cfg), Admission::Proceed);
     }
 
-    /// @covers: HostBreaker::record
+    /// @covers: CircuitBreakerNode::record
+    #[test]
+    fn test_record_failure_increments_toward_threshold() {
+        let cfg = test_config();
+        let mut b = HostBreaker::new();
+        b.record(&cfg, Outcome::Failure);
+        assert_eq!(b.state(), State::Closed, "one failure stays closed");
+        b.record(&cfg, Outcome::Failure);
+        b.record(&cfg, Outcome::Failure);
+        assert!(matches!(b.state(), State::Open { .. }), "three failures trip breaker");
+    }
+
+    /// @covers: CircuitBreakerNode::record
     #[test]
     fn test_failures_below_threshold_stay_closed() {
         let cfg = test_config();
         let mut b = HostBreaker::new();
         b.record(&cfg, Outcome::Failure);
         b.record(&cfg, Outcome::Failure);
-        // 2 failures, threshold is 3 — still Closed.
         assert_eq!(b.state(), State::Closed);
     }
 
-    /// @covers: HostBreaker::record
+    /// @covers: CircuitBreakerNode::record
     #[test]
     fn test_failures_at_threshold_trip_to_open() {
         let cfg = test_config();
@@ -188,21 +180,20 @@ mod tests {
         assert!(matches!(b.state(), State::Open { .. }));
     }
 
-    /// @covers: HostBreaker::record
+    /// @covers: CircuitBreakerNode::record
     #[test]
     fn test_success_in_closed_resets_failure_counter() {
         let cfg = test_config();
         let mut b = HostBreaker::new();
         b.record(&cfg, Outcome::Failure);
         b.record(&cfg, Outcome::Failure);
-        b.record(&cfg, Outcome::Success); // resets
-        b.record(&cfg, Outcome::Failure); // now starts from 0+1
-        b.record(&cfg, Outcome::Failure); // 2
-        // Still below threshold (3) — Closed.
+        b.record(&cfg, Outcome::Success);
+        b.record(&cfg, Outcome::Failure);
+        b.record(&cfg, Outcome::Failure);
         assert_eq!(b.state(), State::Closed);
     }
 
-    /// @covers: HostBreaker::admit
+    /// @covers: CircuitBreakerNode::admit
     #[test]
     fn test_open_rejects_before_wait_elapsed() {
         let cfg = test_config();
@@ -210,19 +201,17 @@ mod tests {
         for _ in 0..3 {
             b.record(&cfg, Outcome::Failure);
         }
-        // Immediately after tripping — still within the wait.
         assert_eq!(b.admit(&cfg), Admission::RejectOpen);
     }
 
-    /// @covers: HostBreaker::admit
+    /// @covers: CircuitBreakerNode::admit
     #[test]
     fn test_open_promotes_to_half_open_after_wait() {
-        let cfg = test_config(); // 1s wait
+        let cfg = test_config();
         let mut b = HostBreaker::new();
         for _ in 0..3 {
             b.record(&cfg, Outcome::Failure);
         }
-        // Fast-forward by replacing the state with an older Instant.
         b.state = State::Open {
             since: Instant::now() - Duration::from_secs(2),
         };
@@ -230,26 +219,63 @@ mod tests {
         assert_eq!(b.state(), State::HalfOpen);
     }
 
-    /// @covers: HostBreaker::record
+    /// @covers: CircuitBreakerNode::record
     #[test]
     fn test_half_open_success_counts_toward_reset() {
         let cfg = test_config();
         let mut b = HostBreaker::new();
         b.state = State::HalfOpen;
         b.record(&cfg, Outcome::Success);
-        assert_eq!(b.state(), State::HalfOpen); // need 2, have 1
+        assert_eq!(b.state(), State::HalfOpen);
         b.record(&cfg, Outcome::Success);
         assert_eq!(b.state(), State::Closed);
     }
 
-    /// @covers: HostBreaker::record
+    /// @covers: CircuitBreakerNode::record
     #[test]
     fn test_half_open_failure_returns_to_open() {
         let cfg = test_config();
         let mut b = HostBreaker::new();
         b.state = State::HalfOpen;
-        b.consecutive_successes = 1; // partially recovered
+        b.consecutive_successes = 1;
         b.record(&cfg, Outcome::Failure);
+        assert!(matches!(b.state(), State::Open { .. }));
+    }
+
+    /// @covers: CircuitBreakerNode::is_open
+    #[test]
+    fn test_is_open_false_when_closed() {
+        let b = HostBreaker::new();
+        assert!(!b.is_open(), "new breaker starts closed, not open");
+    }
+
+    /// @covers: CircuitBreakerNode::is_open
+    #[test]
+    fn test_is_open_true_when_tripped() {
+        let cfg = test_config();
+        let mut b = HostBreaker::new();
+        for _ in 0..3 {
+            b.record(&cfg, Outcome::Failure);
+        }
+        assert!(b.is_open(), "breaker must be open after threshold failures");
+    }
+
+    /// @covers: CircuitBreakerNode::is_open
+    #[test]
+    fn test_is_open_false_when_half_open() {
+        let mut b = HostBreaker::new();
+        b.state = State::HalfOpen;
+        assert!(!b.is_open(), "HalfOpen is not Open");
+    }
+
+    /// @covers: HostBreaker::state
+    #[test]
+    fn test_state_returns_correct_variant() {
+        let mut b = HostBreaker::new();
+        assert_eq!(b.state(), State::Closed);
+        b.state = State::HalfOpen;
+        assert_eq!(b.state(), State::HalfOpen);
+        b.state = State::Open { since: Instant::now() };
         assert!(matches!(b.state(), State::Open { .. }));
     }
 }

@@ -125,6 +125,19 @@ mod tests {
         assert!(matches!(err, Error::InvalidHeaderValue(_)));
     }
 
+    /// @covers: HeaderStrategy::fmt
+    #[test]
+    fn test_fmt_debug_shows_name_and_redacts_value() {
+        let s = HeaderStrategy::new(
+            "x-key".into(),
+            SecretString::from("s3cr3t".to_string()),
+        )
+        .unwrap();
+        let dbg = format!("{s:?}");
+        assert!(dbg.contains("HeaderStrategy"));
+        assert!(!dbg.contains("s3cr3t"));
+    }
+
     /// @covers: HeaderStrategy (Debug impl)
     #[test]
     fn test_debug_impl_shows_name_but_redacts_value() {

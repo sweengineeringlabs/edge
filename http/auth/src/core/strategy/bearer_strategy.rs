@@ -96,6 +96,15 @@ mod tests {
         assert!(matches!(err, Error::InvalidHeaderValue(_)));
     }
 
+    /// @covers: BearerStrategy::fmt
+    #[test]
+    fn test_fmt_debug_redacts_token() {
+        let s = BearerStrategy::new(SecretString::from("sec-123".to_string())).unwrap();
+        let dbg = format!("{s:?}");
+        assert!(dbg.contains("BearerStrategy"));
+        assert!(!dbg.contains("sec-123"));
+    }
+
     /// @covers: BearerStrategy (Debug impl)
     #[test]
     fn test_debug_impl_does_not_leak_token() {

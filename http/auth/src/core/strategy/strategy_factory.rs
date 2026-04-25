@@ -113,6 +113,27 @@ mod tests {
 
     /// @covers: build_strategy
     #[test]
+    fn test_build_strategy_returns_ok_for_every_config_variant() {
+        // Smoke: every variant constructs without panic when
+        // the resolver supplies a placeholder credential.
+        let r = &StubResolver("x");
+        assert!(build_strategy(&AuthConfig::None, r).is_ok());
+        assert!(build_strategy(
+            &AuthConfig::Bearer { token_env: "T".into() },
+            r
+        ).is_ok());
+        assert!(build_strategy(
+            &AuthConfig::Basic { user_env: "U".into(), pass_env: "P".into() },
+            r
+        ).is_ok());
+        assert!(build_strategy(
+            &AuthConfig::Header { name: "x-k".into(), value_env: "V".into() },
+            r
+        ).is_ok());
+    }
+
+    /// @covers: build_strategy
+    #[test]
     fn test_none_builds_noop_strategy() {
         let strategy = build_strategy(&AuthConfig::None, &StubResolver("x")).unwrap();
         // Applying it to a request must not attach any auth.

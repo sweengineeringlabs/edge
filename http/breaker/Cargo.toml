@@ -1,5 +1,5 @@
 [package]
-name = "swe_http_breaker"
+name = "swe-http-breaker"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

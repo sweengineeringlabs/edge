@@ -1,5 +1,5 @@
 [package]
-name = "swe_http_rate"
+name = "swe-http-rate"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

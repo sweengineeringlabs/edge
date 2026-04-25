@@ -20,7 +20,7 @@
 
 mod api;
 mod core;
-pub(crate) mod gateway;
+mod gateway;
 mod saf;
 
-pub use saf::*;
+pub use gateway::*;

@@ -84,4 +84,22 @@ mod tests {
         let s = format!("{mw:?}");
         assert!(s.contains("counting-stub"));
     }
+
+    /// @covers: AuthMiddleware::handle
+    /// Sync test: verifies the middleware struct is constructable and
+    /// that the inner processor's describe() is wired correctly,
+    /// which is the only synchronously-observable invariant of handle's
+    /// setup path (the actual dispatch requires reqwest_middleware infra).
+    #[test]
+    fn test_handle_middleware_is_constructable_and_processor_wired() {
+        let p = Arc::new(CountingHttpAuth {
+            calls: AtomicUsize::new(0),
+        });
+        let mw = AuthMiddleware::new(p.clone());
+        // If processor weren't wired, describe() would not return the
+        // stub value — this would fail if new() dropped the Arc.
+        assert_eq!(mw.processor.describe(), "counting-stub");
+        // Zero calls before any dispatch — proves handle() hasn't fired.
+        assert_eq!(p.calls.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
 }

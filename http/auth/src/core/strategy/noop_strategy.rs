@@ -22,6 +22,18 @@ mod tests {
     use super::*;
     use reqwest::{Method, Url};
 
+    /// @covers: NoopStrategy::authorize
+    #[test]
+    fn test_authorize_returns_ok_without_any_header() {
+        let s = NoopStrategy;
+        let mut req = reqwest::Request::new(
+            Method::GET,
+            Url::parse("http://example.test/").unwrap(),
+        );
+        assert!(s.authorize(&mut req).is_ok());
+        assert!(req.headers().get("authorization").is_none());
+    }
+
     /// @covers: NoopStrategy
     #[test]
     fn test_noop_does_not_modify_request_or_add_headers() {

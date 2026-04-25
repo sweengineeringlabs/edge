@@ -33,6 +33,15 @@ impl HttpCassette for DefaultHttpCassette {
 mod tests {
     use super::*;
 
+    /// @covers: DefaultHttpCassette::new
+    #[test]
+    fn test_new_constructs_and_stores_config() {
+        let cfg = CassetteConfig::swe_default().expect("baseline parses");
+        let d = DefaultHttpCassette::new(cfg);
+        let dbg = format!("{d:?}");
+        assert!(dbg.contains("DefaultHttpCassette"), "debug output: {dbg}");
+    }
+
     /// @covers: describe
     #[test]
     fn test_describe_returns_crate_name() {

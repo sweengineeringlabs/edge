@@ -62,7 +62,7 @@ impl Builder {
     /// `reqwest_middleware::Middleware` — plug into a
     /// `reqwest_middleware::ClientBuilder` via `.with(mw)`.
     pub fn build(self) -> Result<AuthMiddleware, Error> {
-        let processor = DefaultHttpAuth::build(self.config, self.resolver.as_ref())?;
+        let processor = DefaultHttpAuth::new(self.config, self.resolver.as_ref())?;
         Ok(AuthMiddleware::new(Arc::new(processor)))
     }
 }

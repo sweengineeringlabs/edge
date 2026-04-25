@@ -1,39 +1,55 @@
-﻿//! End-to-end tests for builder/SAF facade.
+//! End-to-end tests for the swe_http_retry SAF builder surface.
 
+use swe_http_retry::{Builder, RetryConfig, RetryLayer};
+
+fn make_cfg() -> RetryConfig {
+    RetryConfig {
+        max_retries: 3,
+        initial_interval_ms: 100,
+        max_interval_ms: 5000,
+        multiplier: 2.0,
+        retryable_statuses: vec![429, 503],
+        retryable_methods: vec!["GET".to_string()],
+    }
+}
+
+/// @covers: builder
 #[test]
 fn e2e_builder() {
-    let _b = swe_http_retry::builder().unwrap();
+    let layer: RetryLayer = swe_http_retry::builder()
+        .expect("builder() must succeed")
+        .build()
+        .expect("build() must succeed");
+    assert!(format!("{layer:?}").contains("RetryLayer"));
 }
 
+/// @covers: Builder::with_config
 #[test]
-fn e2e_with_config_parses_custom_toml_and_flows_through_to_builder() {
-    let toml = r#"
-        max_retries = 5
-        initial_interval_ms = 100
-        max_interval_ms = 5000
-        multiplier = 3.0
-        retryable_statuses = [429, 503]
-        retryable_methods = ["GET"]
-    "#;
-    let cfg = swe_http_retry::RetryConfig::from_config(toml)
-        .expect("from_config parses");
-    assert_eq!(cfg.max_retries, 5);
-    assert_eq!(cfg.initial_interval_ms, 100);
-    assert_eq!(cfg.multiplier, 3.0);
-    let b = swe_http_retry::Builder::with_config(cfg);
-    assert_eq!(b.config().max_retries, 5);
-    let _layer = b.build().expect("build ok");
+fn e2e_with_config() {
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().max_retries, 3);
+    b.build().expect("e2e with_config build must succeed");
 }
 
+/// @covers: Builder::config
 #[test]
 fn e2e_config() {
-    let b = swe_http_retry::builder().unwrap();
-    let _cfg = b.config();
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().initial_interval_ms, 100);
+    assert!(b.config().retryable_statuses.contains(&429));
 }
 
+/// @covers: Builder::build
 #[test]
 fn e2e_build() {
-    let b = swe_http_retry::builder().unwrap();
-    let _layer = b.build().unwrap();
+    let cfg = RetryConfig {
+        max_retries: 5,
+        initial_interval_ms: 50,
+        max_interval_ms: 10000,
+        multiplier: 1.5,
+        retryable_statuses: vec![503, 504],
+        retryable_methods: vec!["GET".to_string(), "HEAD".to_string()],
+    };
+    let layer = Builder::with_config(cfg).build().expect("e2e build must succeed");
+    assert!(!format!("{layer:?}").is_empty());
 }
-
