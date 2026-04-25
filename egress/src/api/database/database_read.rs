@@ -1,37 +1,28 @@
-//! DatabaseRead trait — reads records from a database.
+//! DatabaseRead trait — async reads from a database.
 
-use crate::api::egress_error::EgressError;
+use futures::future::BoxFuture;
+
+use crate::api::egress_error::EgressResult;
+use crate::api::health_check::HealthCheck;
+
+use super::query_params::QueryParams;
+use super::record::Record;
 
 /// Reads records from a database.
 pub trait DatabaseRead: Send + Sync {
-    /// A description of this database adapter for diagnostics.
-    fn describe(&self) -> &'static str;
-
-    /// Fetch a single record by its string key. Returns `None` if absent.
-    fn get(&self, key: &str) -> Result<Option<Vec<u8>>, EgressError>;
-
-    /// List all keys matching an optional prefix filter.
-    fn list(&self, prefix: Option<&str>) -> Result<Vec<String>, EgressError>;
+    fn query(&self, params: QueryParams) -> BoxFuture<'_, EgressResult<Vec<Record>>>;
+    fn get_by_id(&self, table: &str, id: &str) -> BoxFuture<'_, EgressResult<Option<Record>>>;
+    fn exists(&self, table: &str, id: &str) -> BoxFuture<'_, EgressResult<bool>>;
+    fn count(&self, table: &str) -> BoxFuture<'_, EgressResult<u64>>;
+    fn health_check(&self) -> BoxFuture<'_, EgressResult<HealthCheck>>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    struct NullReader;
-    impl DatabaseRead for NullReader {
-        fn describe(&self) -> &'static str { "null" }
-        fn get(&self, _key: &str) -> Result<Option<Vec<u8>>, EgressError> { Ok(None) }
-        fn list(&self, _prefix: Option<&str>) -> Result<Vec<String>, EgressError> { Ok(vec![]) }
-    }
-
     #[test]
-    fn test_database_read_get_missing_key_returns_none() {
-        assert_eq!(NullReader.get("x").unwrap(), None);
-    }
-
-    #[test]
-    fn test_database_read_list_returns_empty() {
-        assert!(NullReader.list(None).unwrap().is_empty());
+    fn test_database_read_is_object_safe() {
+        fn _assert_object_safe(_: &dyn DatabaseRead) {}
     }
 }

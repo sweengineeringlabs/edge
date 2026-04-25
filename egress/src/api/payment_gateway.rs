@@ -1,36 +1,38 @@
-//! Payment egress trait — submits payment requests outbound.
+//! PaymentGateway trait — submits payment requests to an external processor.
 
-use crate::api::egress_error::EgressError;
+use futures::future::BoxFuture;
 
-/// Submits payment charges and captures to an external payment processor.
-pub trait PaymentGateway: Send + Sync {
-    /// A description of this payment gateway for diagnostics.
-    fn describe(&self) -> &'static str;
+use crate::api::egress_error::EgressResult;
+use crate::api::health_check::HealthCheck;
+use crate::api::payment::{
+    Customer, Payment, PaymentMethod, PaymentResult, Refund, RefundResult,
+};
 
-    /// Charge an amount (in minor currency units) to the given token.
-    fn charge(&self, token: &str, amount_minor: u64, currency: &str) -> Result<String, EgressError>;
+/// Inbound payment operations (read/query).
+pub trait PaymentInbound: Send + Sync {
+    fn get_payment(&self, payment_id: &str) -> BoxFuture<'_, EgressResult<Option<Payment>>>;
+    fn get_customer(&self, customer_id: &str) -> BoxFuture<'_, EgressResult<Option<Customer>>>;
+    fn list_payment_methods(&self, customer_id: &str) -> BoxFuture<'_, EgressResult<Vec<PaymentMethod>>>;
+    fn health_check(&self) -> BoxFuture<'_, EgressResult<HealthCheck>>;
 }
+
+/// Outbound payment operations (charge/refund/customer management).
+pub trait PaymentOutbound: Send + Sync {
+    fn charge(&self, payment: Payment) -> BoxFuture<'_, EgressResult<PaymentResult>>;
+    fn refund(&self, refund: Refund) -> BoxFuture<'_, EgressResult<RefundResult>>;
+    fn create_customer(&self, customer: Customer) -> BoxFuture<'_, EgressResult<Customer>>;
+    fn attach_payment_method(&self, customer_id: &str, method: PaymentMethod) -> BoxFuture<'_, EgressResult<PaymentMethod>>;
+}
+
+/// Full payment gateway — composes inbound and outbound payment operations.
+pub trait PaymentGateway: PaymentInbound + PaymentOutbound {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    struct FakeGateway;
-    impl PaymentGateway for FakeGateway {
-        fn describe(&self) -> &'static str { "fake" }
-        fn charge(&self, _token: &str, _amount: u64, _currency: &str) -> Result<String, EgressError> {
-            Ok("txn_001".into())
-        }
-    }
-
     #[test]
-    fn test_payment_gateway_charge_returns_transaction_id() {
-        let id = FakeGateway.charge("tok_123", 100, "USD").unwrap();
-        assert!(!id.is_empty());
-    }
-
-    #[test]
-    fn test_payment_gateway_describe_returns_str() {
-        assert_eq!(FakeGateway.describe(), "fake");
+    fn test_payment_gateway_is_object_safe() {
+        fn _assert_object_safe(_: &dyn PaymentGateway) {}
     }
 }

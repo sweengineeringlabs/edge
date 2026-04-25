@@ -1,37 +1,29 @@
-//! DatabaseWrite trait — writes records to a database.
+//! DatabaseWrite trait — async writes to a database.
 
-use crate::api::egress_error::EgressError;
+use futures::future::BoxFuture;
+
+use crate::api::egress_error::EgressResult;
+
+use super::query_params::QueryParams;
+use super::record::Record;
+use super::write_result::WriteResult;
 
 /// Writes records to a database.
 pub trait DatabaseWrite: Send + Sync {
-    /// A description of this database adapter for diagnostics.
-    fn describe(&self) -> &'static str;
-
-    /// Insert or update a record.
-    fn put(&self, key: &str, value: &[u8]) -> Result<(), EgressError>;
-
-    /// Delete a record by key. No-op if the key does not exist.
-    fn delete(&self, key: &str) -> Result<(), EgressError>;
+    fn insert(&self, table: &str, record: Record) -> BoxFuture<'_, EgressResult<WriteResult>>;
+    fn update(&self, table: &str, id: &str, record: Record) -> BoxFuture<'_, EgressResult<WriteResult>>;
+    fn delete(&self, table: &str, id: &str) -> BoxFuture<'_, EgressResult<WriteResult>>;
+    fn batch_insert(&self, table: &str, records: Vec<Record>) -> BoxFuture<'_, EgressResult<WriteResult>>;
+    fn update_where(&self, table: &str, params: QueryParams, record: Record) -> BoxFuture<'_, EgressResult<WriteResult>>;
+    fn delete_where(&self, table: &str, params: QueryParams) -> BoxFuture<'_, EgressResult<WriteResult>>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    struct NullWriter;
-    impl DatabaseWrite for NullWriter {
-        fn describe(&self) -> &'static str { "null" }
-        fn put(&self, _key: &str, _value: &[u8]) -> Result<(), EgressError> { Ok(()) }
-        fn delete(&self, _key: &str) -> Result<(), EgressError> { Ok(()) }
-    }
-
     #[test]
-    fn test_database_write_put_succeeds() {
-        assert!(NullWriter.put("k", b"v").is_ok());
-    }
-
-    #[test]
-    fn test_database_write_delete_succeeds() {
-        assert!(NullWriter.delete("k").is_ok());
+    fn test_database_write_is_object_safe() {
+        fn _assert_object_safe(_: &dyn DatabaseWrite) {}
     }
 }
