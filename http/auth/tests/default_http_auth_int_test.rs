@@ -5,17 +5,17 @@
 //! 2. The `AuthMiddleware::handle()` path (reqwest_middleware trait) which
 //!    delegates to `DefaultHttpAuth::process()`.
 //! 3. The Debug output of `AuthMiddleware`, which calls
-//!    `processor.describe()` — always returns `"swe_http_auth"` for
+//!    `processor.describe()` — always returns `"swe_edge_http_auth"` for
 //!    `DefaultHttpAuth`.
 //!
 //! Header-attachment assertions are kept in the per-strategy test files.
 //! This file focuses on `DefaultHttpAuth`'s own contract:
-//! - `describe()` returns `"swe_http_auth"` regardless of config.
+//! - `describe()` returns `"swe_edge_http_auth"` regardless of config.
 //! - `build()` fails fast when env vars are missing.
 //! - `build()` succeeds when env vars are present.
 //! - `process()` is reachable end-to-end via the middleware handle path.
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // describe() via AuthMiddleware Debug
@@ -28,8 +28,8 @@ fn test_default_http_auth_describe_returns_crate_name_for_none_config() {
         .expect("None must build");
     let s = format!("{mw:?}");
     assert!(
-        s.contains("swe_http_auth"),
-        "DefaultHttpAuth::describe() must return 'swe_http_auth': {s}"
+        s.contains("swe_edge_http_auth"),
+        "DefaultHttpAuth::describe() must return 'swe_edge_http_auth': {s}"
     );
 }
 
@@ -42,15 +42,15 @@ fn test_default_http_auth_describe_returns_crate_name_for_bearer_config() {
         .expect("Bearer with env set must build");
     let s = format!("{mw:?}");
     assert!(
-        s.contains("swe_http_auth"),
-        "DefaultHttpAuth::describe() must return 'swe_http_auth' for Bearer: {s}"
+        s.contains("swe_edge_http_auth"),
+        "DefaultHttpAuth::describe() must return 'swe_edge_http_auth' for Bearer: {s}"
     );
     std::env::remove_var(env_name);
 }
 
 #[test]
 fn test_default_http_auth_describe_same_for_all_configs() {
-    // describe() is a constant "swe_http_auth" regardless of scheme.
+    // describe() is a constant "swe_edge_http_auth" regardless of scheme.
     // Build two middlewares with different schemes and compare.
     let env_name = "SWE_AUTH_DHA_DESC_SAME_01";
     std::env::set_var(env_name, "tok");
@@ -62,8 +62,8 @@ fn test_default_http_auth_describe_same_for_all_configs() {
     .unwrap();
     let s_none = format!("{mw_none:?}");
     let s_bearer = format!("{mw_bearer:?}");
-    assert!(s_none.contains("swe_http_auth"), "{s_none}");
-    assert!(s_bearer.contains("swe_http_auth"), "{s_bearer}");
+    assert!(s_none.contains("swe_edge_http_auth"), "{s_none}");
+    assert!(s_bearer.contains("swe_edge_http_auth"), "{s_bearer}");
     std::env::remove_var(env_name);
 }
 

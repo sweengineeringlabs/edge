@@ -12,7 +12,7 @@
 //!   boundary transitions.
 //! - Policy field values are faithfully carried by the layer's `Debug` output.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder};
 
 // ---------------------------------------------------------------------------
 // Threshold = 1 — opens on first failure

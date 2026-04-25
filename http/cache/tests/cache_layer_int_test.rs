@@ -4,7 +4,7 @@
 //! `Send + Sync` bounds that let the layer be passed to
 //! `reqwest_middleware::ClientBuilder::with()`.
 
-use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+use swe_edge_http_cache::{Builder, CacheConfig, CacheLayer};
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -27,7 +27,7 @@ fn test_cache_layer_builds_from_custom_config() {
 /// Building from the crate-shipped SWE default must also succeed.
 #[test]
 fn test_cache_layer_builds_from_swe_default() {
-    let _layer: CacheLayer = swe_http_cache::builder()
+    let _layer: CacheLayer = swe_edge_http_cache::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

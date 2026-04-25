@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_tls crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_tls crate.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 #[test]
 fn test_build_none_config_produces_noop_layer() {
@@ -19,7 +19,7 @@ fn test_tls_layer_is_send_and_sync() {
 
 #[test]
 fn test_builder_fn_loads_swe_default_none_config() {
-    let b = swe_http_tls::builder().expect("builder() must succeed");
+    let b = swe_edge_http_tls::builder().expect("builder() must succeed");
     assert!(matches!(b.config(), TlsConfig::None), "swe_default must be TlsConfig::None");
 }
 
@@ -76,7 +76,7 @@ fn test_with_config_stores_pem_variant() {
 fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("oops".to_string());
     let s = err.to_string();
-    assert!(s.contains("swe_http_tls"), "ParseFailed Display must name the crate: {s}");
+    assert!(s.contains("swe_edge_http_tls"), "ParseFailed Display must name the crate: {s}");
 }
 
 #[test]

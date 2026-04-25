@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_retry crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_retry crate.
 
-use swe_http_retry::{builder, Builder, Error, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{builder, Builder, Error, RetryConfig, RetryLayer};
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -191,7 +191,7 @@ fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("x".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_retry"),
+        msg.contains("swe_edge_http_retry"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -216,7 +216,7 @@ fn test_error_not_implemented_display_is_non_empty_and_names_crate() {
     let msg = err.to_string();
     assert!(!msg.is_empty(), "NotImplemented display must not be empty");
     assert!(
-        msg.contains("swe_http_retry"),
+        msg.contains("swe_edge_http_retry"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

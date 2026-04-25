@@ -4,7 +4,7 @@
 //! construction via `Builder::build()`, the `Debug` impl, and
 //! `Send + Sync` bounds.
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder};
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -22,7 +22,7 @@ fn test_auth_middleware_builds_from_none_config() {
 
 #[test]
 fn test_auth_middleware_builds_from_builder_fn_default() {
-    let mw = swe_http_auth::builder()
+    let mw = swe_edge_http_auth::builder()
         .expect("builder() must succeed")
         .build()
         .expect("default builder must build to middleware");
@@ -60,14 +60,14 @@ fn test_auth_middleware_debug_contains_auth_middleware_type_name() {
 #[test]
 fn test_auth_middleware_debug_contains_processor_description() {
     // The processor for any real config identifies itself as
-    // "swe_http_auth" via DefaultHttpAuth::describe().
+    // "swe_edge_http_auth" via DefaultHttpAuth::describe().
     let mw = Builder::with_config(AuthConfig::None)
         .build()
         .expect("build ok");
     let s = format!("{mw:?}");
     assert!(
-        s.contains("swe_http_auth"),
-        "AuthMiddleware Debug must include processor description 'swe_http_auth': {s}"
+        s.contains("swe_edge_http_auth"),
+        "AuthMiddleware Debug must include processor description 'swe_edge_http_auth': {s}"
     );
 }
 
@@ -100,13 +100,13 @@ fn test_two_auth_middleware_instances_are_independent() {
         .expect("build mw_b");
 
     // Each has its own processor. Debug strings differ (they embed the
-    // processor kind — both are "swe_http_auth" for DefaultHttpAuth,
+    // processor kind — both are "swe_edge_http_auth" for DefaultHttpAuth,
     // but the instances themselves are separate allocations).
     let s_a = format!("{mw_a:?}");
     let s_b = format!("{mw_b:?}");
     // Both contain the type name — ensures neither is a default stub.
-    assert!(s_a.contains("swe_http_auth"), "mw_a Debug missing crate name: {s_a}");
-    assert!(s_b.contains("swe_http_auth"), "mw_b Debug missing crate name: {s_b}");
+    assert!(s_a.contains("swe_edge_http_auth"), "mw_a Debug missing crate name: {s_a}");
+    assert!(s_b.contains("swe_edge_http_auth"), "mw_b Debug missing crate name: {s_b}");
 
     std::env::remove_var(env_a);
     std::env::remove_var(env_b);

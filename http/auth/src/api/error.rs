@@ -4,7 +4,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Config TOML didn't parse as the expected schema.
-    #[error("swe_http_auth: config parse failed — {0}")]
+    #[error("swe_edge_http_auth: config parse failed — {0}")]
     ParseFailed(String),
 
     /// Config references an env var that isn't set. Includes
@@ -12,7 +12,7 @@ pub enum Error {
     /// This fails at `Builder::build()` (or equivalent config
     /// realization) — the middleware refuses to construct with
     /// a dangling credential reference.
-    #[error("swe_http_auth: required env var {name} is not set")]
+    #[error("swe_edge_http_auth: required env var {name} is not set")]
     MissingEnvVar {
         /// Name of the missing env var.
         name: String,
@@ -20,7 +20,7 @@ pub enum Error {
 
     /// Unknown or unsupported `kind` in config. The config
     /// schema lists the accepted values.
-    #[error("swe_http_auth: unsupported auth kind {kind:?} — expected one of: none, bearer, basic, header")]
+    #[error("swe_edge_http_auth: unsupported auth kind {kind:?} — expected one of: none, bearer, basic, header")]
     UnsupportedKind {
         /// The offending kind string.
         kind: String,
@@ -30,13 +30,13 @@ pub enum Error {
     /// value. Per RFC 7230 header values must be US-ASCII
     /// visible characters + HTAB; CR/LF/NUL are forbidden.
     /// Wraps the underlying parse error for diagnostics.
-    #[error("swe_http_auth: credential is not a valid HTTP header value — {0}")]
+    #[error("swe_edge_http_auth: credential is not a valid HTTP header value — {0}")]
     InvalidHeaderValue(String),
 
     /// Config's `name` (for the custom Header scheme) can't be
     /// parsed as a valid HTTP header name. Must be a
     /// token-per-RFC-7230 (alphanumerics + a few symbols).
-    #[error("swe_http_auth: invalid header name {name:?} — {reason}")]
+    #[error("swe_edge_http_auth: invalid header name {name:?} — {reason}")]
     InvalidHeaderName {
         /// The offending name string.
         name: String,
@@ -45,7 +45,7 @@ pub enum Error {
     },
 
     /// Middleware behavior not yet implemented (scaffold phase).
-    #[error("swe_http_auth: not implemented — {0}")]
+    #[error("swe_edge_http_auth: not implemented — {0}")]
     NotImplemented(&'static str),
 }
 
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn test_not_implemented_display_includes_crate_name() {
         let err = Error::NotImplemented("builder");
-        assert!(err.to_string().contains("swe_http_auth"));
+        assert!(err.to_string().contains("swe_edge_http_auth"));
     }
 
     /// @covers: Error
@@ -83,7 +83,7 @@ mod tests {
     fn test_parse_failed_display_names_crate_and_reason() {
         let err = Error::ParseFailed("missing field".into());
         let s = err.to_string();
-        assert!(s.contains("swe_http_auth"));
+        assert!(s.contains("swe_edge_http_auth"));
         assert!(s.contains("missing field"));
     }
 }

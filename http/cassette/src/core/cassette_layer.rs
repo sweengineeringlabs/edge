@@ -123,7 +123,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
             if let Some(interaction) = fixtures.get(&key) {
                 return reconstruct_response(&interaction.response).map_err(
                     |e| reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                        "swe_http_cassette replay reconstruct failed: {e}"
+                        "swe_edge_http_cassette replay reconstruct failed: {e}"
                     )),
                 );
             }
@@ -131,7 +131,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
             // Miss handling:
             if mode == "replay" {
                 return Err(reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                    "swe_http_cassette: no recorded interaction for key {key} in {}",
+                    "swe_edge_http_cassette: no recorded interaction for key {key} in {}",
                     self.cassette_path.display()
                 )));
             }
@@ -144,7 +144,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
         let attempt_req = req
             .try_clone()
             .ok_or_else(|| reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                "swe_http_cassette: cannot record a request with a non-cloneable body"
+                "swe_edge_http_cassette: cannot record a request with a non-cloneable body"
             )))?;
         let recorded_req = RecordedRequest {
             method: req.method().to_string(),
@@ -171,7 +171,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
         }
         let body_bytes = response.bytes().await.map_err(|e| {
             reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                "swe_http_cassette: read response body: {e}"
+                "swe_edge_http_cassette: read response body: {e}"
             ))
         })?;
         let body_base64 = base64::engine::general_purpose::STANDARD.encode(&body_bytes);
@@ -194,7 +194,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
             fixtures.insert(key, interaction);
             self.flush_to_disk(&fixtures).await.map_err(|e| {
                 reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                    "swe_http_cassette: flush to disk: {e}"
+                    "swe_edge_http_cassette: flush to disk: {e}"
                 ))
             })?;
         }
@@ -203,7 +203,7 @@ impl reqwest_middleware::Middleware for CassetteLayer {
         // consumed body_bytes to record).
         reconstruct_response(&recorded_resp).map_err(|e| {
             reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                "swe_http_cassette post-record reconstruct: {e}"
+                "swe_edge_http_cassette post-record reconstruct: {e}"
             ))
         })
     }

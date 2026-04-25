@@ -1,11 +1,11 @@
-//! End-to-end tests for the swe_http_tls SAF builder surface.
+//! End-to-end tests for the swe_edge_http_tls SAF builder surface.
 
-use swe_http_tls::{Builder, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, TlsApplier, TlsConfig, TlsLayer};
 
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let layer: TlsLayer = swe_http_tls::builder()
+    let layer: TlsLayer = swe_edge_http_tls::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

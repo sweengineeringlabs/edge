@@ -3,7 +3,7 @@
 //! Covers the full public builder surface: the `builder()` free function and
 //! the `Builder` type's `with_config`, `config`, and `build` methods.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder, Error};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // builder() free function
@@ -14,7 +14,7 @@ use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder, Error};
 /// config is broken.
 #[test]
 fn test_builder_fn_succeeds_with_swe_default() {
-    swe_http_breaker::builder()
+    swe_edge_http_breaker::builder()
         .expect("builder() must succeed with the crate-shipped baseline");
 }
 
@@ -22,7 +22,7 @@ fn test_builder_fn_succeeds_with_swe_default() {
 /// open the breaker on every single request, making it permanently open.
 #[test]
 fn test_builder_fn_swe_default_failure_threshold_is_positive() {
-    let b = swe_http_breaker::builder().expect("baseline parses");
+    let b = swe_edge_http_breaker::builder().expect("baseline parses");
     assert!(
         b.config().failure_threshold >= 1,
         "swe_default failure_threshold must be >= 1, got {}",
@@ -35,7 +35,7 @@ fn test_builder_fn_swe_default_failure_threshold_is_positive() {
 /// defeating its purpose.
 #[test]
 fn test_builder_fn_swe_default_reset_after_successes_is_positive() {
-    let b = swe_http_breaker::builder().expect("baseline parses");
+    let b = swe_edge_http_breaker::builder().expect("baseline parses");
     assert!(
         b.config().reset_after_successes >= 1,
         "swe_default reset_after_successes must be >= 1, got {}",
@@ -88,7 +88,7 @@ fn test_config_accessor_returns_reference_not_divergent_copy() {
 /// The nominal build path must succeed and return a `BreakerLayer`.
 #[test]
 fn test_build_from_swe_default_returns_breaker_layer() {
-    let layer: BreakerLayer = swe_http_breaker::builder()
+    let layer: BreakerLayer = swe_edge_http_breaker::builder()
         .expect("baseline parses")
         .build()
         .expect("build() must succeed");
@@ -165,7 +165,7 @@ fn test_error_parse_failed_display_names_crate() {
     let err = Error::ParseFailed("bad toml".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_breaker"),
+        msg.contains("swe_edge_http_breaker"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -185,7 +185,7 @@ fn test_error_not_implemented_display_is_non_empty_and_names_crate() {
     let msg = err.to_string();
     assert!(!msg.is_empty());
     assert!(
-        msg.contains("swe_http_breaker"),
+        msg.contains("swe_edge_http_breaker"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

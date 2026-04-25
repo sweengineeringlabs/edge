@@ -1,16 +1,16 @@
-//! End-to-end tests for the swe_http_auth SAF builder surface.
+//! End-to-end tests for the swe_edge_http_auth SAF builder surface.
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder};
 
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let mw: AuthMiddleware = swe_http_auth::builder()
+    let mw: AuthMiddleware = swe_edge_http_auth::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");
     let s = format!("{mw:?}");
-    assert!(s.contains("swe_http_auth"), "e2e: middleware Debug must name crate: {s}");
+    assert!(s.contains("swe_edge_http_auth"), "e2e: middleware Debug must name crate: {s}");
 }
 
 /// @covers: Builder::with_config

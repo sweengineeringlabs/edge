@@ -13,7 +13,7 @@
 //! - `AuthMiddleware`'s `Debug` output reflects the processor kind
 
 use reqwest_middleware::Middleware;
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
 
 // Verify AuthMiddleware implements the reqwest_middleware::Middleware trait
 // at compile time. If the impl is removed this function won't compile.
@@ -59,7 +59,7 @@ fn test_bearer_config_selects_bearer_strategy_when_env_set() {
         .expect("Bearer with env set must build");
     // The middleware must be non-trivially constructed — debug shows processor.
     let s = format!("{mw:?}");
-    assert!(s.contains("swe_http_auth"), "unexpected debug: {s}");
+    assert!(s.contains("swe_edge_http_auth"), "unexpected debug: {s}");
     std::env::remove_var(env_name);
 }
 

@@ -1,22 +1,22 @@
-//! Integration tests for `swe_http_cassette::Error`.
+//! Integration tests for `swe_edge_http_cassette::Error`.
 //!
 //! Covers: `Error::ParseFailed`, `Error::NotImplemented` — Display messages
 //! must be actionable: name the crate, embed the payload, be non-empty.
 
-use swe_http_cassette::Error;
+use swe_edge_http_cassette::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
 // ---------------------------------------------------------------------------
 
 /// `ParseFailed` display must name the crate so an operator can trace the
-/// error back to `swe_http_cassette` without reading source code.
+/// error back to `swe_edge_http_cassette` without reading source code.
 #[test]
 fn test_parse_failed_display_names_the_crate() {
     let err = Error::ParseFailed("unexpected key 'mode2'".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cassette"),
+        msg.contains("swe_edge_http_cassette"),
         "ParseFailed Display must name the crate; got: {msg}"
     );
 }
@@ -69,7 +69,7 @@ fn test_not_implemented_display_names_the_crate() {
     let err = Error::NotImplemented("some feature");
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cassette"),
+        msg.contains("swe_edge_http_cassette"),
         "NotImplemented Display must name the crate; got: {msg}"
     );
 }

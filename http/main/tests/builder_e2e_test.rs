@@ -1,12 +1,12 @@
 //! End-to-end tests for the swe-http-main SAF builder surface.
 
-use swe_http_main::{Builder, StackConfig};
-use swe_http_auth::AuthConfig;
+use swe_edge_http_main::{Builder, StackConfig};
+use swe_edge_http_auth::AuthConfig;
 
 /// @covers: builder
 #[test]
 fn test_e2e_builder() {
-    let b = swe_http_main::builder().expect("builder() must succeed");
+    let b = swe_edge_http_main::builder().expect("builder() must succeed");
     assert!(matches!(b.config().auth, AuthConfig::None));
 }
 

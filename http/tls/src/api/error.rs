@@ -1,14 +1,14 @@
 //! Error type for the tls middleware.
 
-/// Errors raised by swe_http_tls.
+/// Errors raised by swe_edge_http_tls.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Config TOML didn't parse as the expected schema.
-    #[error("swe_http_tls: config parse failed — {0}")]
+    #[error("swe_edge_http_tls: config parse failed — {0}")]
     ParseFailed(String),
 
     /// Config references an env var that isn't set.
-    #[error("swe_http_tls: required env var {name} is not set")]
+    #[error("swe_edge_http_tls: required env var {name} is not set")]
     MissingEnvVar {
         /// The missing env-var name.
         name: String,
@@ -17,7 +17,7 @@ pub enum Error {
     /// Certificate / key file couldn't be read from disk. Wraps
     /// the underlying IO error message for operators to
     /// diagnose (wrong path, permissions, etc.).
-    #[error("swe_http_tls: could not read file {path:?} — {reason}")]
+    #[error("swe_edge_http_tls: could not read file {path:?} — {reason}")]
     FileReadFailed {
         /// Path the config referenced.
         path: String,
@@ -28,7 +28,7 @@ pub enum Error {
     /// Certificate / key data is present but not parseable as
     /// the declared format. E.g. PKCS12 with wrong password,
     /// PEM with malformed blocks.
-    #[error("swe_http_tls: invalid {format} data — {reason}")]
+    #[error("swe_edge_http_tls: invalid {format} data — {reason}")]
     InvalidCertificate {
         /// Format we tried to parse as (pkcs12, pem).
         format: &'static str,
@@ -37,7 +37,7 @@ pub enum Error {
     },
 
     /// Builder hasn't been implemented yet (scaffold phase).
-    #[error("swe_http_tls: not implemented — {0}")]
+    #[error("swe_edge_http_tls: not implemented — {0}")]
     NotImplemented(&'static str),
 }
 
@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn test_parse_failed_display_names_crate() {
         let err = Error::ParseFailed("bad".into());
-        assert!(err.to_string().contains("swe_http_tls"));
+        assert!(err.to_string().contains("swe_edge_http_tls"));
     }
 
     /// @covers: Error

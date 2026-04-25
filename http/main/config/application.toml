@@ -91,7 +91,7 @@ version = "0.1.0"
 # # per_host = true
 
 # [tls]
-# # Sibling crate swe_http_tls — mTLS client identity for the
+# # Sibling crate swe_edge_http_tls — mTLS client identity for the
 # # reqwest::ClientBuilder (NOT middleware — applied before TLS
 # # handshake, not after). Baseline: kind = "none" (pass-through).
 # #

@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_rate crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_rate crate.
 
-use swe_http_rate::{Builder, Error, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, Error, RateConfig, RateLayer};
 
 fn make_cfg() -> RateConfig {
     RateConfig {
@@ -12,12 +12,12 @@ fn make_cfg() -> RateConfig {
 
 #[test]
 fn test_builder_fn_loads_swe_default_and_succeeds() {
-    swe_http_rate::builder().expect("builder() must succeed");
+    swe_edge_http_rate::builder().expect("builder() must succeed");
 }
 
 #[test]
 fn test_builder_fn_default_config_has_positive_tokens_per_second() {
-    let b = swe_http_rate::builder().expect("builder() must succeed");
+    let b = swe_edge_http_rate::builder().expect("builder() must succeed");
     assert!(b.config().tokens_per_second >= 1, "swe_default tokens_per_second must be >= 1");
 }
 
@@ -31,7 +31,7 @@ fn test_with_config_custom_config_stores_values() {
 
 #[test]
 fn test_build_default_produces_rate_layer() {
-    let layer: RateLayer = swe_http_rate::builder()
+    let layer: RateLayer = swe_edge_http_rate::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");
@@ -73,7 +73,7 @@ fn test_with_config_high_rate_flows_through_config_accessor() {
 fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("oops".to_string());
     let s = err.to_string();
-    assert!(s.contains("swe_http_rate"), "ParseFailed Display must name the crate: {s}");
+    assert!(s.contains("swe_edge_http_rate"), "ParseFailed Display must name the crate: {s}");
 }
 
 #[test]

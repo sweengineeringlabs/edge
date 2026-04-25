@@ -3,7 +3,7 @@
 //! Covers: constructability via `Builder::build()`, `Debug` output, and
 //! `Send + Sync` bounds required by `reqwest_middleware::ClientBuilder::with()`.
 
-use swe_http_rate::{Builder, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, RateConfig, RateLayer};
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -25,7 +25,7 @@ fn test_rate_layer_builds_from_custom_config() {
 /// Building from the SWE default must also succeed.
 #[test]
 fn test_rate_layer_builds_from_swe_default() {
-    let _layer: RateLayer = swe_http_rate::builder()
+    let _layer: RateLayer = swe_edge_http_rate::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

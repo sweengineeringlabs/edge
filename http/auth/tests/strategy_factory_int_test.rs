@@ -12,7 +12,7 @@
 //! file verifies the factory's dispatch: "config variant X → correct strategy
 //! selected → correct build outcome."
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // None → NoopStrategy (no env needed, no header attached)

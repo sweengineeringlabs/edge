@@ -1,6 +1,6 @@
-//! End-to-end tests for the swe_http_cache SAF builder surface.
+//! End-to-end tests for the swe_edge_http_cache SAF builder surface.
 
-use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+use swe_edge_http_cache::{Builder, CacheConfig, CacheLayer};
 
 fn make_cfg() -> CacheConfig {
     CacheConfig { default_ttl_seconds: 300, max_entries: 100, respect_cache_control: true, cache_private: false }
@@ -9,7 +9,7 @@ fn make_cfg() -> CacheConfig {
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let layer: CacheLayer = swe_http_cache::builder()
+    let layer: CacheLayer = swe_edge_http_cache::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

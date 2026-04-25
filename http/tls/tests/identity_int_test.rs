@@ -4,7 +4,7 @@
 //! (noop, PEM, PKCS#12) are correctly wired through the SAF builder
 //! surface and honour the `HttpTls` contract.
 
-use swe_http_tls::{Builder, TlsApplier, TlsConfig};
+use swe_edge_http_tls::{Builder, TlsApplier, TlsConfig};
 
 /// `TlsConfig::None` produces a provider that returns no identity,
 /// so `apply_to` passes the ClientBuilder through unmodified.
@@ -23,7 +23,7 @@ fn test_identity_none_config_produces_no_identity() {
 #[test]
 fn test_identity_provider_is_send_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<swe_http_tls::TlsLayer>();
+    assert_send_sync::<swe_edge_http_tls::TlsLayer>();
 }
 
 /// Each `TlsConfig` variant that does NOT require external key material

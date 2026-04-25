@@ -4,7 +4,7 @@
 //! that struct literal construction round-trips correctly through the
 //! `Builder` and that field values are preserved without mutation.
 
-use swe_http_cassette::{Builder, CassetteConfig};
+use swe_edge_http_cassette::{Builder, CassetteConfig};
 
 // ---------------------------------------------------------------------------
 // Struct construction — all public fields must be writable

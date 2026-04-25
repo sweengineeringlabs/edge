@@ -1,6 +1,6 @@
 //! SAF builder entry point for the main composition crate.
 
-use swe_http_auth::AuthConfig;
+use swe_edge_http_auth::AuthConfig;
 
 pub use crate::api::builder::Builder;
 pub use crate::api::error::Error;
@@ -29,7 +29,7 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use swe_http_auth::AuthConfig;
+    use swe_edge_http_auth::AuthConfig;
 
     #[test]
     fn test_builder_fn_produces_builder_with_none_auth() {

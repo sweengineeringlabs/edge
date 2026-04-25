@@ -4,7 +4,7 @@
 //! struct literal construction, field visibility, Clone, and that values
 //! flow through the Builder pipeline to the RetryLayer without mutation.
 
-use swe_http_retry::{Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{Builder, RetryConfig, RetryLayer};
 
 // ---------------------------------------------------------------------------
 // Struct construction — all public fields must be writable

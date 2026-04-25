@@ -1,6 +1,6 @@
-//! End-to-end tests for the swe_http_rate SAF builder surface.
+//! End-to-end tests for the swe_edge_http_rate SAF builder surface.
 
-use swe_http_rate::{Builder, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, RateConfig, RateLayer};
 
 fn make_cfg() -> RateConfig {
     RateConfig { tokens_per_second: 10, burst_capacity: 20, per_host: false }
@@ -9,7 +9,7 @@ fn make_cfg() -> RateConfig {
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let layer: RateLayer = swe_http_rate::builder()
+    let layer: RateLayer = swe_edge_http_rate::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! use std::sync::Arc;
-//! use edge_controlroom::{Handler, HandlerRegistry, new_handler_registry};
+//! use swe_edge_controlroom::{Handler, HandlerRegistry, new_handler_registry};
 //!
 //! // 1. Build a registry and register domain handlers.
 //! let registry: Arc<HandlerRegistry<MyReq, MyResp>> = new_handler_registry();

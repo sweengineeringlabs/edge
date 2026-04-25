@@ -1,11 +1,11 @@
-//! Integration tests for `swe_http_retry` trait re-exports (`api/traits.rs`).
+//! Integration tests for `swe_edge_http_retry` trait re-exports (`api/traits.rs`).
 //!
 //! `api/traits.rs` defines the `pub(crate)` type alias `HttpRetryTrait`
 //! for `dyn HttpRetry`. The relevant integration-level contract is that the
 //! SAF re-export surface is complete and `RetryLayer` satisfies all trait
 //! bounds required for use inside `reqwest_middleware::ClientBuilder`.
 
-use swe_http_retry::{Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{Builder, RetryConfig, RetryLayer};
 
 fn make_cfg() -> RetryConfig {
     RetryConfig {

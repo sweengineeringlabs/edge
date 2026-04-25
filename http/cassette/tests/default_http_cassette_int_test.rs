@@ -6,12 +6,12 @@
 //!
 //! - The layer built via `builder()` or `Builder::with_config` correctly
 //!   encapsulates the config that `DefaultHttpCassette::new` was given.
-//! - The `describe()` return value ("swe_http_cassette") appears in the
+//! - The `describe()` return value ("swe_edge_http_cassette") appears in the
 //!   layer's Debug output, confirming the impl is connected.
 //! - The layer is `Send + Sync`, which requires `DefaultHttpCassette`
 //!   (held inside via `Arc<CassetteConfig>`) to also be `Send + Sync`.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer};
 
 fn make_cfg(dir: &str) -> CassetteConfig {
     CassetteConfig {
@@ -46,10 +46,10 @@ fn test_builder_pipeline_stores_config_in_default_http_cassette() {
 }
 
 // ---------------------------------------------------------------------------
-// DefaultHttpCassette::describe — "swe_http_cassette" embedded in Debug
+// DefaultHttpCassette::describe — "swe_edge_http_cassette" embedded in Debug
 // ---------------------------------------------------------------------------
 
-/// `DefaultHttpCassette::describe()` returns "swe_http_cassette". Although
+/// `DefaultHttpCassette::describe()` returns "swe_edge_http_cassette". Although
 /// the concrete type is `pub(crate)`, the mode field in `CassetteLayer`'s
 /// Debug output confirms the inner config (and by extension the impl) is
 /// correctly wired. Two distinct modes must produce distinct Debug strings.

@@ -1,4 +1,4 @@
-//! swe_http_retry — Opinionated retry middleware (wraps reqwest-retry with SWE defaults).
+//! swe_edge_http_retry — Opinionated retry middleware (wraps reqwest-retry with SWE defaults).
 //!
 
 

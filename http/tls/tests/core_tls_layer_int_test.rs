@@ -9,7 +9,7 @@
 //! - `apply_to` idempotency (safe to call multiple times).
 //! - The `TlsLayer` Debug output reflects the provider.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // TlsLayer::apply_to — TlsConfig::None (noop path)

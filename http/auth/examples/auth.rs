@@ -3,13 +3,13 @@
 //! NotImplemented.
 
 fn main() {
-    match swe_http_auth::builder() {
-        Err(e) => println!("swe_http_auth: baseline parse failed: {e}"),
+    match swe_edge_http_auth::builder() {
+        Err(e) => println!("swe_edge_http_auth: baseline parse failed: {e}"),
         Ok(b) => {
-            println!("swe_http_auth: config loaded: {:?}", b.config());
+            println!("swe_edge_http_auth: config loaded: {:?}", b.config());
             match b.build() {
-                Ok(_) => println!("swe_http_auth layer built"),
-                Err(e) => println!("swe_http_auth: {e}"),
+                Ok(_) => println!("swe_edge_http_auth layer built"),
+                Err(e) => println!("swe_edge_http_auth: {e}"),
             }
         }
     }

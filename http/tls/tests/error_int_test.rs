@@ -1,10 +1,10 @@
-//! Integration tests for `swe_http_tls::Error`.
+//! Integration tests for `swe_edge_http_tls::Error`.
 //!
 //! Covers: `Error::ParseFailed`, `Error::MissingEnvVar`, `Error::FileReadFailed`,
 //! `Error::InvalidCertificate`, `Error::NotImplemented` — Display messages
 //! must be actionable: name the crate, embed the payload, be non-empty.
 
-use swe_http_tls::Error;
+use swe_edge_http_tls::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
@@ -14,7 +14,7 @@ use swe_http_tls::Error;
 fn test_parse_failed_display_names_the_crate() {
     let msg = Error::ParseFailed("unknown field `jks`".to_string()).to_string();
     assert!(
-        msg.contains("swe_http_tls"),
+        msg.contains("swe_edge_http_tls"),
         "ParseFailed Display must name the crate; got: {msg}"
     );
 }
@@ -62,7 +62,7 @@ fn test_missing_env_var_display_names_the_crate() {
     }
     .to_string();
     assert!(
-        msg.contains("swe_http_tls"),
+        msg.contains("swe_edge_http_tls"),
         "MissingEnvVar Display must name the crate; got: {msg}"
     );
 }
@@ -120,7 +120,7 @@ fn test_file_read_failed_display_names_the_crate() {
         reason: "r".to_string(),
     }
     .to_string();
-    assert!(msg.contains("swe_http_tls"), "FileReadFailed Display must name the crate; got: {msg}");
+    assert!(msg.contains("swe_edge_http_tls"), "FileReadFailed Display must name the crate; got: {msg}");
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_invalid_certificate_display_names_the_crate() {
         reason: "bad".to_string(),
     }
     .to_string();
-    assert!(msg.contains("swe_http_tls"), "InvalidCertificate Display must name the crate; got: {msg}");
+    assert!(msg.contains("swe_edge_http_tls"), "InvalidCertificate Display must name the crate; got: {msg}");
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn test_not_implemented_display_is_non_empty() {
 #[test]
 fn test_not_implemented_display_names_the_crate() {
     let msg = Error::NotImplemented("some feature").to_string();
-    assert!(msg.contains("swe_http_tls"), "NotImplemented must name the crate; got: {msg}");
+    assert!(msg.contains("swe_edge_http_tls"), "NotImplemented must name the crate; got: {msg}");
 }
 
 #[test]

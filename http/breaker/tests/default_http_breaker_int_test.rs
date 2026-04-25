@@ -3,7 +3,7 @@
 //! `DefaultHttpBreaker` is `pub(crate)`.  Its observable effect is through the
 //! SAF `builder()` function, which loads the crate-shipped SWE baseline.
 
-use swe_http_breaker::{BreakerConfig, Builder};
+use swe_edge_http_breaker::{BreakerConfig, Builder};
 
 // ---------------------------------------------------------------------------
 // SWE baseline — verify default config has production-safe values
@@ -12,13 +12,13 @@ use swe_http_breaker::{BreakerConfig, Builder};
 /// The `builder()` function must load the baseline without error.
 #[test]
 fn test_default_http_breaker_swe_default_builder_succeeds() {
-    swe_http_breaker::builder().expect("swe_default baseline must parse without error");
+    swe_edge_http_breaker::builder().expect("swe_default baseline must parse without error");
 }
 
 /// Default `failure_threshold` must be >= 1.  Zero would trip on any request.
 #[test]
 fn test_default_http_breaker_swe_default_failure_threshold_is_positive() {
-    let b = swe_http_breaker::builder().expect("baseline parses");
+    let b = swe_edge_http_breaker::builder().expect("baseline parses");
     assert!(
         b.config().failure_threshold >= 1,
         "swe_default failure_threshold must be >= 1, got {}",
@@ -29,7 +29,7 @@ fn test_default_http_breaker_swe_default_failure_threshold_is_positive() {
 /// Default `reset_after_successes` must be >= 1.
 #[test]
 fn test_default_http_breaker_swe_default_reset_after_successes_is_positive() {
-    let b = swe_http_breaker::builder().expect("baseline parses");
+    let b = swe_edge_http_breaker::builder().expect("baseline parses");
     assert!(
         b.config().reset_after_successes >= 1,
         "swe_default reset_after_successes must be >= 1, got {}",
@@ -40,7 +40,7 @@ fn test_default_http_breaker_swe_default_reset_after_successes_is_positive() {
 /// Building from the SWE default must produce a valid `BreakerLayer`.
 #[test]
 fn test_default_http_breaker_swe_default_builds_layer() {
-    swe_http_breaker::builder()
+    swe_edge_http_breaker::builder()
         .expect("baseline parses")
         .build()
         .expect("build from swe_default must succeed");

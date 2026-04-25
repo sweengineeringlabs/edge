@@ -12,7 +12,7 @@
 //! - `AuthMiddleware: std::fmt::Debug`
 //! - `AuthMiddleware` implements `reqwest_middleware::Middleware`
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder};
 
 // ---------------------------------------------------------------------------
 // Send + Sync — compile-time checks

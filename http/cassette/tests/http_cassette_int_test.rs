@@ -11,7 +11,7 @@
 //! - The builder pipeline that wires `DefaultHttpCassette` into
 //!   `CassetteLayer` completes without error.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer};
 
 // ---------------------------------------------------------------------------
 // Observable effect: describe() crate name embedded in Debug

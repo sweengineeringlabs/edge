@@ -9,7 +9,7 @@
 //! sane — if `DefaultHttpCache::new` or the underlying config ever regresses,
 //! these assertions catch it.
 
-use swe_http_cache::{Builder, CacheConfig};
+use swe_edge_http_cache::{Builder, CacheConfig};
 
 // ---------------------------------------------------------------------------
 // SWE baseline — verify default config has production-safe values
@@ -20,14 +20,14 @@ use swe_http_cache::{Builder, CacheConfig};
 /// or the config schema changed without updating the file.
 #[test]
 fn test_default_http_cache_swe_default_builder_succeeds() {
-    swe_http_cache::builder().expect("swe_default baseline must parse without error");
+    swe_edge_http_cache::builder().expect("swe_default baseline must parse without error");
 }
 
 /// The default `default_ttl_seconds` must be positive — a zero-second TTL
 /// would make the default configuration a silently broken no-op.
 #[test]
 fn test_default_http_cache_swe_default_ttl_is_positive() {
-    let b = swe_http_cache::builder().expect("baseline parses");
+    let b = swe_edge_http_cache::builder().expect("baseline parses");
     assert!(
         b.config().default_ttl_seconds >= 1,
         "swe_default default_ttl_seconds must be >= 1, got {}",
@@ -39,7 +39,7 @@ fn test_default_http_cache_swe_default_ttl_is_positive() {
 /// discards every response.
 #[test]
 fn test_default_http_cache_swe_default_max_entries_is_positive() {
-    let b = swe_http_cache::builder().expect("baseline parses");
+    let b = swe_edge_http_cache::builder().expect("baseline parses");
     assert!(
         b.config().max_entries >= 1,
         "swe_default max_entries must be >= 1, got {}",
@@ -50,7 +50,7 @@ fn test_default_http_cache_swe_default_max_entries_is_positive() {
 /// Building from the SWE default must produce a valid `CacheLayer`.
 #[test]
 fn test_default_http_cache_swe_default_builds_cache_layer() {
-    swe_http_cache::builder()
+    swe_edge_http_cache::builder()
         .expect("baseline parses")
         .build()
         .expect("build from swe_default must succeed");

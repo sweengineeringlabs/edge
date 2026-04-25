@@ -1,4 +1,4 @@
-//! swe_http_cassette — VCR-style record/replay middleware for deterministic e2e tests.
+//! swe_edge_http_cassette — VCR-style record/replay middleware for deterministic e2e tests.
 //!
 
 

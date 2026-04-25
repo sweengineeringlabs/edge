@@ -5,7 +5,7 @@
 //! 2. Presence of the payload so the message is actionable.
 //! 3. The message differs per variant (no accidental conflation).
 
-use swe_http_auth::Error;
+use swe_edge_http_auth::Error;
 
 // ---------------------------------------------------------------------------
 // ParseFailed
@@ -16,7 +16,7 @@ fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("unexpected eof".into());
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "ParseFailed Display must identify the crate: {s}"
     );
 }
@@ -47,7 +47,7 @@ fn test_error_missing_env_var_display_contains_crate_name() {
     let err = Error::MissingEnvVar { name: "SOME_VAR".into() };
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "MissingEnvVar Display must identify the crate: {s}"
     );
 }
@@ -78,7 +78,7 @@ fn test_error_unsupported_kind_display_contains_crate_name() {
     let err = Error::UnsupportedKind { kind: "oauth2".into() };
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "UnsupportedKind Display must identify the crate: {s}"
     );
 }
@@ -113,7 +113,7 @@ fn test_error_invalid_header_value_display_contains_crate_name() {
     let err = Error::InvalidHeaderValue("CR in value".into());
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "InvalidHeaderValue Display must identify the crate: {s}"
     );
 }
@@ -140,7 +140,7 @@ fn test_error_invalid_header_name_display_contains_crate_name() {
     };
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "InvalidHeaderName Display must identify the crate: {s}"
     );
 }
@@ -182,7 +182,7 @@ fn test_error_not_implemented_display_contains_crate_name() {
     let err = Error::NotImplemented("placeholder");
     let s = err.to_string();
     assert!(
-        s.contains("swe_http_auth"),
+        s.contains("swe_edge_http_auth"),
         "NotImplemented Display must identify the crate: {s}"
     );
 }

@@ -1,7 +1,7 @@
 //! Integration tests for `api::stack_config::StackConfig`.
 
-use swe_http_auth::AuthConfig;
-use swe_http_main::StackConfig;
+use swe_edge_http_auth::AuthConfig;
+use swe_edge_http_main::StackConfig;
 
 /// @covers: StackConfig — struct can be constructed with AuthConfig::None
 #[test]

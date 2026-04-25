@@ -1,5 +1,5 @@
 [package]
-name = "swe-http-main"
+name = "swe_edge_http_main"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -16,13 +16,13 @@ service_type = "orchestrator"
 path = "src/lib.rs"
 
 [dependencies]
-swe-http-auth    = { path = "../auth" }
-swe-http-cache   = { path = "../cache" }
-swe-http-cassette = { path = "../cassette" }
-swe-http-breaker = { path = "../breaker" }
-swe-http-rate    = { path = "../rate" }
-swe-http-retry   = { path = "../retry" }
-swe-http-tls     = { path = "../tls" }
+swe_edge_http_auth     = { path = "../auth" }
+swe_edge_http_cache    = { path = "../cache" }
+swe_edge_http_cassette = { path = "../cassette" }
+swe_edge_http_breaker  = { path = "../breaker" }
+swe_edge_http_rate     = { path = "../rate" }
+swe_edge_http_retry    = { path = "../retry" }
+swe_edge_http_tls      = { path = "../tls" }
 
 thiserror.workspace = true
 

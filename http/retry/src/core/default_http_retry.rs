@@ -25,7 +25,7 @@ impl DefaultHttpRetry {
 
 impl HttpRetry for DefaultHttpRetry {
     fn describe(&self) -> &'static str {
-        "swe_http_retry"
+        "swe_edge_http_retry"
     }
 }
 
@@ -47,6 +47,6 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = RetryConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpRetry::new(cfg);
-        assert_eq!(d.describe(), "swe_http_retry");
+        assert_eq!(d.describe(), "swe_edge_http_retry");
     }
 }

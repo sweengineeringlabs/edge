@@ -21,7 +21,7 @@ impl StackAssembler for DefaultStack {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use swe_http_auth::AuthConfig;
+    use swe_edge_http_auth::AuthConfig;
     use crate::api::stack_config::StackConfig;
 
     #[test]

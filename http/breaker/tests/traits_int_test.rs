@@ -5,7 +5,7 @@
 //! `Send + Sync` (the supertraits of `HttpBreaker`) so it can be stored
 //! behind a `dyn HttpBreaker + Send + Sync` object.
 
-use swe_http_breaker::BreakerLayer;
+use swe_edge_http_breaker::BreakerLayer;
 
 /// `BreakerLayer` must be `Send`.
 #[test]
@@ -25,7 +25,7 @@ fn test_breaker_layer_satisfies_sync_required_by_http_breaker_trait() {
 /// the trait-object coercion the `traits.rs` alias models is possible.
 #[test]
 fn test_breaker_layer_coercible_to_boxed_send_sync() {
-    use swe_http_breaker::{BreakerConfig, Builder};
+    use swe_edge_http_breaker::{BreakerConfig, Builder};
     let cfg = BreakerConfig {
         failure_threshold: 3,
         half_open_after_seconds: 5,

@@ -1,4 +1,4 @@
-//! swe_http_breaker — Circuit-breaker middleware — fail fast on degraded upstreams.
+//! swe_edge_http_breaker — Circuit-breaker middleware — fail fast on degraded upstreams.
 //!
 
 

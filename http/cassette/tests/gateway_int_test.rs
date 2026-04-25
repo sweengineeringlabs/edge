@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_cassette crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_cassette crate.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer, Error};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer, Error};
 
 fn make_cfg(dir: &str) -> CassetteConfig {
     CassetteConfig {
@@ -22,7 +22,7 @@ fn test_builder_fn_loads_swe_default_and_succeeds() {
 
 #[test]
 fn test_builder_fn_default_config_has_replay_mode() {
-    let b = swe_http_cassette::builder().expect("builder() must succeed");
+    let b = swe_edge_http_cassette::builder().expect("builder() must succeed");
     assert_eq!(b.config().mode, "replay", "swe_default mode must be replay");
 }
 
@@ -116,7 +116,7 @@ fn test_build_with_nested_scrub_body_paths_succeeds() {
 fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("oops".to_string());
     let s = err.to_string();
-    assert!(s.contains("swe_http_cassette"), "ParseFailed Display must name the crate: {s}");
+    assert!(s.contains("swe_edge_http_cassette"), "ParseFailed Display must name the crate: {s}");
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn test_error_not_implemented_display_is_non_empty() {
 
 #[test]
 fn test_swe_default_scrub_headers_includes_authorization() {
-    let b = swe_http_cassette::builder().expect("builder() must succeed");
+    let b = swe_edge_http_cassette::builder().expect("builder() must succeed");
     let has_auth = b.config().scrub_headers.iter().any(|h| h.to_ascii_lowercase().contains("authorization"));
     assert!(has_auth, "swe_default scrub_headers must include authorization");
 }

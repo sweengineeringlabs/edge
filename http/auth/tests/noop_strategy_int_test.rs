@@ -6,7 +6,7 @@
 //! - The middleware is a valid `reqwest_middleware::Middleware`.
 //! - `Send + Sync` bounds are satisfied.
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder};
 
 // ---------------------------------------------------------------------------
 // Build always succeeds — no env vars required
@@ -98,8 +98,8 @@ fn test_noop_strategy_two_independent_instances_both_build_and_debug() {
     // Both must be independently usable.
     let s1 = format!("{mw1:?}");
     let s2 = format!("{mw2:?}");
-    assert!(s1.contains("swe_http_auth"), "mw1: {s1}");
-    assert!(s2.contains("swe_http_auth"), "mw2: {s2}");
+    assert!(s1.contains("swe_edge_http_auth"), "mw1: {s1}");
+    assert!(s2.contains("swe_edge_http_auth"), "mw2: {s2}");
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ fn test_noop_strategy_two_independent_instances_both_build_and_debug() {
 
 #[test]
 fn test_noop_strategy_builder_fn_produces_noop_build() {
-    let mw = swe_http_auth::builder()
+    let mw = swe_edge_http_auth::builder()
         .expect("builder() must succeed")
         .build()
         .expect("default builder must produce a noop middleware");

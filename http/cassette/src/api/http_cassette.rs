@@ -16,7 +16,7 @@
 pub trait HttpCassette: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
-    /// Returns the crate's canonical name (e.g. `\"swe_http_cassette\"`).
+    /// Returns the crate's canonical name (e.g. `\"swe_edge_http_cassette\"`).
     /// Future impls will add scheme / policy-shape methods.
     fn describe(&self) -> &'static str;
 }

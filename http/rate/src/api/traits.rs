@@ -1,4 +1,4 @@
-//! Primary trait re-export hub and trait definitions for `swe_http_rate`.
+//! Primary trait re-export hub and trait definitions for `swe_edge_http_rate`.
 
 pub(crate) type HttpRateTrait = dyn crate::api::http_rate::HttpRate;
 

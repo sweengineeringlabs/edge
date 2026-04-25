@@ -1,6 +1,6 @@
 //! Integration tests for `api::breaker_state` — `Admission` and `Outcome` types.
 
-use swe_http_breaker::{BreakerConfig, Builder};
+use swe_edge_http_breaker::{BreakerConfig, Builder};
 
 /// @covers: breaker_state::Admission — Proceed variant reachable via default config
 #[test]

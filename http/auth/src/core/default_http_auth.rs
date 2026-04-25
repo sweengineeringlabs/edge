@@ -52,7 +52,7 @@ impl DefaultHttpAuth {
 #[async_trait]
 impl HttpAuth for DefaultHttpAuth {
     fn describe(&self) -> &'static str {
-        "swe_http_auth"
+        "swe_edge_http_auth"
     }
 
     async fn process(&self, req: &mut reqwest::Request) -> Result<(), Error> {
@@ -91,7 +91,7 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = AuthConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpAuth::new(cfg, &StubResolver("x")).expect("build ok");
-        assert_eq!(d.describe(), "swe_http_auth");
+        assert_eq!(d.describe(), "swe_edge_http_auth");
     }
 
     /// @covers: DefaultHttpAuth::process
@@ -141,7 +141,7 @@ mod tests {
         let d = DefaultHttpAuth::new(AuthConfig::None, &StubResolver("x")).unwrap();
         // describe() returning the right string is the only sync-accessible
         // observable that process() routes through strategy.prepare/authorize.
-        assert_eq!(d.describe(), "swe_http_auth");
+        assert_eq!(d.describe(), "swe_edge_http_auth");
     }
 
     /// @covers: DefaultHttpAuth::new

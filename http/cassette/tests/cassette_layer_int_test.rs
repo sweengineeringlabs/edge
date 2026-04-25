@@ -4,7 +4,7 @@
 //! exercise observable properties: Debug output, Send+Sync bounds, and
 //! path derivation from `cassette_dir` + cassette name.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer};
 
 fn make_cfg(dir: &str, mode: &str) -> CassetteConfig {
     CassetteConfig {

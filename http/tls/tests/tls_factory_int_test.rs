@@ -15,7 +15,7 @@
 //! - Each variant selects the correct provider (`describe()` embedded in
 //!   the `TlsLayer` Debug).
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig};
 
 // ---------------------------------------------------------------------------
 // None variant → noop provider

@@ -1,5 +1,5 @@
 [package]
-name = "swe-http-retry"
+name = "swe_edge_http_retry"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

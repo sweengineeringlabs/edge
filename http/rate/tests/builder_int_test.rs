@@ -3,7 +3,7 @@
 //! Covers the full public builder surface: the `builder()` free function and
 //! the `Builder` type's `with_config`, `config`, and `build` methods.
 
-use swe_http_rate::{Builder, Error, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, Error, RateConfig, RateLayer};
 
 // ---------------------------------------------------------------------------
 // builder() free function
@@ -13,7 +13,7 @@ use swe_http_rate::{Builder, Error, RateConfig, RateLayer};
 /// baseline must always be parseable.
 #[test]
 fn test_builder_fn_succeeds_with_swe_default() {
-    swe_http_rate::builder()
+    swe_edge_http_rate::builder()
         .expect("builder() must succeed with the crate-shipped baseline");
 }
 
@@ -21,7 +21,7 @@ fn test_builder_fn_succeeds_with_swe_default() {
 /// would block all requests permanently.
 #[test]
 fn test_builder_fn_swe_default_tokens_per_second_is_positive() {
-    let b = swe_http_rate::builder().expect("baseline parses");
+    let b = swe_edge_http_rate::builder().expect("baseline parses");
     assert!(
         b.config().tokens_per_second >= 1,
         "swe_default tokens_per_second must be >= 1, got {}",
@@ -33,7 +33,7 @@ fn test_builder_fn_swe_default_tokens_per_second_is_positive() {
 /// deny every request that does not arrive exactly at the refill moment.
 #[test]
 fn test_builder_fn_swe_default_burst_capacity_is_positive() {
-    let b = swe_http_rate::builder().expect("baseline parses");
+    let b = swe_edge_http_rate::builder().expect("baseline parses");
     assert!(
         b.config().burst_capacity >= 1,
         "swe_default burst_capacity must be >= 1, got {}",
@@ -93,7 +93,7 @@ fn test_config_accessor_returns_reference_not_divergent_copy() {
 /// The nominal build path must succeed.
 #[test]
 fn test_build_from_swe_default_returns_rate_layer() {
-    let layer: RateLayer = swe_http_rate::builder()
+    let layer: RateLayer = swe_edge_http_rate::builder()
         .expect("baseline parses")
         .build()
         .expect("build() must succeed");
@@ -159,7 +159,7 @@ fn test_error_parse_failed_display_names_crate_and_echoes_reason() {
     let err = Error::ParseFailed(reason.to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_rate"),
+        msg.contains("swe_edge_http_rate"),
         "ParseFailed display must name the crate; got: {msg}"
     );
     assert!(
@@ -175,7 +175,7 @@ fn test_error_not_implemented_display_is_non_empty_and_names_crate() {
     let msg = err.to_string();
     assert!(!msg.is_empty());
     assert!(
-        msg.contains("swe_http_rate"),
+        msg.contains("swe_edge_http_rate"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

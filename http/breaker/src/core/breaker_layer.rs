@@ -83,7 +83,7 @@ impl reqwest_middleware::Middleware for BreakerLayer {
         match admission {
             Admission::RejectOpen => Err(reqwest_middleware::Error::Middleware(
                 anyhow::anyhow!(
-                    "swe_http_breaker: circuit open for {key} — request rejected"
+                    "swe_edge_http_breaker: circuit open for {key} — request rejected"
                 ),
             )),
             Admission::Proceed => {

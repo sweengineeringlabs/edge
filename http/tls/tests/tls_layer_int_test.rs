@@ -6,7 +6,7 @@
 //! - Send + Sync bounds.
 //! - That the layer is usable in the standard `apply_to + ClientBuilder` pattern.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // TlsLayer construction via Builder::build

@@ -1,8 +1,8 @@
-//! Integration tests for `swe_http_tls` `Builder` and `builder()` SAF entry point.
+//! Integration tests for `swe_edge_http_tls` `Builder` and `builder()` SAF entry point.
 //!
 //! Covers: `builder()`, `Builder::with_config`, `Builder::config`, `Builder::build`.
 
-use swe_http_tls::{builder, Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{builder, Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // builder() — SAF entry point

@@ -2,11 +2,11 @@
 //! Scaffold phase: `build()` returns NotImplemented.
 
 fn main() {
-    match swe_http_breaker::builder() {
-        Err(e) => println!("swe_http_breaker: baseline parse failed: {e}"),
+    match swe_edge_http_breaker::builder() {
+        Err(e) => println!("swe_edge_http_breaker: baseline parse failed: {e}"),
         Ok(b) => match b.build() {
-            Ok(_) => println!("swe_http_breaker layer built"),
-            Err(e) => println!("swe_http_breaker: {e}"),
+            Ok(_) => println!("swe_edge_http_breaker layer built"),
+            Err(e) => println!("swe_edge_http_breaker: {e}"),
         },
     }
 }

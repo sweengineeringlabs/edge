@@ -11,7 +11,7 @@
 //! tests inside `bearer_strategy.rs`; here we confirm the integration
 //! path produces a non-empty Authorization header.
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // Missing env var

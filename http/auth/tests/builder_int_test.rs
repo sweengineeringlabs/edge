@@ -4,7 +4,7 @@
 //! Both live under the stem "builder" — one file covers both because the
 //! public surface is the same (both are re-exported through the gateway).
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // builder() entry-point
@@ -15,12 +15,12 @@ fn test_builder_fn_succeeds() {
     // The free `builder()` function must parse the shipped config and
     // construct a Builder. Failure here means the crate-internal
     // application.toml is malformed — a build-breaking defect.
-    swe_http_auth::builder().expect("builder() must succeed unconditionally");
+    swe_edge_http_auth::builder().expect("builder() must succeed unconditionally");
 }
 
 #[test]
 fn test_builder_fn_loads_none_pass_through_as_default() {
-    let b = swe_http_auth::builder().expect("builder() succeeds");
+    let b = swe_edge_http_auth::builder().expect("builder() succeeds");
     assert!(
         matches!(b.config(), AuthConfig::None),
         "default config must be AuthConfig::None, got {:?}",

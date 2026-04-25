@@ -11,7 +11,7 @@
 //!   immediately after the first attempt.
 //! - The `backoff_for` cap (`max_interval_ms`) is respected in timing.
 
-use swe_http_retry::{Builder, RetryConfig};
+use swe_edge_http_retry::{Builder, RetryConfig};
 
 fn make_cfg_with(
     max_retries: u32,

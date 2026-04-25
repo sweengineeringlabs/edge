@@ -20,7 +20,7 @@ use crate::api::http_auth::HttpAuth;
 /// Construct via `saf::builder()` → `Builder::build()`. Use:
 ///
 /// ```ignore
-/// let mw = swe_http_auth::builder()?.build()?;
+/// let mw = swe_edge_http_auth::builder()?.build()?;
 /// let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
 ///     .with(mw)
 ///     .build();

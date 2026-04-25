@@ -4,7 +4,7 @@ use crate::api::rate_config::RateConfig;
 
 /// Opaque builder for the rate-limiter middleware.
 ///
-/// Construct via [`swe_http_rate::builder()`](crate::builder) or
+/// Construct via [`swe_edge_http_rate::builder()`](crate::builder) or
 /// [`Builder::with_config`]. Finalize with [`Builder::build`].
 #[derive(Debug)]
 pub struct Builder {

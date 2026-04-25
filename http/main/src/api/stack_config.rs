@@ -4,5 +4,5 @@
 #[derive(Debug, Clone)]
 pub struct StackConfig {
     /// Auth middleware policy.
-    pub auth: swe_http_auth::AuthConfig,
+    pub auth: swe_edge_http_auth::AuthConfig,
 }

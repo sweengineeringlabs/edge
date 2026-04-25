@@ -1,6 +1,6 @@
-//! End-to-end tests for the swe_http_cassette SAF builder surface.
+//! End-to-end tests for the swe_edge_http_cassette SAF builder surface.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer};
 
 fn make_cfg(dir: &str) -> CassetteConfig {
     CassetteConfig {
@@ -17,7 +17,7 @@ fn make_cfg(dir: &str) -> CassetteConfig {
 fn e2e_builder() {
     let tmpdir = tempfile::tempdir().unwrap();
     let dir = tmpdir.path().to_str().unwrap().replace('\\', "/");
-    let b = swe_http_cassette::builder().expect("builder() must succeed");
+    let b = swe_edge_http_cassette::builder().expect("builder() must succeed");
     assert_eq!(b.config().mode, "replay");
     let _layer: CassetteLayer = Builder::with_config(make_cfg(&dir))
         .build("e2e_builder_test")

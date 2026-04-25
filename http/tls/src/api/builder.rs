@@ -4,7 +4,7 @@ use crate::api::tls_config::TlsConfig;
 
 /// Opaque builder for the TLS identity layer.
 ///
-/// Construct via [`swe_http_tls::builder()`](crate::builder) or
+/// Construct via [`swe_edge_http_tls::builder()`](crate::builder) or
 /// [`Builder::with_config`]. Finalize with [`Builder::build`].
 pub struct Builder {
     /// The resolved TLS identity policy.

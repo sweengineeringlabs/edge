@@ -7,7 +7,7 @@
 //! - `Debug` output must reflect the configured policy.
 //! - `Send + Sync` must hold after construction.
 
-use swe_http_rate::{Builder, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, RateConfig, RateLayer};
 
 // ---------------------------------------------------------------------------
 // Global bucket (per_host = false)

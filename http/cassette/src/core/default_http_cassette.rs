@@ -25,7 +25,7 @@ impl DefaultHttpCassette {
 
 impl HttpCassette for DefaultHttpCassette {
     fn describe(&self) -> &'static str {
-        "swe_http_cassette"
+        "swe_edge_http_cassette"
     }
 }
 
@@ -47,6 +47,6 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = CassetteConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpCassette::new(cfg);
-        assert_eq!(d.describe(), "swe_http_cassette");
+        assert_eq!(d.describe(), "swe_edge_http_cassette");
     }
 }

@@ -10,7 +10,7 @@
 //! and cannot be tested without one.  Integration tests here are
 //! confined to what is verifiable without network access.
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // Missing env vars
@@ -182,5 +182,5 @@ fn test_digest_strategy_middleware_debug_does_not_expose_password() {
 #[test]
 fn test_digest_strategy_auth_middleware_is_send_and_sync() {
     fn require_send_sync<T: Send + Sync>() {}
-    require_send_sync::<swe_http_auth::AuthMiddleware>();
+    require_send_sync::<swe_edge_http_auth::AuthMiddleware>();
 }

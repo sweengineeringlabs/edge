@@ -6,7 +6,7 @@
 //! - Invalid header value (CR/LF in credential) → `Error::InvalidHeaderValue`
 //! - Valid name + valid credential env → build succeeds
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // Missing env var
