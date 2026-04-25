@@ -1,3 +1,21 @@
-/main/target
+# Cargo build artifacts — any peer workspace.
+# Previously this was `/main/target` (old single-workspace shape).
+# Since the `refactor: restructure from Multi-Feature workspace to
+# Multi-Project peers` move (commit 6e35231), every top-level peer
+# (gateway/, controlroom/, http/, …) has its own target/ tree.
+**/target/
+
+# Cargo lockfiles for peer workspaces. Convention on this repo is
+# that library peers don't commit Cargo.lock (gateway/Cargo.lock
+# has been untracked since the peers refactor). Bin crates that
+# need reproducible installs can opt in by un-gitignoring their
+# own `<peer>/Cargo.lock`.
+**/Cargo.lock
+
+# Auto-generated audit output from `swe-architect arch audit --rs`.
+# Timestamped JSON reports that regenerate on each run — history
+# noise with no reproducibility value.
+**/docs/7-operations/compliance/structural_audit_report_*.json
+
 *.swp
 .DS_Store

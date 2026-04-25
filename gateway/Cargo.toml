@@ -73,8 +73,13 @@ walkdir = "2"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
-mdc-logging = { version = "0.1.0", registry = "local" }
-swe-observ-processes = { version = "0.2.0", registry = "local" }
+# MDC (Mapped Diagnostic Context) — moved from the local-registry
+# vendored `mdc-logging` crate to its successor `swe_justobserv_context`
+# in the justobserv repo. Same `LogContext` / `with_log_context` API;
+# source identical modulo the rename. Git dep so clean installs /
+# CI runners without the local vendored registry can resolve it.
+swe_justobserv_context = { git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
+swe-observ-processes = { package = "swe_justobserv_processes", git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
 mime_guess = "2"
 
 # Optional: HTTP client

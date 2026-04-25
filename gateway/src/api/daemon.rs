@@ -123,12 +123,12 @@ impl DaemonRunner {
             return server_fn(ctx).await;
         }
 
-        let log_ctx = mdc_logging::LogContext::builder()
+        let log_ctx = swe_justobserv_context::LogContext::builder()
             .session_id(daemon_id.clone())
             .agent_id(&self.service_name)
             .build();
 
-        mdc_logging::with_log_context(log_ctx, async move {
+        swe_justobserv_context::with_log_context(log_ctx, async move {
             tracing::info!(
                 daemon_id = %daemon_id,
                 service = %self.service_name,

@@ -1,0 +1,64 @@
+# SWE default HTTP auth policy.
+#
+# The only honest SWE "default" for auth is **none** — there is
+# no universal credential this crate should attach to every
+# request. A `kind = "none"` baseline makes the middleware a
+# pass-through until a consumer explicitly configures a scheme.
+#
+# Credentials are referenced by env-var NAME, not stored
+# inline. This is strict by design:
+#   - TOML files get committed to git; env vars don't.
+#   - Consumers can inject creds via their existing secrets
+#     plumbing (Docker secrets, Kubernetes envFrom, .env loader)
+#     without the middleware caring where they came from.
+#
+# To activate, uncomment one block below and set `kind`.
+
+# Pass-through (middleware attached but does nothing).
+kind = "none"
+
+# --- bearer scheme -------------------------------------------
+# kind = "bearer"
+# # Environment variable name holding the token. The middleware
+# # reads this at config-load time and caches the value; changes
+# # to the env var after load require re-building the middleware.
+# token_env = "EDGE_API_TOKEN"
+
+# --- basic scheme --------------------------------------------
+# kind = "basic"
+# user_env = "EDGE_BASIC_USER"
+# pass_env = "EDGE_BASIC_PASS"
+
+# --- custom header scheme ------------------------------------
+# For APIs that use a non-standard header (x-api-key, x-auth,
+# x-goog-api-key, etc.) instead of Authorization.
+# kind = "header"
+# # The header name to set.
+# name = "x-api-key"
+# # Environment variable name holding the credential value.
+# value_env = "EDGE_API_KEY"
+
+# --- digest scheme (RFC 7616) --------------------------------
+# Pre-emptive Digest: the strategy fetches a nonce from the
+# target host via a side-channel probe, caches it, and computes
+# the response header on each request. Re-fetches on stale
+# nonce. MD5 algorithm only (sha-256 support is a follow-up
+# when a consumer needs it).
+# kind = "digest"
+# user_env = "EDGE_DIGEST_USER"
+# password_env = "EDGE_DIGEST_PASSWORD"
+# # Optional: validate the server advertises the expected realm.
+# # Guards against misconfiguration against the wrong host.
+# # realm = "api.example.com"
+
+# --- aws sigv4 scheme ----------------------------------------
+# AWS Signature Version 4 — HMAC-SHA256 signing per request.
+# Works with AWS services and SigV4-compatible endpoints
+# (MinIO, R2, Ceph RGW, etc.).
+# kind = "aws_sig_v4"
+# access_key_env = "AWS_ACCESS_KEY_ID"
+# secret_key_env = "AWS_SECRET_ACCESS_KEY"
+# # Optional: for temporary credentials (STS / IMDSv2).
+# # session_token_env = "AWS_SESSION_TOKEN"
+# region = "us-east-1"
+# service = "s3"
