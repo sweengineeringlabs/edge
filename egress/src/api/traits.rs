@@ -1,5 +1,27 @@
-//! Outbound gateway trait re-export hub.
+//! Outbound gateway trait contracts.
 
-/// Marks an outbound adapter as a full egress sink.
-/// Implementors satisfy `OutboundSink + Send + Sync`.
-pub(crate) trait EgressAdapter: Send + Sync {}
+/// Validates a string payload before outbound dispatch.
+pub trait Validator: Send + Sync {
+    /// Returns `true` when `input` passes validation.
+    fn is_valid(&self, input: &str) -> bool;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct AlwaysValid;
+    impl Validator for AlwaysValid {
+        fn is_valid(&self, _input: &str) -> bool { true }
+    }
+
+    #[test]
+    fn test_validator_always_valid_returns_true() {
+        assert!(AlwaysValid.is_valid("x"));
+    }
+
+    #[test]
+    fn test_validator_always_valid_on_empty_returns_true() {
+        assert!(AlwaysValid.is_valid(""));
+    }
+}

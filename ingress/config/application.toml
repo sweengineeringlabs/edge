@@ -1,0 +1,2 @@
+# swe_edge_ingress — workspace application configuration overrides.
+# Place inbound adapter tuning here (buffer sizes, timeouts, etc.).

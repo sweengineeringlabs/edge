@@ -1,0 +1,2 @@
+# swe_edge_egress — workspace application configuration overrides.
+# Place outbound adapter tuning here (connection pools, timeouts, etc.).

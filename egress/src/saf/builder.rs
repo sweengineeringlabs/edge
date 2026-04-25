@@ -1,35 +1,25 @@
 //! SAF builder — constructs outbound adapters.
 
-use std::sync::Arc;
-
 use crate::api::database::DatabaseGateway;
+use crate::api::traits::Validator;
 use crate::core::database::MemoryDatabase;
+use crate::core::validator::PassthroughValidator;
 
 /// Returns an in-memory database adapter (for testing/development).
 pub fn memory_database() -> impl DatabaseGateway {
     MemoryDatabase::new()
 }
 
-/// Builder for outbound adapter configuration.
-#[derive(Debug, Default)]
-pub struct Builder;
-
-impl Builder {
-    /// Construct with default configuration.
-    pub fn new() -> Self {
-        Self
-    }
-
-    /// Build the in-memory database adapter.
-    pub fn build_memory_database(self) -> Arc<dyn DatabaseGateway> {
-        Arc::new(MemoryDatabase::new())
-    }
+/// Returns the default passthrough validator (accepts all output).
+pub fn passthrough_validator() -> impl Validator {
+    PassthroughValidator
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::database::{DatabaseRead, DatabaseWrite};
+    use crate::api::database::DatabaseRead;
+    use crate::api::database::DatabaseWrite;
 
     /// @covers: memory_database
     #[test]
@@ -39,17 +29,11 @@ mod tests {
         assert_eq!(db.get("k").unwrap(), Some(b"v".to_vec()));
     }
 
-    /// @covers: Builder::new
+    /// @covers: passthrough_validator
     #[test]
-    fn test_new_constructs_builder() {
-        let _ = Builder::new();
-    }
-
-    /// @covers: Builder::build_memory_database
-    #[test]
-    fn test_build_memory_database_returns_arc_database_gateway() {
-        let db = Builder::new().build_memory_database();
-        db.put("x", b"1").unwrap();
-        assert_eq!(db.get("x").unwrap(), Some(b"1".to_vec()));
+    fn test_passthrough_validator_accepts_all_output() {
+        let v = passthrough_validator();
+        assert!(v.is_valid("payload"));
+        assert!(v.is_valid(""));
     }
 }

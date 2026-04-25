@@ -21,3 +21,20 @@ pub enum IngressError {
     #[error("{0}")]
     Other(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ingress_error_other_formats_message() {
+        let e = IngressError::Other("bad input".into());
+        assert_eq!(e.to_string(), "bad input");
+    }
+
+    #[test]
+    fn test_ingress_error_not_found_includes_path() {
+        let e = IngressError::NotFound { path: "/foo".into() };
+        assert!(e.to_string().contains("/foo"));
+    }
+}
