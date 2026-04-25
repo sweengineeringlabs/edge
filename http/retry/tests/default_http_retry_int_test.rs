@@ -4,13 +4,13 @@
 //! through observable effects from the public builder pipeline:
 //!
 //! - The layer's Debug output confirms `max_retries` flows from config through
-//!   `DefaultHttpRetry` into the layer (describe() = "swe_http_retry").
+//!   `DefaultHttpRetry` into the layer (describe() = "swe_edge_http_retry").
 //! - `RetryLayer` is `Send + Sync`, which propagates from `DefaultHttpRetry`
 //!   being `Send + Sync` through the `Arc<RetryConfig>` chain.
 //! - The builder pipeline does not modify the config values on the way through
 //!   `DefaultHttpRetry::new`.
 
-use swe_http_retry::{builder, Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{builder, Builder, RetryConfig, RetryLayer};
 
 fn make_cfg(max_retries: u32, initial_ms: u64) -> RetryConfig {
     RetryConfig {
@@ -41,7 +41,7 @@ fn test_builder_pipeline_embeds_config_in_default_http_retry() {
 }
 
 // ---------------------------------------------------------------------------
-// DefaultHttpRetry::describe — "swe_http_retry" embedded in Debug
+// DefaultHttpRetry::describe — "swe_edge_http_retry" embedded in Debug
 // ---------------------------------------------------------------------------
 
 /// The `RetryLayer` Debug output shows `max_retries` and `initial_interval_ms`.

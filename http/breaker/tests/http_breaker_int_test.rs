@@ -4,7 +4,7 @@
 //! downstream effect: `BreakerLayer` must satisfy the trait's `Send + Sync`
 //! supertrait bounds so it can be installed in a `reqwest_middleware::ClientBuilder`.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder};
 
 // ---------------------------------------------------------------------------
 // Send + Sync — compile-time proof that HttpBreaker's supertrait bounds hold

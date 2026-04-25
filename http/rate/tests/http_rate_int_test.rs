@@ -5,7 +5,7 @@
 //! supertrait bounds so it can be installed in a
 //! `reqwest_middleware::ClientBuilder`.
 
-use swe_http_rate::{Builder, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, RateConfig, RateLayer};
 
 // ---------------------------------------------------------------------------
 // Send + Sync — compile-time proof that HttpRate's supertrait bounds hold

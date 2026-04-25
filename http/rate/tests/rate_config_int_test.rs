@@ -1,7 +1,7 @@
 //! Integration tests for `api/rate_config.rs` — the public `RateConfig`
 //! struct and its field semantics.
 
-use swe_http_rate::{Builder, RateConfig};
+use swe_edge_http_rate::{Builder, RateConfig};
 
 // ---------------------------------------------------------------------------
 // Struct literal construction — all three fields are public

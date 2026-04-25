@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_cache crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_cache crate.
 
-use swe_http_cache::{builder, Builder, CacheConfig, CacheLayer, Error};
+use swe_edge_http_cache::{builder, Builder, CacheConfig, CacheLayer, Error};
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -178,7 +178,7 @@ fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("x".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cache"),
+        msg.contains("swe_edge_http_cache"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -203,7 +203,7 @@ fn test_error_not_implemented_display_is_non_empty_and_names_crate() {
     let msg = err.to_string();
     assert!(!msg.is_empty(), "NotImplemented display must not be empty");
     assert!(
-        msg.contains("swe_http_cache"),
+        msg.contains("swe_edge_http_cache"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

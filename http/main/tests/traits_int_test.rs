@@ -1,7 +1,7 @@
 //! Integration tests for `api::traits` — StackAssembler marker trait.
 
-use swe_http_auth::AuthConfig;
-use swe_http_main::{Builder, StackConfig};
+use swe_edge_http_auth::AuthConfig;
+use swe_edge_http_main::{Builder, StackConfig};
 
 /// @covers: StackAssembler — DefaultStack is Send + Sync via the assembler contract
 #[test]

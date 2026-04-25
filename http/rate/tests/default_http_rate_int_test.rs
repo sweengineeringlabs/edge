@@ -3,7 +3,7 @@
 //! `DefaultHttpRate` is `pub(crate)`.  Its observable effect is through the
 //! SAF `builder()` function, which loads the crate-shipped SWE baseline.
 
-use swe_http_rate::{Builder, RateConfig};
+use swe_edge_http_rate::{Builder, RateConfig};
 
 // ---------------------------------------------------------------------------
 // SWE baseline — verify default config has production-safe values
@@ -12,13 +12,13 @@ use swe_http_rate::{Builder, RateConfig};
 /// The `builder()` function must load the baseline without error.
 #[test]
 fn test_default_http_rate_swe_default_builder_succeeds() {
-    swe_http_rate::builder().expect("swe_default baseline must parse without error");
+    swe_edge_http_rate::builder().expect("swe_default baseline must parse without error");
 }
 
 /// Default `tokens_per_second` must be >= 1.
 #[test]
 fn test_default_http_rate_swe_default_tokens_per_second_is_positive() {
-    let b = swe_http_rate::builder().expect("baseline parses");
+    let b = swe_edge_http_rate::builder().expect("baseline parses");
     assert!(
         b.config().tokens_per_second >= 1,
         "swe_default tokens_per_second must be >= 1, got {}",
@@ -29,7 +29,7 @@ fn test_default_http_rate_swe_default_tokens_per_second_is_positive() {
 /// Default `burst_capacity` must be >= 1.
 #[test]
 fn test_default_http_rate_swe_default_burst_capacity_is_positive() {
-    let b = swe_http_rate::builder().expect("baseline parses");
+    let b = swe_edge_http_rate::builder().expect("baseline parses");
     assert!(
         b.config().burst_capacity >= 1,
         "swe_default burst_capacity must be >= 1, got {}",
@@ -40,7 +40,7 @@ fn test_default_http_rate_swe_default_burst_capacity_is_positive() {
 /// Building from the SWE default must produce a valid `RateLayer`.
 #[test]
 fn test_default_http_rate_swe_default_builds_rate_layer() {
-    swe_http_rate::builder()
+    swe_edge_http_rate::builder()
         .expect("baseline parses")
         .build()
         .expect("build from swe_default must succeed");

@@ -282,7 +282,7 @@ impl CacheLayer {
             .collect();
         let body = response.bytes().await.map_err(|e| {
             reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                "swe_http_cache read body: {e}"
+                "swe_edge_http_cache read body: {e}"
             ))
         })?;
         let body_vec = body.to_vec();
@@ -300,7 +300,7 @@ impl CacheLayer {
 
         let rebuilt = reconstruct(&entry).map_err(|e| {
             reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                "swe_http_cache post-store reconstruct: {e}"
+                "swe_edge_http_cache post-store reconstruct: {e}"
             ))
         })?;
         Ok((rebuilt, Some(entry)))
@@ -452,7 +452,7 @@ impl reqwest_middleware::Middleware for CacheLayer {
                 // Fresh hit.
                 return reconstruct(&entry).map_err(|e| {
                     reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                        "swe_http_cache reconstruct: {e}"
+                        "swe_edge_http_cache reconstruct: {e}"
                     ))
                 });
             }
@@ -461,7 +461,7 @@ impl reqwest_middleware::Middleware for CacheLayer {
                 // background refresh.
                 let rebuilt = reconstruct(&entry).map_err(|e| {
                     reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                        "swe_http_cache swr reconstruct: {e}"
+                        "swe_edge_http_cache swr reconstruct: {e}"
                     ))
                 })?;
                 let layer_arc: Arc<CacheLayer> = Arc::new(CacheLayer {
@@ -487,7 +487,7 @@ impl reqwest_middleware::Middleware for CacheLayer {
                         self.refresh_on_304(entry, &response, key).await;
                     return reconstruct(&refreshed).map_err(|e| {
                         reqwest_middleware::Error::Middleware(anyhow::anyhow!(
-                            "swe_http_cache 304 reconstruct: {e}"
+                            "swe_edge_http_cache 304 reconstruct: {e}"
                         ))
                     });
                 }

@@ -9,7 +9,7 @@
 //!   value appears in the Debug output.
 //! - Missing files / env vars surface as typed errors, not panics.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // HttpTls::identity — None provider returns Ok(None)

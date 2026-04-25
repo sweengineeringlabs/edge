@@ -12,7 +12,7 @@
 //! - The middleware correctly reconstructs a `reqwest::Response` from the
 //!   recorded bytes stored in `body_base64`.
 
-use swe_http_cassette::{Builder, CassetteConfig};
+use swe_edge_http_cassette::{Builder, CassetteConfig};
 
 fn replay_cfg(dir: &str, cassette_name: &str) -> (CassetteConfig, String) {
     let cfg = CassetteConfig {
@@ -178,7 +178,7 @@ fn test_malformed_cassette_yaml_returns_parse_error() {
     let err = Builder::with_config(cfg).build(&name).unwrap_err();
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cassette") || msg.contains("parse"),
+        msg.contains("swe_edge_http_cassette") || msg.contains("parse"),
         "malformed YAML must return a ParseFailed error; got: {msg}"
     );
 }

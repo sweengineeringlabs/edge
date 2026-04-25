@@ -4,7 +4,7 @@ use crate::api::cassette_config::CassetteConfig;
 
 /// Opaque builder for the cassette (VCR) middleware.
 ///
-/// Construct via [`swe_http_cassette::builder()`](crate::builder) or
+/// Construct via [`swe_edge_http_cassette::builder()`](crate::builder) or
 /// [`Builder::with_config`]. Finalize with [`Builder::build`].
 #[derive(Debug)]
 pub struct Builder {

@@ -1,7 +1,7 @@
 //! Integration tests for `api/cache_config.rs` — `CacheConfig` struct fields
 //! and their observable semantics from outside the crate.
 
-use swe_http_cache::{Builder, CacheConfig};
+use swe_edge_http_cache::{Builder, CacheConfig};
 
 // ---------------------------------------------------------------------------
 // Struct literal construction — all four fields are public

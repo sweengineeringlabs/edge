@@ -1,4 +1,4 @@
-//! Integration tests for `swe_http_cassette` trait re-exports (`api/traits.rs`).
+//! Integration tests for `swe_edge_http_cassette` trait re-exports (`api/traits.rs`).
 //!
 //! `api/traits.rs` declares a `pub(crate)` type alias `HttpCassetteTrait`
 //! for `dyn HttpCassette`. That alias is internal-only. From the integration
@@ -11,7 +11,7 @@
 //! set, or if the trait object indirection through `HttpCassetteTrait` is
 //! broken, consumers of the crate would fail to compile.
 
-use swe_http_cassette::{Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{Builder, CassetteConfig, CassetteLayer};
 
 // ---------------------------------------------------------------------------
 // reqwest_middleware::Middleware — CassetteLayer must implement it

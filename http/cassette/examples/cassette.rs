@@ -2,11 +2,11 @@
 //! layer bound to a named fixture file.
 
 fn main() {
-    match swe_http_cassette::builder() {
-        Err(e) => println!("swe_http_cassette: baseline parse failed: {e}"),
+    match swe_edge_http_cassette::builder() {
+        Err(e) => println!("swe_edge_http_cassette: baseline parse failed: {e}"),
         Ok(b) => match b.build("example_cassette") {
-            Ok(_) => println!("swe_http_cassette layer built (fixture: example_cassette.yaml)"),
-            Err(e) => println!("swe_http_cassette: {e}"),
+            Ok(_) => println!("swe_edge_http_cassette layer built (fixture: example_cassette.yaml)"),
+            Err(e) => println!("swe_edge_http_cassette: {e}"),
         },
     }
 }

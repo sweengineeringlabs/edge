@@ -25,7 +25,7 @@ impl DefaultHttpBreaker {
 
 impl HttpBreaker for DefaultHttpBreaker {
     fn describe(&self) -> &'static str {
-        "swe_http_breaker"
+        "swe_edge_http_breaker"
     }
 }
 
@@ -49,6 +49,6 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = BreakerConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpBreaker::new(cfg);
-        assert_eq!(d.describe(), "swe_http_breaker");
+        assert_eq!(d.describe(), "swe_edge_http_breaker");
     }
 }

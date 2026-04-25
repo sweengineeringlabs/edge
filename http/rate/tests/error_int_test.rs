@@ -1,6 +1,6 @@
 //! Integration tests for `api/error.rs` — the public `Error` enum.
 
-use swe_http_rate::Error;
+use swe_edge_http_rate::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
@@ -18,7 +18,7 @@ fn test_error_parse_failed_display_names_crate() {
     let err = Error::ParseFailed("bad field".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_rate"),
+        msg.contains("swe_edge_http_rate"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -61,7 +61,7 @@ fn test_error_not_implemented_display_names_crate() {
     let err = Error::NotImplemented("token bucket");
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_rate"),
+        msg.contains("swe_edge_http_rate"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

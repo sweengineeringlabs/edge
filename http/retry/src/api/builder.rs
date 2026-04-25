@@ -4,7 +4,7 @@ use crate::api::retry_config::RetryConfig;
 
 /// Opaque builder for the retry middleware.
 ///
-/// Construct via [`swe_http_retry::builder()`](crate::builder) or
+/// Construct via [`swe_edge_http_retry::builder()`](crate::builder) or
 /// [`Builder::with_config`]. Finalize with [`Builder::build`].
 #[derive(Debug)]
 pub struct Builder {

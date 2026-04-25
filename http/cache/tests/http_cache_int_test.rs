@@ -6,7 +6,7 @@
 //! and that the layer can be passed to any generic context that requires those
 //! bounds.
 
-use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+use swe_edge_http_cache::{Builder, CacheConfig, CacheLayer};
 
 // ---------------------------------------------------------------------------
 // Send + Sync — compile-time proof that HttpCache's supertrait bounds hold

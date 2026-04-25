@@ -1,6 +1,6 @@
-//! End-to-end tests for the swe_http_retry SAF builder surface.
+//! End-to-end tests for the swe_edge_http_retry SAF builder surface.
 
-use swe_http_retry::{Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{Builder, RetryConfig, RetryLayer};
 
 fn make_cfg() -> RetryConfig {
     RetryConfig {
@@ -16,7 +16,7 @@ fn make_cfg() -> RetryConfig {
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let layer: RetryLayer = swe_http_retry::builder()
+    let layer: RetryLayer = swe_edge_http_retry::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

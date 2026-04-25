@@ -1,6 +1,6 @@
-//! Integration tests exercising the public gateway surface of the swe_http_breaker crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_breaker crate.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder, Error};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder, Error};
 
 fn make_cfg() -> BreakerConfig {
     BreakerConfig {
@@ -13,12 +13,12 @@ fn make_cfg() -> BreakerConfig {
 
 #[test]
 fn test_builder_fn_loads_swe_default_and_succeeds() {
-    swe_http_breaker::builder().expect("builder() must succeed");
+    swe_edge_http_breaker::builder().expect("builder() must succeed");
 }
 
 #[test]
 fn test_builder_fn_default_config_has_positive_failure_threshold() {
-    let b = swe_http_breaker::builder().expect("builder() must succeed");
+    let b = swe_edge_http_breaker::builder().expect("builder() must succeed");
     assert!(b.config().failure_threshold >= 1, "swe_default failure_threshold must be >= 1");
 }
 
@@ -33,7 +33,7 @@ fn test_with_config_custom_config_stores_values() {
 
 #[test]
 fn test_build_default_produces_breaker_layer() {
-    let layer: BreakerLayer = swe_http_breaker::builder()
+    let layer: BreakerLayer = swe_edge_http_breaker::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");
@@ -79,7 +79,7 @@ fn test_build_empty_failure_statuses_succeeds() {
 fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("oops".to_string());
     let s = err.to_string();
-    assert!(s.contains("swe_http_breaker"), "ParseFailed Display must name the crate: {s}");
+    assert!(s.contains("swe_edge_http_breaker"), "ParseFailed Display must name the crate: {s}");
 }
 
 #[test]

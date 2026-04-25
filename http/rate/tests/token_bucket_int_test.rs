@@ -9,7 +9,7 @@
 //! - Edge-case capacity values (minimum, large, burst == rate) must all
 //!   be accepted by the builder.
 
-use swe_http_rate::{Builder, RateConfig, RateLayer};
+use swe_edge_http_rate::{Builder, RateConfig, RateLayer};
 
 // ---------------------------------------------------------------------------
 // burst_capacity == tokens_per_second — no burst beyond steady rate

@@ -1,4 +1,4 @@
-//! Primary trait re-export hub and trait definitions for `swe_http_cache`.
+//! Primary trait re-export hub and trait definitions for `swe_edge_http_cache`.
 
 pub(crate) type HttpCacheTrait = dyn crate::api::http_cache::HttpCache;
 

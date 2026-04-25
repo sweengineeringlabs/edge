@@ -13,7 +13,7 @@ use crate::api::http_tls::HttpTls;
 /// `reqwest::ClientBuilder` via `apply_to(..)`.
 ///
 /// ```ignore
-/// let tls = swe_http_tls::builder()?.with_config(cfg).build()?;
+/// let tls = swe_edge_http_tls::builder()?.with_config(cfg).build()?;
 /// let client = tls.apply_to(reqwest::Client::builder())?.build()?;
 /// ```
 pub struct TlsLayer {

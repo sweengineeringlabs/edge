@@ -1,6 +1,6 @@
 //! Integration tests for `api::error::Error`.
 
-use swe_http_main::Error;
+use swe_edge_http_main::Error;
 
 /// @covers: Error::BuildFailed — Display format is non-empty and contains cause
 #[test]

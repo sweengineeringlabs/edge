@@ -100,7 +100,7 @@ mod tests {
         // The middleware's Debug impl reports the underlying
         // processor's describe() — confirms end-to-end wiring.
         let s = format!("{mw:?}");
-        assert!(s.contains("swe_http_auth"));
+        assert!(s.contains("swe_edge_http_auth"));
     }
 
     /// @covers: Builder::build

@@ -4,7 +4,7 @@
 //! `Send + Sync` bounds that allow the layer to be installed in a
 //! `reqwest_middleware::ClientBuilder`.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder};
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -27,7 +27,7 @@ fn test_breaker_layer_builds_from_custom_config() {
 /// Building from the SWE default must also succeed.
 #[test]
 fn test_breaker_layer_builds_from_swe_default() {
-    let _layer: BreakerLayer = swe_http_breaker::builder()
+    let _layer: BreakerLayer = swe_edge_http_breaker::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

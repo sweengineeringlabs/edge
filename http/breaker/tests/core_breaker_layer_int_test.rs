@@ -7,7 +7,7 @@
 //! - `Debug` output must reflect the configured policy fields.
 //! - `Send + Sync` must hold after construction.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder};
 
 // ---------------------------------------------------------------------------
 // Low threshold — breaker trips quickly

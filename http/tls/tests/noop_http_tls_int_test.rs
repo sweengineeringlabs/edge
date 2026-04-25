@@ -9,7 +9,7 @@
 //!   unchanged and the resulting client can call `.build()`.
 //! - The layer is `Send + Sync`, which requires `NoopHttpTls` to be too.
 
-use swe_http_tls::{Builder, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{Builder, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // NoopHttpTls::describe — "noop" in TlsLayer Debug

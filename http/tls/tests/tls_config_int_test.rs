@@ -11,7 +11,7 @@
 //! - `swe_default()` always returns `TlsConfig::None`.
 //! - Values flow unchanged through `Builder::with_config`.
 
-use swe_http_tls::{Builder, Error, TlsConfig};
+use swe_edge_http_tls::{Builder, Error, TlsConfig};
 
 // ---------------------------------------------------------------------------
 // Direct variant construction

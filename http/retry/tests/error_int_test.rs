@@ -1,9 +1,9 @@
-//! Integration tests for `swe_http_retry::Error`.
+//! Integration tests for `swe_edge_http_retry::Error`.
 //!
 //! Covers: `Error::ParseFailed`, `Error::NotImplemented` — Display messages
 //! must be actionable: name the crate, embed the payload, be non-empty.
 
-use swe_http_retry::Error;
+use swe_edge_http_retry::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
@@ -15,7 +15,7 @@ fn test_parse_failed_display_names_the_crate() {
     let err = Error::ParseFailed("unexpected field `max_retry`".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_retry"),
+        msg.contains("swe_edge_http_retry"),
         "ParseFailed Display must name the crate; got: {msg}"
     );
 }
@@ -68,7 +68,7 @@ fn test_not_implemented_display_is_non_empty() {
 fn test_not_implemented_display_names_the_crate() {
     let msg = Error::NotImplemented("some feature").to_string();
     assert!(
-        msg.contains("swe_http_retry"),
+        msg.contains("swe_edge_http_retry"),
         "NotImplemented Display must name the crate; got: {msg}"
     );
 }

@@ -6,7 +6,7 @@
 //! produced by `Builder::build()` must correctly reflect the policy supplied at
 //! construction, and edge-case configs must be accepted without error.
 
-use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+use swe_edge_http_cache::{Builder, CacheConfig, CacheLayer};
 
 // ---------------------------------------------------------------------------
 // Zero TTL — "cache only when upstream provides Cache-Control max-age"

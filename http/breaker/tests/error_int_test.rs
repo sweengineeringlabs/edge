@@ -1,6 +1,6 @@
 //! Integration tests for `api/error.rs` — the public `Error` enum.
 
-use swe_http_breaker::Error;
+use swe_edge_http_breaker::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
@@ -18,7 +18,7 @@ fn test_error_parse_failed_display_names_crate() {
     let err = Error::ParseFailed("bad field".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_breaker"),
+        msg.contains("swe_edge_http_breaker"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -61,7 +61,7 @@ fn test_error_not_implemented_display_names_crate() {
     let err = Error::NotImplemented("host breaker");
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_breaker"),
+        msg.contains("swe_edge_http_breaker"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

@@ -1,7 +1,7 @@
 //! Integration tests for `core::stack::default_stack::DefaultStack`.
 
-use swe_http_auth::AuthConfig;
-use swe_http_main::{Builder, StackConfig};
+use swe_edge_http_auth::AuthConfig;
+use swe_edge_http_main::{Builder, StackConfig};
 
 /// @covers: DefaultStack::new — builder() entry point exercises the constructor path
 #[test]

@@ -1,4 +1,4 @@
-//! swe_http_rate — Client-side rate-limiter middleware — token bucket per host.
+//! swe_edge_http_rate — Client-side rate-limiter middleware — token bucket per host.
 //!
 
 

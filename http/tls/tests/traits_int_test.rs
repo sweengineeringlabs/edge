@@ -1,4 +1,4 @@
-//! Integration tests for `swe_http_tls` trait re-exports (`api/traits.rs`).
+//! Integration tests for `swe_edge_http_tls` trait re-exports (`api/traits.rs`).
 //!
 //! `api/traits.rs` defines the `pub(crate)` type alias `HttpTlsTrait` for
 //! `dyn HttpTls`. The integration-level contract is:
@@ -8,7 +8,7 @@
 //! - `TlsLayer::apply_to` works end-to-end with a `reqwest::ClientBuilder`.
 //! - `TlsLayer` is `Send + Sync` (flows from `HttpTls: Send + Sync + Debug`).
 
-use swe_http_tls::{builder, Builder, Error, TlsApplier, TlsConfig, TlsLayer};
+use swe_edge_http_tls::{builder, Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 
 // ---------------------------------------------------------------------------
 // SAF re-export completeness — compile-time proof
@@ -19,7 +19,7 @@ use swe_http_tls::{builder, Builder, Error, TlsApplier, TlsConfig, TlsLayer};
 #[test]
 fn test_saf_surface_exports_all_required_types() {
     // builder() — function
-    let _ = builder as fn() -> Result<swe_http_tls::Builder, Error>;
+    let _ = builder as fn() -> Result<swe_edge_http_tls::Builder, Error>;
 
     // Builder — type
     fn accept_builder(_: Builder) {}

@@ -3,7 +3,7 @@
 //! Covers the full public builder surface: the `builder()` free function
 //! and the `Builder` type's `with_config`, `config`, and `build` methods.
 
-use swe_http_cache::{builder, Builder, CacheConfig, CacheLayer, Error};
+use swe_edge_http_cache::{builder, Builder, CacheConfig, CacheLayer, Error};
 
 // ---------------------------------------------------------------------------
 // builder() free function
@@ -207,7 +207,7 @@ fn test_error_not_implemented_is_constructable_and_display_is_non_empty() {
         "NotImplemented display must not be empty"
     );
     assert!(
-        display.contains("swe_http_cache"),
+        display.contains("swe_edge_http_cache"),
         "NotImplemented display must identify the crate; got: {display}"
     );
 }

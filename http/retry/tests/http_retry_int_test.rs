@@ -10,7 +10,7 @@
 //! - The layer produced by the builder pipeline is non-trivially wired —
 //!   it has a non-zero `max_retries` field visible in Debug.
 
-use swe_http_retry::{Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{Builder, RetryConfig, RetryLayer};
 
 // ---------------------------------------------------------------------------
 // reqwest_middleware::Middleware — compile-time proof
@@ -49,7 +49,7 @@ fn test_retry_layer_is_arc_send_sync() {
 }
 
 // ---------------------------------------------------------------------------
-// describe() contract — "swe_http_retry" embedded in Debug
+// describe() contract — "swe_edge_http_retry" embedded in Debug
 // ---------------------------------------------------------------------------
 
 /// The `RetryLayer` Debug output must include `max_retries`, which flows

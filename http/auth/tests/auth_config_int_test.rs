@@ -4,7 +4,7 @@
 //! so they go through the real public API without touching `pub(crate)`
 //! internals.
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // None variant
@@ -21,7 +21,7 @@ fn test_auth_config_none_variant_builds_without_env() {
 
 #[test]
 fn test_auth_config_none_is_default_from_builder_fn() {
-    let b = swe_http_auth::builder().expect("builder() must succeed");
+    let b = swe_edge_http_auth::builder().expect("builder() must succeed");
     assert!(
         matches!(b.config(), AuthConfig::None),
         "swe_default config must be AuthConfig::None, got {:?}",

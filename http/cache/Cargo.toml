@@ -1,5 +1,5 @@
 [package]
-name = "swe-http-cache"
+name = "swe_edge_http_cache"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

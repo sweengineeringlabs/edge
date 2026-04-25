@@ -1,4 +1,4 @@
-//! Primary trait re-export hub and trait definitions for `swe_http_breaker`.
+//! Primary trait re-export hub and trait definitions for `swe_edge_http_breaker`.
 
 pub(crate) type HttpBreakerTrait = dyn crate::api::http_breaker::HttpBreaker;
 

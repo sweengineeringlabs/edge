@@ -6,7 +6,7 @@
 # consumer explicitly configures a client certificate.
 #
 # Certificate material lives on the filesystem; passwords come
-# from env vars. Same principle as swe_http_auth: secrets are
+# from env vars. Same principle as swe_edge_http_auth: secrets are
 # referenced, not stored.
 
 # Pass-through — no client cert attached.

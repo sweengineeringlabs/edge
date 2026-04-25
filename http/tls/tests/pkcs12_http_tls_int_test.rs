@@ -10,7 +10,7 @@
 //! - A file that exists but is not valid PKCS12 data causes `apply_to()`
 //!   to return `Error::InvalidCertificate { format: "pkcs12", .. }`.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig};
 
 // ---------------------------------------------------------------------------
 // Pkcs12HttpTls::load — missing file errors surface at build time

@@ -25,7 +25,7 @@ impl DefaultHttpRate {
 
 impl HttpRate for DefaultHttpRate {
     fn describe(&self) -> &'static str {
-        "swe_http_rate"
+        "swe_edge_http_rate"
     }
 }
 
@@ -47,6 +47,6 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = RateConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpRate::new(cfg);
-        assert_eq!(d.describe(), "swe_http_rate");
+        assert_eq!(d.describe(), "swe_edge_http_rate");
     }
 }

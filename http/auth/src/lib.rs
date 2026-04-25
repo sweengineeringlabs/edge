@@ -1,4 +1,4 @@
-//! swe_http_auth — HTTP auth middleware for reqwest-middleware.
+//! swe_edge_http_auth — HTTP auth middleware for reqwest-middleware.
 //!
 //! Attaches bearer tokens, basic-auth credentials, or custom
 //! API-key headers to outbound HTTP requests. Credentials are

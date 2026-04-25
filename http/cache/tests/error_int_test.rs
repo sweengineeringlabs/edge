@@ -4,7 +4,7 @@
 //! is actionable (names the crate + includes the reason), and that `Debug` is
 //! available.
 
-use swe_http_cache::Error;
+use swe_edge_http_cache::Error;
 
 // ---------------------------------------------------------------------------
 // Error::ParseFailed
@@ -25,7 +25,7 @@ fn test_error_parse_failed_display_names_crate() {
     let err = Error::ParseFailed("bad field".to_string());
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cache"),
+        msg.contains("swe_edge_http_cache"),
         "ParseFailed display must name the crate; got: {msg}"
     );
 }
@@ -71,7 +71,7 @@ fn test_error_not_implemented_display_names_crate() {
     let err = Error::NotImplemented("background refresh");
     let msg = err.to_string();
     assert!(
-        msg.contains("swe_http_cache"),
+        msg.contains("swe_edge_http_cache"),
         "NotImplemented display must name the crate; got: {msg}"
     );
 }

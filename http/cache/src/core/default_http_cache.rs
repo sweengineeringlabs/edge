@@ -25,7 +25,7 @@ impl DefaultHttpCache {
 
 impl HttpCache for DefaultHttpCache {
     fn describe(&self) -> &'static str {
-        "swe_http_cache"
+        "swe_edge_http_cache"
     }
 }
 
@@ -47,6 +47,6 @@ mod tests {
     fn test_describe_returns_crate_name() {
         let cfg = CacheConfig::swe_default().expect("baseline parses");
         let d = DefaultHttpCache::new(cfg);
-        assert_eq!(d.describe(), "swe_http_cache");
+        assert_eq!(d.describe(), "swe_edge_http_cache");
     }
 }

@@ -11,7 +11,7 @@
 //!   resolves successfully (scheme-level validation is separate).
 //! - Resolution is evaluated once at `build()` time, not per request.
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // Present env var → build succeeds

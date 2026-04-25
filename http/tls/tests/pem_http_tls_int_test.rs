@@ -10,7 +10,7 @@
 //! - A valid PEM file would produce `Ok(Some(Identity))` — tested with a
 //!   self-signed cert fixture written to a temp directory.
 
-use swe_http_tls::{Builder, Error, TlsApplier, TlsConfig};
+use swe_edge_http_tls::{Builder, Error, TlsApplier, TlsConfig};
 
 // ---------------------------------------------------------------------------
 // PemHttpTls::load — file-read errors surface at build time

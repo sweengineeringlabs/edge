@@ -1,15 +1,15 @@
-//! Integration tests exercising the public gateway surface of the swe_http_auth crate.
+//! Integration tests exercising the public gateway surface of the swe_edge_http_auth crate.
 
-use swe_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, AuthMiddleware, Builder, Error};
 
 #[test]
 fn test_builder_fn_loads_swe_default_and_succeeds() {
-    swe_http_auth::builder().expect("builder() must succeed");
+    swe_edge_http_auth::builder().expect("builder() must succeed");
 }
 
 #[test]
 fn test_builder_fn_default_config_is_none_pass_through() {
-    let b = swe_http_auth::builder().expect("builder() must succeed");
+    let b = swe_edge_http_auth::builder().expect("builder() must succeed");
     assert!(matches!(b.config(), AuthConfig::None), "swe_default must be AuthConfig::None");
 }
 
@@ -86,7 +86,7 @@ fn test_with_config_bearer_stores_bearer_variant() {
 fn test_error_parse_failed_display_contains_crate_name() {
     let err = Error::ParseFailed("oops".to_string());
     let s = err.to_string();
-    assert!(s.contains("swe_http_auth"), "ParseFailed Display must name the crate: {s}");
+    assert!(s.contains("swe_edge_http_auth"), "ParseFailed Display must name the crate: {s}");
 }
 
 #[test]

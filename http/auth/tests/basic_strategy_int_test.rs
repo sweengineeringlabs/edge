@@ -10,7 +10,7 @@
 //! Header-value correctness (RFC 7617 base64 encoding) is covered by
 //! the core-unit tests inside `basic_strategy.rs`.
 
-use swe_http_auth::{AuthConfig, Builder, Error};
+use swe_edge_http_auth::{AuthConfig, Builder, Error};
 
 // ---------------------------------------------------------------------------
 // Missing env vars

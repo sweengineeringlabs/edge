@@ -16,7 +16,7 @@
 pub trait HttpRetry: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
-    /// Returns the crate's canonical name (e.g. `\"swe_http_retry\"`).
+    /// Returns the crate's canonical name (e.g. `\"swe_edge_http_retry\"`).
     /// Future impls will add scheme / policy-shape methods.
     fn describe(&self) -> &'static str;
 }

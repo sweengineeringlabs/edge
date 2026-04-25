@@ -1,7 +1,7 @@
 //! Integration tests for `api/breaker_config.rs` — the public `BreakerConfig`
 //! struct and its field semantics.
 
-use swe_http_breaker::{BreakerConfig, Builder};
+use swe_edge_http_breaker::{BreakerConfig, Builder};
 
 // ---------------------------------------------------------------------------
 // Struct literal construction — all four fields are public

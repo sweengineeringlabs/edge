@@ -1,6 +1,6 @@
-//! End-to-end tests for the swe_http_breaker SAF builder surface.
+//! End-to-end tests for the swe_edge_http_breaker SAF builder surface.
 
-use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+use swe_edge_http_breaker::{BreakerConfig, BreakerLayer, Builder};
 
 fn make_cfg() -> BreakerConfig {
     BreakerConfig { failure_threshold: 3, half_open_after_seconds: 60, reset_after_successes: 2, failure_statuses: vec![500, 502, 503] }
@@ -9,7 +9,7 @@ fn make_cfg() -> BreakerConfig {
 /// @covers: builder
 #[test]
 fn e2e_builder() {
-    let layer: BreakerLayer = swe_http_breaker::builder()
+    let layer: BreakerLayer = swe_edge_http_breaker::builder()
         .expect("builder() must succeed")
         .build()
         .expect("build() must succeed");

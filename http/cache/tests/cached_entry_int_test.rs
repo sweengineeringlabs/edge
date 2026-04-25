@@ -13,7 +13,7 @@
 //!   confirming that the layer can be built with configs that would exercise
 //!   different Vary paths at runtime.
 
-use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+use swe_edge_http_cache::{Builder, CacheConfig, CacheLayer};
 
 // ---------------------------------------------------------------------------
 // TTL-positive layers (entries will be stored)

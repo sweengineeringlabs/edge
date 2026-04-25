@@ -1,4 +1,4 @@
-//! Primary trait re-export hub and trait definitions for `swe_http_tls`.
+//! Primary trait re-export hub and trait definitions for `swe_edge_http_tls`.
 
 pub(crate) type HttpTlsTrait = dyn crate::api::http_tls::HttpTls;
 

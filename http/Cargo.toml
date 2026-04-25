@@ -57,7 +57,7 @@ moka = { version = "0.12", features = ["future"] }
 
 # Secret-wrapping for credential values. Blocks accidental
 # Debug/Display; requires explicit `.expose_secret()` to read.
-# Used by swe_http_auth to carry resolved env-var values through
+# Used by swe_edge_http_auth to carry resolved env-var values through
 # the strategy stack without risk of logging them.
 secrecy = "0.10"
 

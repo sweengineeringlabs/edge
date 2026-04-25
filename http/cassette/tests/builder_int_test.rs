@@ -1,8 +1,8 @@
-//! Integration tests for `swe_http_cassette` `Builder` and `builder()` SAF entry point.
+//! Integration tests for `swe_edge_http_cassette` `Builder` and `builder()` SAF entry point.
 //!
 //! Covers: `builder()`, `Builder::with_config`, `Builder::config`, `Builder::build`.
 
-use swe_http_cassette::{builder, Builder, CassetteConfig, CassetteLayer};
+use swe_edge_http_cassette::{builder, Builder, CassetteConfig, CassetteLayer};
 
 fn make_config(dir: &str) -> CassetteConfig {
     // Normalize backslashes so TOML doesn't treat `\U`, `\t`, etc. as escape

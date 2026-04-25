@@ -9,7 +9,7 @@ use crate::api::credential_resolver::CredentialResolver;
 
 /// Opaque builder for the auth middleware.
 ///
-/// Construct via [`swe_http_auth::builder()`](crate::builder) or
+/// Construct via [`swe_edge_http_auth::builder()`](crate::builder) or
 /// [`Builder::with_config`]. Finalize with [`Builder::build`].
 pub struct Builder {
     /// The resolved auth policy.

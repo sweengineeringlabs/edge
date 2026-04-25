@@ -11,7 +11,7 @@
 //! (empty, nested dot paths, array-index paths) are accepted at build time
 //! without error, since path validation is deferred to request time.
 
-use swe_http_cassette::{Builder, CassetteConfig};
+use swe_edge_http_cassette::{Builder, CassetteConfig};
 
 fn make_cfg(dir: &str, scrub_body_paths: Vec<String>) -> CassetteConfig {
     CassetteConfig {

@@ -16,7 +16,7 @@
 pub trait HttpCache: Send + Sync {
     /// Identify this processor in log / trace output.
     ///
-    /// Returns the crate's canonical name (e.g. `\"swe_http_cache\"`).
+    /// Returns the crate's canonical name (e.g. `\"swe_edge_http_cache\"`).
     /// Future impls will add scheme / policy-shape methods.
     fn describe(&self) -> &'static str;
 }

@@ -1,12 +1,12 @@
 [package]
-name = "swe-http-tls"
+name = "swe_edge_http_tls"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Client-side mTLS identity for reqwest — loads PKCS12 or PEM certificates and attaches them to a reqwest::ClientBuilder. Sibling crate to swe_http_auth (architectural split: TLS handshake layer, not HTTP middleware)."
+description = "Client-side mTLS identity for reqwest — loads PKCS12 or PEM certificates and attaches them to a reqwest::ClientBuilder. Sibling crate to swe_edge_http_auth (architectural split: TLS handshake layer, not HTTP middleware)."
 keywords = ["http", "tls", "mtls", "reqwest", "identity"]
 categories = ["web-programming::http-client", "authentication"]
 

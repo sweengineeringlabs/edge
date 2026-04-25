@@ -1,8 +1,8 @@
-//! Integration tests for `swe_http_retry` `Builder` and `builder()` SAF entry point.
+//! Integration tests for `swe_edge_http_retry` `Builder` and `builder()` SAF entry point.
 //!
 //! Covers: `builder()`, `Builder::with_config`, `Builder::config`, `Builder::build`.
 
-use swe_http_retry::{builder, Builder, RetryConfig, RetryLayer};
+use swe_edge_http_retry::{builder, Builder, RetryConfig, RetryLayer};
 
 fn make_cfg(max_retries: u32) -> RetryConfig {
     RetryConfig {

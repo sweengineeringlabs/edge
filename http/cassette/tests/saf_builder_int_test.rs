@@ -9,7 +9,7 @@
 //! The `saf/builder.rs` module also re-exports `api::builder::Builder`,
 //! making it the single authoritative builder type through the public API.
 
-use swe_http_cassette::{builder, Builder, CassetteConfig, CassetteLayer, Error};
+use swe_edge_http_cassette::{builder, Builder, CassetteConfig, CassetteLayer, Error};
 
 // ---------------------------------------------------------------------------
 // builder() — SAF entry point: always returns Ok with default config
@@ -117,7 +117,7 @@ fn test_saf_build_uses_cassette_name_in_path() {
 fn test_saf_error_parse_failed_display_names_crate() {
     let err = Error::ParseFailed("bad field".to_string());
     assert!(
-        err.to_string().contains("swe_http_cassette"),
+        err.to_string().contains("swe_edge_http_cassette"),
         "Error::ParseFailed from SAF layer must name the crate"
     );
 }
