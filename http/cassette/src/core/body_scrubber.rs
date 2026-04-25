@@ -96,6 +96,55 @@ fn remove_path(value: &mut serde_json::Value, path: &str) {
 mod tests {
     use super::*;
 
+    /// @covers: remove_path
+    #[test]
+    fn test_remove_path_removes_top_level_key() {
+        let mut v = serde_json::json!({"a": 1, "b": 2});
+        remove_path(&mut v, "a");
+        assert!(v.get("a").is_none(), "key 'a' must be removed");
+        assert_eq!(v.get("b").and_then(|x| x.as_i64()), Some(2));
+    }
+
+    /// @covers: remove_path
+    #[test]
+    fn test_remove_path_noop_on_missing_key() {
+        let mut v = serde_json::json!({"a": 1});
+        remove_path(&mut v, "nonexistent");
+        // Value must be unchanged.
+        assert_eq!(v.get("a").and_then(|x| x.as_i64()), Some(1));
+    }
+
+    /// @covers: remove_path
+    #[test]
+    fn test_remove_path_removes_nested_key() {
+        let mut v = serde_json::json!({"outer": {"inner": "secret", "keep": "yes"}});
+        remove_path(&mut v, "outer.inner");
+        let outer = v.get("outer").unwrap();
+        assert!(outer.get("inner").is_none(), "nested key must be removed");
+        assert_eq!(outer.get("keep").and_then(|x| x.as_str()), Some("yes"));
+    }
+
+    /// @covers: remove_path
+    #[test]
+    fn test_remove_path_noop_on_scalar_mid_path() {
+        // "a" is a scalar, not an object; descending into it must bail.
+        let mut v = serde_json::json!({"a": 42});
+        remove_path(&mut v, "a.b");
+        // Original value unchanged.
+        assert_eq!(v.get("a").and_then(|x| x.as_i64()), Some(42));
+    }
+
+    /// @covers: scrub_body
+    #[test]
+    fn test_scrub_body_removes_specified_path() {
+        let body = br#"{"id":"abc","keep":"yes"}"#;
+        let paths = vec!["id".to_string()];
+        let result = scrub_body(body, &paths);
+        let v: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert!(v.get("id").is_none());
+        assert_eq!(v.get("keep").and_then(|x| x.as_str()), Some("yes"));
+    }
+
     /// @covers: scrub_body
     #[test]
     fn test_empty_paths_returns_raw_unchanged() {

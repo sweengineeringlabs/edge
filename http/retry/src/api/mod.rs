@@ -1,5 +1,6 @@
 //! API layer — public schema + trait contracts + public types.
 pub mod builder;
+pub(crate) mod default_http_retry;
 pub(crate) mod error;
 pub(crate) mod http_retry;
 pub(crate) mod retry_config;

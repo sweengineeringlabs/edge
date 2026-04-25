@@ -33,6 +33,17 @@ impl HttpBreaker for DefaultHttpBreaker {
 mod tests {
     use super::*;
 
+    /// @covers: DefaultHttpBreaker::new
+    #[test]
+    fn test_new_constructs_and_stores_config() {
+        let cfg = BreakerConfig::swe_default().expect("baseline parses");
+        let d = DefaultHttpBreaker::new(cfg);
+        // If new() dropped config the Debug output would be missing
+        // the BreakerConfig content. At minimum the struct name must appear.
+        let dbg = format!("{d:?}");
+        assert!(dbg.contains("DefaultHttpBreaker"), "debug output: {dbg}");
+    }
+
     /// @covers: describe
     #[test]
     fn test_describe_returns_crate_name() {

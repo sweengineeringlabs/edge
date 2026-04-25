@@ -1,6 +1,8 @@
 //! Minimal usage: load the SWE baseline (pass-through) and
 //! apply to a fresh `reqwest::Client::builder()`.
 
+use swe_http_tls::TlsApplier;
+
 fn main() {
     match swe_http_tls::builder() {
         Err(e) => println!("swe_http_tls: baseline parse failed: {e}"),

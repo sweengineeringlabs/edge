@@ -7,18 +7,17 @@ use std::sync::Arc;
 use crate::api::error::Error;
 use crate::api::http_tls::HttpTls;
 use crate::api::tls_layer::TlsLayer;
+use crate::api::traits::TlsApplier;
 
 impl TlsLayer {
     /// Construct from an already-resolved identity provider.
     pub(crate) fn new(provider: Arc<dyn HttpTls>) -> Self {
         Self { provider }
     }
+}
 
-    /// Augment a [`reqwest::ClientBuilder`] with this layer's
-    /// client identity. When the underlying provider is the
-    /// `None` (pass-through) variant, the builder is returned
-    /// unchanged.
-    pub fn apply_to(
+impl TlsApplier for TlsLayer {
+    fn apply_to(
         &self,
         builder: reqwest::ClientBuilder,
     ) -> Result<reqwest::ClientBuilder, Error> {
@@ -32,6 +31,7 @@ impl TlsLayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::traits::TlsApplier;
 
     #[derive(Debug)]
     struct NoopStub;

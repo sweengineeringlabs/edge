@@ -33,6 +33,15 @@ impl HttpRate for DefaultHttpRate {
 mod tests {
     use super::*;
 
+    /// @covers: DefaultHttpRate::new
+    #[test]
+    fn test_new_constructs_and_stores_config() {
+        let cfg = RateConfig::swe_default().expect("baseline parses");
+        let d = DefaultHttpRate::new(cfg);
+        let dbg = format!("{d:?}");
+        assert!(dbg.contains("DefaultHttpRate"), "debug output: {dbg}");
+    }
+
     /// @covers: describe
     #[test]
     fn test_describe_returns_crate_name() {

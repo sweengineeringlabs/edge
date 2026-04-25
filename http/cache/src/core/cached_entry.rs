@@ -276,6 +276,20 @@ mod tests {
 
     /// @covers: extract_stale_while_revalidate
     #[test]
+    fn test_extract_stale_while_revalidate_parses_and_ignores_zero() {
+        assert_eq!(
+            extract_stale_while_revalidate("stale-while-revalidate=120"),
+            Some(Duration::from_secs(120))
+        );
+        assert_eq!(
+            extract_stale_while_revalidate("stale-while-revalidate=0"),
+            None
+        );
+        assert_eq!(extract_stale_while_revalidate("no-directive"), None);
+    }
+
+    /// @covers: extract_stale_while_revalidate
+    #[test]
     fn test_extract_swr_parses_nonzero() {
         assert_eq!(
             extract_stale_while_revalidate("max-age=60, stale-while-revalidate=300"),

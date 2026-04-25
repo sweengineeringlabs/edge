@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 
 use crate::api::rate_config::RateConfig;
 use crate::api::rate_layer::RateLayer;
+use crate::api::traits::RateBucketOps;
 
 use super::token_bucket::TokenBucket;
 
@@ -47,7 +48,7 @@ impl RateLayer {
         let cfg = self.config.clone();
         self.buckets
             .get_with(key.to_string(), async move {
-                Arc::new(Mutex::new(TokenBucket::full(&cfg)))
+                Arc::new(Mutex::new(TokenBucket::new(&cfg)))
             })
             .await
     }
@@ -77,7 +78,7 @@ impl reqwest_middleware::Middleware for RateLayer {
         loop {
             let wait = {
                 let mut b = bucket.lock().await;
-                match b.try_acquire(&self.config) {
+                match b.try_consume(&self.config) {
                     Ok(()) => break, // token acquired, drop lock
                     Err(w) => w,
                 }
@@ -126,6 +127,15 @@ mod tests {
     #[test]
     fn test_new_constructs_with_bucket_cache() {
         let _l = RateLayer::new(test_config());
+    }
+
+    /// @covers: RateLayer::handle (sync-observable construction)
+    /// handle is async; the sync-observable invariant is that RateLayer
+    /// is Send + Sync (required by reqwest_middleware::Middleware).
+    #[test]
+    fn test_handle_layer_is_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<RateLayer>();
     }
 
     /// @covers: RateLayer::key_for

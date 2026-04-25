@@ -461,11 +461,97 @@ mod tests {
         assert!(s_dbg.contains("redacted"));
     }
 
+    /// @covers: AwsSigV4Strategy::fmt
+    #[test]
+    fn test_fmt_debug_redacts_access_key_and_secret() {
+        let s = stub_strategy();
+        let dbg = format!("{s:?}");
+        assert!(dbg.contains("AwsSigV4Strategy"));
+        assert!(!dbg.contains("AKIAIOSFODNN7EXAMPLE"));
+        assert!(dbg.contains("redacted"));
+    }
+
+    /// @covers: AwsSigV4Strategy::new
+    #[test]
+    fn test_new_stores_region_and_service() {
+        let s = AwsSigV4Strategy::new(
+            SecretString::from("AKID".to_string()),
+            SecretString::from("SEC".to_string()),
+            None,
+            "eu-west-1".into(),
+            "sts".into(),
+        );
+        let dbg = format!("{s:?}");
+        assert!(dbg.contains("eu-west-1"));
+        assert!(dbg.contains("sts"));
+    }
+
     fn extract_signature(req: &reqwest::Request) -> String {
         let auth = req.headers().get("authorization").unwrap().to_str().unwrap();
         auth.split("Signature=")
             .nth(1)
             .unwrap()
             .to_string()
+    }
+
+    /// @covers: hmac_sha256
+    #[test]
+    fn test_hmac_sha256_produces_32_byte_output() {
+        // HMAC-SHA256 always outputs exactly 32 bytes regardless of input.
+        let result = hmac_sha256(b"key", b"data").unwrap();
+        assert_eq!(result.len(), 32);
+    }
+
+    /// @covers: hmac_sha256
+    #[test]
+    fn test_hmac_sha256_different_data_produces_different_output() {
+        let a = hmac_sha256(b"key", b"data1").unwrap();
+        let b = hmac_sha256(b"key", b"data2").unwrap();
+        assert_ne!(a, b);
+    }
+
+    /// @covers: hmac_sha256
+    #[test]
+    fn test_hmac_sha256_different_keys_produces_different_output() {
+        let a = hmac_sha256(b"key1", b"data").unwrap();
+        let b = hmac_sha256(b"key2", b"data").unwrap();
+        assert_ne!(a, b);
+    }
+
+    /// @covers: hmac_sha256
+    #[test]
+    fn test_hmac_sha256_is_deterministic() {
+        // Same inputs always yield the same output.
+        let r1 = hmac_sha256(b"secret", b"message").unwrap();
+        let r2 = hmac_sha256(b"secret", b"message").unwrap();
+        assert_eq!(r1, r2);
+    }
+
+    /// @covers: AwsSigV4Strategy::now
+    #[test]
+    fn test_now_returns_current_utc_time() {
+        // `now()` is a thin wrapper around OffsetDateTime::now_utc().
+        // We can't assert the exact timestamp, but we CAN assert:
+        // 1. It doesn't panic.
+        // 2. The returned time is close to "real now" (within 5s).
+        let before = OffsetDateTime::now_utc();
+        let result = AwsSigV4Strategy::now();
+        let after = OffsetDateTime::now_utc();
+        assert!(result >= before, "now() must not predate call");
+        assert!(result <= after, "now() must not postdate call");
+    }
+
+    /// @covers: AwsSigV4Strategy::authorize
+    #[test]
+    fn test_authorize_attaches_authorization_header() {
+        // authorize() calls sign(self.now()). We verify the sync
+        // observable result: the Authorization header is present and
+        // well-formed (the underlying sign() logic is already covered
+        // by test_sign_* tests above).
+        let s = stub_strategy();
+        let mut req = stub_req(Method::GET, "https://s3.amazonaws.com/bucket/obj");
+        s.authorize(&mut req).unwrap();
+        let auth = req.headers().get("authorization").unwrap().to_str().unwrap();
+        assert!(auth.starts_with("AWS4-HMAC-SHA256 Credential="));
     }
 }

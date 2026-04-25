@@ -1,0 +1,29 @@
+[package]
+name = "swe-http-main"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Workspace composition root — assembles the HTTP middleware stack from configured crate primitives."
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "orchestrator"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+swe-http-auth    = { path = "../auth" }
+swe-http-cache   = { path = "../cache" }
+swe-http-cassette = { path = "../cassette" }
+swe-http-breaker = { path = "../breaker" }
+swe-http-rate    = { path = "../rate" }
+swe-http-retry   = { path = "../retry" }
+swe-http-tls     = { path = "../tls" }
+
+thiserror.workspace = true
+
+[dev-dependencies]

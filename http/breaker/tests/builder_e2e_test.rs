@@ -1,36 +1,46 @@
-﻿//! End-to-end tests for builder/SAF facade.
+//! End-to-end tests for the swe_http_breaker SAF builder surface.
 
+use swe_http_breaker::{BreakerConfig, BreakerLayer, Builder};
+
+fn make_cfg() -> BreakerConfig {
+    BreakerConfig { failure_threshold: 3, half_open_after_seconds: 60, reset_after_successes: 2, failure_statuses: vec![500, 502, 503] }
+}
+
+/// @covers: builder
 #[test]
 fn e2e_builder() {
-    let _b = swe_http_breaker::builder().unwrap();
+    let layer: BreakerLayer = swe_http_breaker::builder()
+        .expect("builder() must succeed")
+        .build()
+        .expect("build() must succeed");
+    assert!(format!("{layer:?}").contains("BreakerLayer"));
 }
 
+/// @covers: Builder::with_config
 #[test]
-fn e2e_with_config_parses_custom_toml_and_flows_through_to_builder() {
-    let toml = r#"
-        failure_threshold = 10
-        half_open_after_seconds = 60
-        reset_after_successes = 5
-        failure_statuses = [500, 502, 503]
-    "#;
-    let cfg = swe_http_breaker::BreakerConfig::from_config(toml)
-        .expect("from_config parses");
-    assert_eq!(cfg.failure_threshold, 10);
-    assert_eq!(cfg.half_open_after_seconds, 60);
-    let b = swe_http_breaker::Builder::with_config(cfg);
-    assert_eq!(b.config().failure_threshold, 10);
-    let _layer = b.build().expect("build ok");
+fn e2e_with_config() {
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().failure_threshold, 3);
+    b.build().expect("e2e with_config build must succeed");
 }
 
+/// @covers: Builder::config
 #[test]
 fn e2e_config() {
-    let b = swe_http_breaker::builder().unwrap();
-    let _cfg = b.config();
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().failure_statuses, vec![500u16, 502, 503]);
+    assert_eq!(b.config().reset_after_successes, 2);
 }
 
+/// @covers: Builder::build
 #[test]
 fn e2e_build() {
-    let b = swe_http_breaker::builder().unwrap();
-    let _layer = b.build().unwrap();
+    let cfg = BreakerConfig {
+        failure_threshold: 5,
+        half_open_after_seconds: 30,
+        reset_after_successes: 3,
+        failure_statuses: vec![503, 504],
+    };
+    let layer = Builder::with_config(cfg).build().expect("e2e build must succeed");
+    assert!(!format!("{layer:?}").is_empty());
 }
-

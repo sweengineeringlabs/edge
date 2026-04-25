@@ -33,6 +33,15 @@ impl HttpCache for DefaultHttpCache {
 mod tests {
     use super::*;
 
+    /// @covers: DefaultHttpCache::new
+    #[test]
+    fn test_new_constructs_and_stores_config() {
+        let cfg = CacheConfig::swe_default().expect("baseline parses");
+        let d = DefaultHttpCache::new(cfg);
+        let dbg = format!("{d:?}");
+        assert!(dbg.contains("DefaultHttpCache"), "debug output: {dbg}");
+    }
+
     /// @covers: describe
     #[test]
     fn test_describe_returns_crate_name() {

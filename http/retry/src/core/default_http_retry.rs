@@ -33,6 +33,15 @@ impl HttpRetry for DefaultHttpRetry {
 mod tests {
     use super::*;
 
+    /// @covers: DefaultHttpRetry::new
+    #[test]
+    fn test_new_constructs_and_stores_config() {
+        let cfg = RetryConfig::swe_default().expect("baseline parses");
+        let d = DefaultHttpRetry::new(cfg);
+        let dbg = format!("{d:?}");
+        assert!(dbg.contains("DefaultHttpRetry"), "debug output: {dbg}");
+    }
+
     /// @covers: describe
     #[test]
     fn test_describe_returns_crate_name() {

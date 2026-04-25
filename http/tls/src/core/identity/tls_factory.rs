@@ -33,10 +33,10 @@ pub(crate) fn build_provider(config: &TlsConfig) -> Result<Box<dyn HttpTls>, Err
                 }
                 None => None,
             };
-            Ok(Box::new(Pkcs12HttpTls::load(path.clone(), password)?))
+            Ok(Box::new(Pkcs12HttpTls::new(path.clone(), password)?))
         }
 
-        TlsConfig::Pem { path } => Ok(Box::new(PemHttpTls::load(path.clone())?)),
+        TlsConfig::Pem { path } => Ok(Box::new(PemHttpTls::new(path.clone())?)),
     }
 }
 

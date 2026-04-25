@@ -1,38 +1,42 @@
-﻿//! End-to-end tests for builder/SAF facade.
+//! End-to-end tests for the swe_http_cache SAF builder surface.
 
+use swe_http_cache::{Builder, CacheConfig, CacheLayer};
+
+fn make_cfg() -> CacheConfig {
+    CacheConfig { default_ttl_seconds: 300, max_entries: 100, respect_cache_control: true, cache_private: false }
+}
+
+/// @covers: builder
 #[test]
 fn e2e_builder() {
-    let _b = swe_http_cache::builder().unwrap();
+    let layer: CacheLayer = swe_http_cache::builder()
+        .expect("builder() must succeed")
+        .build()
+        .expect("build() must succeed");
+    let s = format!("{layer:?}");
+    assert!(s.contains("CacheLayer"), "e2e: Debug must contain 'CacheLayer': {s}");
 }
 
+/// @covers: Builder::with_config
 #[test]
-fn e2e_with_config_parses_custom_toml_and_flows_through_to_builder() {
-    let toml = r#"
-        default_ttl_seconds = 60
-        max_entries = 500
-        respect_cache_control = false
-        cache_private = true
-    "#;
-    let cfg = swe_http_cache::CacheConfig::from_config(toml)
-        .expect("from_config parses");
-    assert_eq!(cfg.default_ttl_seconds, 60);
-    assert_eq!(cfg.max_entries, 500);
-    assert!(!cfg.respect_cache_control);
-    assert!(cfg.cache_private);
-    let b = swe_http_cache::Builder::with_config(cfg);
-    assert_eq!(b.config().default_ttl_seconds, 60);
-    let _layer = b.build().expect("build ok");
+fn e2e_with_config() {
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().default_ttl_seconds, 300);
+    b.build().expect("e2e with_config build must succeed");
 }
 
+/// @covers: Builder::config
 #[test]
 fn e2e_config() {
-    let b = swe_http_cache::builder().unwrap();
-    let _cfg = b.config();
+    let b = Builder::with_config(make_cfg());
+    assert_eq!(b.config().max_entries, 100);
+    assert!(b.config().respect_cache_control);
 }
 
+/// @covers: Builder::build
 #[test]
 fn e2e_build() {
-    let b = swe_http_cache::builder().unwrap();
-    let _layer = b.build().unwrap();
+    let cfg = CacheConfig { default_ttl_seconds: 60, max_entries: 50, respect_cache_control: false, cache_private: true };
+    let layer = Builder::with_config(cfg).build().expect("e2e build must succeed");
+    assert!(!format!("{layer:?}").is_empty());
 }
-

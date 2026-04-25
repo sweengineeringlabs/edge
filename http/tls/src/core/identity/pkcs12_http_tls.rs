@@ -4,6 +4,7 @@ use secrecy::{ExposeSecret, SecretString};
 
 use crate::api::error::Error;
 use crate::api::http_tls::HttpTls;
+use crate::api::traits::TlsIdentityProvider;
 
 pub(crate) struct Pkcs12HttpTls {
     /// Pre-loaded DER bytes.
@@ -28,7 +29,7 @@ impl Pkcs12HttpTls {
     /// Construct by reading the .p12 / .pfx file into memory.
     /// Password (if any) is pre-resolved from env var before
     /// this call; see `tls_factory::build_provider`.
-    pub(crate) fn load(path: String, password: Option<SecretString>) -> Result<Self, Error> {
+    pub(crate) fn new(path: String, password: Option<SecretString>) -> Result<Self, Error> {
         let der_bytes = std::fs::read(&path).map_err(|e| Error::FileReadFailed {
             path: path.clone(),
             reason: e.to_string(),
@@ -40,6 +41,8 @@ impl Pkcs12HttpTls {
         })
     }
 }
+
+impl TlsIdentityProvider for Pkcs12HttpTls {}
 
 impl HttpTls for Pkcs12HttpTls {
     fn describe(&self) -> &'static str {
@@ -65,10 +68,41 @@ impl HttpTls for Pkcs12HttpTls {
 mod tests {
     use super::*;
 
-    /// @covers: Pkcs12HttpTls::load
+    /// @covers: Pkcs12HttpTls::new
+    #[test]
+    fn test_new_reads_file_bytes_into_struct() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.p12");
+        std::fs::write(&path, b"fake-pkcs12-bytes").unwrap();
+        let p = Pkcs12HttpTls::new(path.to_str().unwrap().to_string(), None).unwrap();
+        // The bytes were loaded (Debug shows byte count).
+        let dbg = format!("{p:?}");
+        assert!(dbg.contains("17 bytes"), "debug must show byte count: {dbg}");
+        // No password set.
+        assert!(dbg.contains("<none>"), "debug must show password absent: {dbg}");
+    }
+
+    /// @covers: Pkcs12HttpTls::new
+    #[test]
+    fn test_new_with_password_stores_password_flag() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test2.p12");
+        std::fs::write(&path, b"bytes").unwrap();
+        let p = Pkcs12HttpTls::new(
+            path.to_str().unwrap().to_string(),
+            Some(secrecy::SecretString::from("secret".to_string())),
+        )
+        .unwrap();
+        let dbg = format!("{p:?}");
+        // Password is set but not leaked.
+        assert!(dbg.contains("<set>"), "debug must show password is set: {dbg}");
+        assert!(!dbg.contains("secret"), "password must not leak into debug: {dbg}");
+    }
+
+    /// @covers: Pkcs12HttpTls::new
     #[test]
     fn test_load_missing_file_returns_file_read_failed() {
-        let err = Pkcs12HttpTls::load("/path/definitely/does/not/exist.p12".into(), None)
+        let err = Pkcs12HttpTls::new("/path/definitely/does/not/exist.p12".into(), None)
             .unwrap_err();
         match err {
             Error::FileReadFailed { path, .. } => assert!(path.contains("does/not/exist")),

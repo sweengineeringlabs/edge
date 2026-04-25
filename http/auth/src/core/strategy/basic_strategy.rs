@@ -118,6 +118,19 @@ mod tests {
         assert!(s_dbg.contains("redacted") || s_dbg.contains("BasicStrategy"));
     }
 
+    /// @covers: BasicStrategy::fmt
+    #[test]
+    fn test_fmt_debug_redacts_header_value() {
+        let s = BasicStrategy::new(
+            SecretString::from("user".to_string()),
+            SecretString::from("pass".to_string()),
+        )
+        .unwrap();
+        let dbg = format!("{s:?}");
+        assert!(dbg.contains("BasicStrategy"));
+        assert!(!dbg.contains("pass"));
+    }
+
     /// @covers: BasicStrategy::new
     #[test]
     fn test_new_accepts_empty_password() {

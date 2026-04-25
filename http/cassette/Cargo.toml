@@ -1,5 +1,5 @@
 [package]
-name = "swe_http_cassette"
+name = "swe-http-cassette"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

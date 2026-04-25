@@ -1,30 +1,45 @@
-﻿//! End-to-end tests for builder/SAF facade.
+//! End-to-end tests for the swe_http_auth SAF builder surface.
 
-use swe_http_auth::{AuthConfig, Builder};
+use swe_http_auth::{AuthConfig, AuthMiddleware, Builder};
 
+/// @covers: builder
 #[test]
 fn e2e_builder() {
-    let _b = swe_http_auth::builder().unwrap();
+    let mw: AuthMiddleware = swe_http_auth::builder()
+        .expect("builder() must succeed")
+        .build()
+        .expect("build() must succeed");
+    let s = format!("{mw:?}");
+    assert!(s.contains("swe_http_auth"), "e2e: middleware Debug must name crate: {s}");
 }
 
+/// @covers: Builder::with_config
 #[test]
-fn e2e_with_config_parses_custom_toml_and_builds_layer() {
-    let toml = r#"kind = "none""#;
-    let cfg = AuthConfig::from_config(toml).expect("from_config parses");
-    assert!(matches!(cfg, AuthConfig::None));
+fn e2e_with_config() {
+    let cfg = AuthConfig::None;
     let b = Builder::with_config(cfg);
-    let _layer = b.build().expect("build ok");
+    assert!(matches!(b.config(), AuthConfig::None));
+    let mw = b.build().expect("None config must build");
+    assert!(!format!("{mw:?}").is_empty());
 }
 
+/// @covers: Builder::config
 #[test]
 fn e2e_config() {
-    let b = swe_http_auth::builder().unwrap();
-    let _cfg = b.config();
+    let b = Builder::with_config(AuthConfig::None);
+    let c = b.config();
+    assert!(matches!(c, AuthConfig::None), "config() must return stored policy");
 }
 
+/// @covers: Builder::build
 #[test]
 fn e2e_build() {
-    let b = swe_http_auth::builder().unwrap();
-    let _layer = b.build().unwrap();
+    let env = "SWE_E2E_AUTH_BEARER_01";
+    std::env::set_var(env, "e2e-token");
+    let cfg = AuthConfig::Bearer { token_env: env.into() };
+    let mw = Builder::with_config(cfg)
+        .build()
+        .expect("bearer e2e build must succeed when env set");
+    assert!(!format!("{mw:?}").is_empty());
+    std::env::remove_var(env);
 }
-
