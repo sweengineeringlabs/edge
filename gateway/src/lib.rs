@@ -48,35 +48,6 @@
 //! - `stripe` - Stripe payment processing
 //! - `full` - Enable postgres, s3, email, and stripe
 //!
-//! ## Implementing Custom Gateways
-//!
-//! Use the `spi` module to implement custom gateways:
-//!
-//! ```rust
-//! use edge_gateway::spi::*;
-//! use futures::future::BoxFuture;
-//!
-//! struct MyDatabase;
-//!
-//! impl DatabaseRead for MyDatabase {
-//!     fn query(
-//!         &self,
-//!         table: &str,
-//!         params: database::QueryParams,
-//!     ) -> BoxFuture<'_, GatewayResult<Vec<database::Record>>> {
-//!         Box::pin(async move {
-//!             // Your implementation here
-//!             Ok(vec![])
-//!         })
-//!     }
-//!
-//!     // ... implement other methods
-//!     # fn get_by_id(&self, _: &str, _: &str) -> BoxFuture<'_, GatewayResult<Option<database::Record>>> { Box::pin(async { Ok(None) }) }
-//!     # fn exists(&self, _: &str, _: &str) -> BoxFuture<'_, GatewayResult<bool>> { Box::pin(async { Ok(false) }) }
-//!     # fn count(&self, _: &str, _: database::QueryParams) -> BoxFuture<'_, GatewayResult<u64>> { Box::pin(async { Ok(0) }) }
-//!     # fn health_check(&self) -> BoxFuture<'_, GatewayResult<HealthCheck>> { Box::pin(async { Ok(HealthCheck { status: HealthStatus::Healthy, message: None, latency_ms: None, metadata: std::collections::HashMap::new(), checked_at: chrono::Utc::now() }) }) }
-//! }
-//! ```
 
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
@@ -84,12 +55,9 @@
 // ── Private layer modules (SEA: all layers are private) ──
 mod api;
 pub(crate) mod core;
-mod provider;
-mod state;
 
 // ── Public modules ──
 pub mod saf;
-pub mod spi;
 
 // ── Public surface delegated via saf (SEA rule §7) ──
 pub use saf::*;

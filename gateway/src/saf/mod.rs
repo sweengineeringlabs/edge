@@ -177,7 +177,7 @@ pub fn metrics_middleware(
     collector: Arc<dyn MetricsCollector>,
     extractor: FieldExtractor,
 ) -> impl crate::api::middleware::ResponseMiddleware {
-    crate::core::metrics_bridge::MetricsResponseMiddleware::new(collector, extractor)
+    crate::core::metrics::MetricsResponseMiddleware::new(collector, extractor)
 }
 
 // ── Common types (from api layer) ──
@@ -232,10 +232,10 @@ pub mod grpc {
 }
 
 // ── Provider traits ──
-pub use crate::provider::{LazyInit, LazyInitWithConfig, StatefulProvider, StatelessProvider};
+pub use crate::api::provider::{LazyInit, LazyInitWithConfig, StatefulProvider, StatelessProvider};
 
 // ── State management ──
-pub use crate::state::{CachedService, ConfiguredCache};
+pub use crate::api::state::{CachedService, ConfiguredCache};
 
 // ── Async-to-sync bridge ──
 
@@ -270,6 +270,6 @@ pub use async_trait::async_trait;
 #[cfg(feature = "auth")]
 pub use crate::api::auth::{AuthClaims, CredentialExtractor};
 #[cfg(feature = "auth")]
-pub use crate::core::auth_middleware::AuthMiddleware;
+pub use crate::core::auth::AuthMiddleware;
 #[cfg(feature = "auth")]
 pub use sst_sdk::{Authenticator, Authorizer, Credentials, AuthnResult, AuthContext, Permission, AuthResult};

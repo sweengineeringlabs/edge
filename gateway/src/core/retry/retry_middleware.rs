@@ -128,16 +128,13 @@ mod tests {
     use crate::api::retry::{BackoffStrategy, RetryMiddlewareBuilder};
     use parking_lot::Mutex;
 
-    /// Sleeper that records durations instead of actually sleeping.
     struct RecordingSleeper {
         recorded: Mutex<Vec<Duration>>,
     }
 
     impl RecordingSleeper {
         fn new() -> Self {
-            Self {
-                recorded: Mutex::new(Vec::new()),
-            }
+            Self { recorded: Mutex::new(Vec::new()) }
         }
 
         fn recorded_delays(&self) -> Vec<Duration> {
@@ -152,7 +149,6 @@ mod tests {
         }
     }
 
-    /// Middleware that fails N times with a given error, then succeeds.
     struct FailNThenSucceed {
         remaining_failures: Mutex<u32>,
         error_factory: Box<dyn Fn() -> GatewayError + Send + Sync>,
@@ -189,16 +185,13 @@ mod tests {
         }
     }
 
-    /// Middleware that always fails.
     struct AlwaysFail {
         error_factory: Box<dyn Fn() -> GatewayError + Send + Sync>,
     }
 
     impl AlwaysFail {
         fn new(error_factory: impl Fn() -> GatewayError + Send + Sync + 'static) -> Self {
-            Self {
-                error_factory: Box::new(error_factory),
-            }
+            Self { error_factory: Box::new(error_factory) }
         }
     }
 
@@ -212,7 +205,6 @@ mod tests {
         }
     }
 
-    /// Construct a retry middleware with a recording sleeper for tests.
     fn build_with_recording(
         builder: RetryMiddlewareBuilder,
         inner: Arc<dyn RequestMiddleware>,
@@ -221,13 +213,9 @@ mod tests {
         build_retry_middleware_with_sleeper(builder.build(), inner, sleeper)
     }
 
-    // ── Smoke: backoff computation ──
-
     #[test]
     fn test_compute_delay_fixed_returns_constant() {
-        let strategy = BackoffStrategy::Fixed {
-            delay: Duration::from_millis(100),
-        };
+        let strategy = BackoffStrategy::Fixed { delay: Duration::from_millis(100) };
         assert_eq!(strategy.compute_delay(0), Duration::from_millis(100));
         assert_eq!(strategy.compute_delay(1), Duration::from_millis(100));
         assert_eq!(strategy.compute_delay(5), Duration::from_millis(100));
@@ -235,10 +223,7 @@ mod tests {
 
     #[test]
     fn test_compute_delay_exponential_without_jitter_doubles() {
-        let strategy = BackoffStrategy::Exponential {
-            base: Duration::from_millis(100),
-            jitter: false,
-        };
+        let strategy = BackoffStrategy::Exponential { base: Duration::from_millis(100), jitter: false };
         assert_eq!(strategy.compute_delay(0), Duration::from_millis(100));
         assert_eq!(strategy.compute_delay(1), Duration::from_millis(200));
         assert_eq!(strategy.compute_delay(2), Duration::from_millis(400));
@@ -247,21 +232,13 @@ mod tests {
 
     #[test]
     fn test_compute_delay_exponential_with_jitter_at_least_base() {
-        let strategy = BackoffStrategy::Exponential {
-            base: Duration::from_millis(100),
-            jitter: true,
-        };
+        let strategy = BackoffStrategy::Exponential { base: Duration::from_millis(100), jitter: true };
         for attempt in 0..5 {
             let delay = strategy.compute_delay(attempt);
             let min = Duration::from_millis(100 * 2u64.pow(attempt));
-            assert!(
-                delay >= min,
-                "attempt {attempt}: delay {delay:?} < min {min:?}"
-            );
+            assert!(delay >= min, "attempt {attempt}: delay {delay:?} < min {min:?}");
         }
     }
-
-    // ── Retry succeeds after transient failures ──
 
     #[tokio::test]
     async fn test_retry_succeeds_after_transient_failures() {
@@ -281,17 +258,14 @@ mod tests {
         );
 
         let result = mw.process_request(serde_json::json!({})).await;
-
         assert!(result.is_ok(), "should succeed on 3rd attempt");
         assert_eq!(result.unwrap(), serde_json::json!({"ok": true}));
 
         let delays = sleeper.recorded_delays();
-        assert_eq!(delays.len(), 2, "should have slept twice before succeeding");
+        assert_eq!(delays.len(), 2);
         assert_eq!(delays[0], Duration::from_millis(50));
         assert_eq!(delays[1], Duration::from_millis(50));
     }
-
-    // ── Gives up after max attempts ──
 
     #[tokio::test]
     async fn test_retry_gives_up_after_max_attempts() {
@@ -308,19 +282,12 @@ mod tests {
         );
 
         let result = mw.process_request(serde_json::json!({})).await;
-
-        assert!(result.is_err(), "should fail after exhausting attempts");
+        assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(
-            matches!(err, GatewayError::Timeout(_)),
-            "should return the last error: got {err:?}"
-        );
+        assert!(matches!(err, GatewayError::Timeout(_)), "got {err:?}");
 
-        let delays = sleeper.recorded_delays();
-        assert_eq!(delays.len(), 2);
+        assert_eq!(sleeper.recorded_delays().len(), 2);
     }
-
-    // ── Does not retry non-retryable errors ──
 
     #[tokio::test]
     async fn test_retry_does_not_retry_non_retryable_error() {
@@ -337,17 +304,10 @@ mod tests {
         );
 
         let result = mw.process_request(serde_json::json!({})).await;
-
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), GatewayError::NotFound(_)));
-
-        assert!(
-            sleeper.recorded_delays().is_empty(),
-            "should not sleep for non-retryable errors"
-        );
+        assert!(sleeper.recorded_delays().is_empty());
     }
-
-    // ── Exponential backoff timing ──
 
     #[tokio::test]
     async fn test_retry_exponential_backoff_delays_increase() {
@@ -367,13 +327,11 @@ mod tests {
         let _ = mw.process_request(serde_json::json!({})).await;
 
         let delays = sleeper.recorded_delays();
-        assert_eq!(delays.len(), 3, "4 attempts = 3 sleeps");
+        assert_eq!(delays.len(), 3);
         assert_eq!(delays[0], Duration::from_millis(100));
         assert_eq!(delays[1], Duration::from_millis(200));
         assert_eq!(delays[2], Duration::from_millis(400));
     }
-
-    // ── Custom predicate override ──
 
     #[tokio::test]
     async fn test_retry_custom_predicate_overrides_default() {
@@ -394,13 +352,10 @@ mod tests {
         );
 
         let result = mw.process_request(serde_json::json!({})).await;
-
-        assert!(result.is_ok(), "should retry NotFound with custom predicate");
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), serde_json::json!({"found": true}));
         assert_eq!(sleeper.recorded_delays().len(), 1);
     }
-
-    // ── Single attempt (no retry) ──
 
     #[tokio::test]
     async fn test_retry_max_attempts_one_does_not_retry() {
@@ -416,13 +371,8 @@ mod tests {
 
         let result = mw.process_request(serde_json::json!({})).await;
         assert!(result.is_err());
-        assert!(
-            sleeper.recorded_delays().is_empty(),
-            "no sleep for single attempt"
-        );
+        assert!(sleeper.recorded_delays().is_empty());
     }
-
-    // ── Builder panics on zero max_attempts ──
 
     #[test]
     #[should_panic(expected = "max_attempts must be at least 1")]
@@ -430,16 +380,11 @@ mod tests {
         RetryMiddlewareBuilder::new().max_attempts(0);
     }
 
-    // ── Builder default ──
-
     #[test]
     fn test_builder_default_matches_new() {
         let b = RetryMiddlewareBuilder::default();
         let spec = b.build();
         assert_eq!(spec.max_attempts(), 3);
-        assert!(matches!(
-            spec.backoff(),
-            BackoffStrategy::Exponential { jitter: true, .. }
-        ));
+        assert!(matches!(spec.backoff(), BackoffStrategy::Exponential { jitter: true, .. }));
     }
 }

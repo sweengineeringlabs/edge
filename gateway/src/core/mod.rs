@@ -12,7 +12,7 @@ pub(crate) mod file;
 pub(crate) mod grpc;
 pub(crate) mod http;
 pub(crate) mod input;
-pub(crate) mod metrics_bridge;
+pub(crate) mod metrics;
 pub(crate) mod notification;
 pub(crate) mod output;
 pub(crate) mod payment;
@@ -21,7 +21,7 @@ pub(crate) mod rate_limit;
 pub(crate) mod retry;
 
 #[cfg(feature = "auth")]
-pub(crate) mod auth_middleware;
+pub(crate) mod auth;
 
 // Re-export default implementations (crate-internal only)
 pub(crate) use database::MemoryDatabase;

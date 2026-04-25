@@ -20,6 +20,8 @@ pub mod pipeline;
 pub mod process;
 pub mod rate_limit;
 pub mod retry;
+pub mod provider;
+pub mod state;
 pub mod traits;
 pub mod types;
 
