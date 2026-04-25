@@ -2,9 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::api::error::IngressError;
-use crate::api::input::InboundSource;
-use crate::api::traits::IngressAdapter;
+use crate::api::ingress_error::IngressError;
+use crate::api::inbound_source::InboundSource;
 
 /// Reads files from the local filesystem.
 pub(crate) struct LocalFileSource;
@@ -28,13 +27,11 @@ impl InboundSource for LocalFileSource {
     }
 }
 
-impl IngressAdapter for LocalFileSource {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// @covers: LocalFileSource::file_exists
     #[test]
     fn test_file_exists_returns_false_for_nonexistent_path() {
         let src = LocalFileSource;
@@ -42,7 +39,6 @@ mod tests {
         assert!(matches!(result, Ok(false)));
     }
 
-    /// @covers: LocalFileSource::read_file
     #[test]
     fn test_read_file_returns_io_error_for_missing_file() {
         let src = LocalFileSource;

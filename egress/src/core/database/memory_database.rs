@@ -3,9 +3,10 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use crate::api::database::{DatabaseGateway, DatabaseRead, DatabaseWrite};
-use crate::api::error::EgressError;
-use crate::api::traits::EgressAdapter;
+use crate::api::database::DatabaseGateway;
+use crate::api::database::DatabaseRead;
+use crate::api::database::DatabaseWrite;
+use crate::api::egress_error::EgressError;
 
 /// Thread-safe in-memory key/value store.
 pub(crate) struct MemoryDatabase {
@@ -54,7 +55,6 @@ impl DatabaseWrite for MemoryDatabase {
 }
 
 impl DatabaseGateway for MemoryDatabase {}
-impl EgressAdapter for MemoryDatabase {}
 
 #[cfg(test)]
 mod tests {
@@ -62,14 +62,12 @@ mod tests {
 
     fn db() -> MemoryDatabase { MemoryDatabase::new() }
 
-    /// @covers: MemoryDatabase::new
     #[test]
     fn test_new_creates_empty_store() {
         let d = db();
         assert_eq!(d.list(None).unwrap().len(), 0);
     }
 
-    /// @covers: MemoryDatabase::put
     #[test]
     fn test_put_stores_value_retrievable_by_get() {
         let d = db();
@@ -77,7 +75,6 @@ mod tests {
         assert_eq!(d.get("k").unwrap(), Some(b"v".to_vec()));
     }
 
-    /// @covers: MemoryDatabase::delete
     #[test]
     fn test_delete_removes_existing_key() {
         let d = db();
@@ -86,7 +83,6 @@ mod tests {
         assert_eq!(d.get("k").unwrap(), None);
     }
 
-    /// @covers: MemoryDatabase::list
     #[test]
     fn test_list_with_prefix_filters_correctly() {
         let d = db();
