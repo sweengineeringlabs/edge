@@ -1,11 +1,21 @@
 //! API layer — outbound trait contracts and public types.
 pub mod builder;
+pub(crate) mod config;
 pub(crate) mod database;
 pub(crate) mod egress_error;
+pub(crate) mod file;
 pub(crate) mod file_outbound;
-pub(crate) mod http_client;
+pub(crate) mod grpc;
+pub(crate) mod grpc_outbound;
+pub(crate) mod health_check;
+pub(crate) mod http;
+pub(crate) mod http_outbound;
+pub(crate) mod notification;
 pub(crate) mod notification_sender;
 pub(crate) mod outbound_sink;
+pub(crate) mod pagination;
+pub(crate) mod payment;
 pub(crate) mod payment_gateway;
+pub(crate) mod retry;
 pub(crate) mod traits;
 pub(crate) mod validator;

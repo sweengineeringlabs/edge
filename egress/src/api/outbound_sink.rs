@@ -1,30 +1,21 @@
-//! Outbound sink trait — writes data to a destination.
+//! OutputSink trait — writes data to a destination.
 
-use crate::api::egress_error::EgressError;
+use futures::future::BoxFuture;
+
+use crate::api::egress_error::EgressResult;
 
 /// Writes outbound data to a sink (stdout, file, network, etc.).
-#[allow(dead_code)]
-pub trait OutboundSink: Send + Sync {
-    /// Write raw bytes to this sink.
-    fn write(&self, data: &[u8]) -> Result<(), EgressError>;
+pub trait OutputSink: Send + Sync {
+    fn write(&self, data: Vec<u8>) -> BoxFuture<'_, EgressResult<()>>;
+    fn flush(&self) -> BoxFuture<'_, EgressResult<()>>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    struct DevNull;
-    impl OutboundSink for DevNull {
-        fn write(&self, _data: &[u8]) -> Result<(), EgressError> { Ok(()) }
-    }
-
     #[test]
-    fn test_outbound_sink_write_succeeds() {
-        assert!(DevNull.write(b"hello").is_ok());
-    }
-
-    #[test]
-    fn test_outbound_sink_write_empty_bytes_succeeds() {
-        assert!(DevNull.write(&[]).is_ok());
+    fn test_output_sink_is_object_safe() {
+        fn _assert_object_safe(_: &dyn OutputSink) {}
     }
 }

@@ -11,22 +11,21 @@ pub(crate) struct LocalFileSource;
 impl InboundSource for LocalFileSource {
     fn scan_files(&self, root: &Path) -> Result<Vec<PathBuf>, IngressError> {
         let mut paths = Vec::new();
-        for entry in std::fs::read_dir(root).map_err(IngressError::Io)? {
-            let entry = entry.map_err(IngressError::Io)?;
+        for entry in std::fs::read_dir(root)? {
+            let entry = entry?;
             paths.push(entry.path());
         }
         Ok(paths)
     }
 
     fn read_file(&self, path: &Path) -> Result<Vec<u8>, IngressError> {
-        std::fs::read(path).map_err(IngressError::Io)
+        Ok(std::fs::read(path)?)
     }
 
     fn file_exists(&self, path: &Path) -> Result<bool, IngressError> {
         Ok(path.exists())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -43,6 +42,6 @@ mod tests {
     fn test_read_file_returns_io_error_for_missing_file() {
         let src = LocalFileSource;
         let result = src.read_file(Path::new("/tmp/__swe_edge_ingress_nonexistent__"));
-        assert!(matches!(result, Err(IngressError::Io(_))));
+        assert!(matches!(result, Err(IngressError::IoError(_))));
     }
 }

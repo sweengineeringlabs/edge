@@ -23,6 +23,8 @@ pub fn build_memory_database() -> Arc<dyn DatabaseGateway> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::database::{DatabaseRead, DatabaseWrite, Record};
+    use serde_json::Value;
 
     #[test]
     fn test_builder_new_returns_default() {
@@ -30,10 +32,12 @@ mod tests {
     }
 
     /// @covers: build_memory_database
-    #[test]
-    fn test_build_memory_database_returns_arc_database_gateway() {
+    #[tokio::test]
+    async fn test_build_memory_database_returns_arc_database_gateway() {
         let db = build_memory_database();
-        db.put("x", b"1").unwrap();
-        assert_eq!(db.get("x").unwrap(), Some(b"1".to_vec()));
+        let rec = Record::new().set("id", Value::String("x".into()));
+        db.insert("t", rec).await.unwrap();
+        let found = db.get_by_id("t", "x").await.unwrap();
+        assert!(found.is_some());
     }
 }
