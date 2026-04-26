@@ -8,9 +8,13 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HealthStatus {
+    /// All checks pass.
     Healthy,
+    /// Partially operational — some checks degraded.
     Degraded,
+    /// One or more checks failed.
     Unhealthy,
+    /// Status not yet determined.
     #[default]
     Unknown,
 }
@@ -18,31 +22,41 @@ pub enum HealthStatus {
 /// Health check result for a gateway.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheck {
+    /// Overall health status.
     pub status: HealthStatus,
+    /// Optional human-readable detail.
     pub message: Option<String>,
+    /// Round-trip latency in milliseconds when measured.
     pub latency_ms: Option<u64>,
+    /// Arbitrary metadata attached to this check result.
     #[serde(default)]
     pub metadata: HashMap<String, serde_json::Value>,
+    /// Timestamp when the check was performed.
     pub checked_at: DateTime<Utc>,
 }
 
 impl HealthCheck {
+    /// Create a healthy result with no latency or message.
     pub fn healthy() -> Self {
         Self { status: HealthStatus::Healthy, message: None, latency_ms: None, metadata: HashMap::new(), checked_at: Utc::now() }
     }
 
+    /// Create a healthy result that includes a measured latency.
     pub fn healthy_with_latency(latency_ms: u64) -> Self {
         Self { status: HealthStatus::Healthy, message: None, latency_ms: Some(latency_ms), metadata: HashMap::new(), checked_at: Utc::now() }
     }
 
+    /// Create an unhealthy result with a descriptive message.
     pub fn unhealthy(message: impl Into<String>) -> Self {
         Self { status: HealthStatus::Unhealthy, message: Some(message.into()), latency_ms: None, metadata: HashMap::new(), checked_at: Utc::now() }
     }
 
+    /// Create a degraded result with a descriptive message.
     pub fn degraded(message: impl Into<String>) -> Self {
         Self { status: HealthStatus::Degraded, message: Some(message.into()), latency_ms: None, metadata: HashMap::new(), checked_at: Utc::now() }
     }
 
+    /// Attach an arbitrary metadata entry to this result.
     pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         self.metadata.insert(key.into(), value);
         self
