@@ -7,7 +7,6 @@ use crate::api::tls_config::TlsConfig;
 use crate::api::tls_layer::TlsLayer;
 
 use crate::core::identity::build_provider;
-use crate::core::tls_layer as _;
 
 /// Start configuring the TLS layer with the SWE baseline
 /// (`kind = "none"` — pass-through).

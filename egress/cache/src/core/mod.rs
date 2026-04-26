@@ -3,4 +3,3 @@
 
 pub(crate) mod cache_layer;
 pub(crate) mod cached_entry;
-pub(crate) mod default_http_cache;

@@ -4,7 +4,6 @@ use crate::api::breaker_config::BreakerConfig;
 use crate::api::breaker_layer::BreakerLayer;
 use crate::api::error::Error;
 
-use crate::core::breaker_layer as _;
 
 /// Start configuring the breaker with the SWE baseline
 /// loaded from the crate-shipped `config/application.toml`.

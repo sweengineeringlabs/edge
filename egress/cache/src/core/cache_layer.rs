@@ -44,7 +44,6 @@ use reqwest::header::{
 
 use crate::api::cache_config::CacheConfig;
 use crate::api::cache_layer::CacheLayer;
-use crate::api::traits::RequestCapture;
 use crate::core::cached_entry::{
     entry_matches_vary, extract_max_age, extract_stale_while_revalidate,
     in_swr_window, parse_vary, should_revalidate, CachedEntry, VaryDirective,
@@ -368,7 +367,8 @@ impl RequestSnapshot {
     }
 }
 
-impl RequestCapture for RequestSnapshot {
+#[cfg(test)]
+impl RequestSnapshot {
     fn captured_method(&self) -> &reqwest::Method {
         &self.method
     }
