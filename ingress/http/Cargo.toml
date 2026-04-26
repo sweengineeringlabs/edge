@@ -23,9 +23,14 @@ thiserror.workspace   = true
 async-trait.workspace = true
 futures.workspace     = true
 chrono.workspace      = true
+tokio.workspace       = true
+axum.workspace        = true
+bytes.workspace       = true
+tracing.workspace     = true
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+tokio   = { workspace = true, features = ["rt-multi-thread", "macros"] }
+reqwest = { workspace = true, features = ["json"] }
 
 [lints]
 workspace = true
