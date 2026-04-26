@@ -37,6 +37,18 @@ impl HttpRequest {
         Self { method: HttpMethod::Delete, url: url.into(), headers: HashMap::new(), query: HashMap::new(), body: None, timeout: None }
     }
 
+    pub fn patch(url: impl Into<String>) -> Self {
+        Self { method: HttpMethod::Patch, url: url.into(), headers: HashMap::new(), query: HashMap::new(), body: None, timeout: None }
+    }
+
+    pub fn head(url: impl Into<String>) -> Self {
+        Self { method: HttpMethod::Head, url: url.into(), headers: HashMap::new(), query: HashMap::new(), body: None, timeout: None }
+    }
+
+    pub fn options(url: impl Into<String>) -> Self {
+        Self { method: HttpMethod::Options, url: url.into(), headers: HashMap::new(), query: HashMap::new(), body: None, timeout: None }
+    }
+
     pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(name.into(), value.into()); self
     }
@@ -113,5 +125,23 @@ mod tests {
     fn test_with_timeout_sets_timeout() {
         let req = HttpRequest::get("/x").with_timeout(Duration::from_secs(5));
         assert_eq!(req.timeout, Some(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn test_patch_creates_patch_request() {
+        let req = HttpRequest::patch("/resource");
+        assert_eq!(req.method, HttpMethod::Patch);
+    }
+
+    #[test]
+    fn test_head_creates_head_request() {
+        let req = HttpRequest::head("/resource");
+        assert_eq!(req.method, HttpMethod::Head);
+    }
+
+    #[test]
+    fn test_options_creates_options_request() {
+        let req = HttpRequest::options("/resource");
+        assert_eq!(req.method, HttpMethod::Options);
     }
 }

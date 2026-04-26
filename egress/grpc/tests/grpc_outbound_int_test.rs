@@ -4,6 +4,7 @@
 
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::stream;
@@ -124,6 +125,43 @@ async fn spawn_error_server(listener: tokio::net::TcpListener) -> SocketAddr {
                             .body(Full::new(Bytes::new()))
                             .unwrap();
                         Ok::<_, Infallible>(resp)
+                    }),
+                )
+                .await;
+            });
+        }
+    });
+
+    addr
+}
+
+/// Spawn a gRPC server that accepts HTTP/2 connections but never sends a response.
+/// Used to verify that the client's timeout fires correctly.
+async fn spawn_stalling_grpc_server(listener: tokio::net::TcpListener) -> SocketAddr {
+    let addr = listener.local_addr().expect("local_addr");
+
+    tokio::spawn(async move {
+        loop {
+            let (stream, _) = match listener.accept().await {
+                Ok(v) => v,
+                Err(_) => break,
+            };
+            tokio::spawn(async move {
+                let io = hyper_util::rt::TokioIo::new(stream);
+                let _ = hyper::server::conn::http2::Builder::new(
+                    hyper_util::rt::TokioExecutor::new(),
+                )
+                .serve_connection(
+                    io,
+                    hyper::service::service_fn(|_req: http::Request<hyper::body::Incoming>| async {
+                        // Complete the HTTP/2 handshake but never return a response.
+                        tokio::time::sleep(Duration::from_secs(60)).await;
+                        Ok::<_, Infallible>(
+                            http::Response::builder()
+                                .status(200)
+                                .body(http_body_util::Full::new(bytes::Bytes::new()))
+                                .unwrap(),
+                        )
                     }),
                 )
                 .await;
@@ -354,5 +392,43 @@ async fn test_call_unary_receives_response_metadata_from_trailers() {
         Some("meta-42"),
         "x-response-id trailer must be present in response metadata; got: {:?}",
         resp.metadata.headers
+    );
+}
+
+/// @covers: TonicGrpcClient::call_unary — timeout fires when server does not respond.
+#[tokio::test]
+async fn test_call_unary_returns_timeout_error_when_server_stalls() {
+    let listener = bind_listener().await;
+    let addr = spawn_stalling_grpc_server(listener).await;
+
+    // Very short timeout so the test completes quickly.
+    let client = TonicGrpcClient::with_timeout(
+        format!("http://{addr}"),
+        Duration::from_millis(80),
+    );
+    let req = GrpcRequest::new("svc/Method", b"ping".to_vec());
+    let result = client.call_unary(req).await;
+    assert!(
+        matches!(result, Err(GrpcOutboundError::Timeout(_))),
+        "expected Timeout, got {result:?}"
+    );
+}
+
+/// @covers: TonicGrpcClient::call_unary — ConnectionFailed when nothing listens on the port.
+#[tokio::test]
+async fn test_call_unary_returns_connection_failed_when_no_server_is_listening() {
+    let addr = {
+        let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let a = l.local_addr().unwrap();
+        drop(l);
+        a
+    };
+
+    let client = TonicGrpcClient::new(format!("http://{addr}"));
+    let req = GrpcRequest::new("svc/Method", b"ping".to_vec());
+    let result = client.call_unary(req).await;
+    assert!(
+        matches!(result, Err(GrpcOutboundError::ConnectionFailed(_))),
+        "expected ConnectionFailed, got {result:?}"
     );
 }

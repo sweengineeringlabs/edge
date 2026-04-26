@@ -64,7 +64,7 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use md5::{Digest as Md5Digest, Md5};
-use reqwest::header::{HeaderName, HeaderValue, AUTHORIZATION, WWW_AUTHENTICATE};
+use reqwest::header::{HeaderValue, AUTHORIZATION, WWW_AUTHENTICATE};
 use secrecy::{ExposeSecret, SecretString};
 use sha2::{Sha256, Sha512_256};
 

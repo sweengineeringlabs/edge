@@ -23,7 +23,8 @@ thiserror.workspace         = true
 async-trait.workspace       = true
 futures.workspace           = true
 chrono.workspace            = true
-tokio                       = { workspace = true, features = ["rt"] }
+http.workspace              = true
+tokio                       = { workspace = true, features = ["rt", "net"] }
 reqwest.workspace           = true
 reqwest-middleware.workspace = true
 swe-edge-egress-auth.workspace     = true
@@ -35,4 +36,8 @@ swe-edge-egress-cassette.workspace = true
 swe-edge-egress-tls.workspace      = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio          = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time"] }
+hyper          = { version = "1", features = ["http1", "server"] }
+hyper-util     = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes          = "1"

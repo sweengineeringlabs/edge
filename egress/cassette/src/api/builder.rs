@@ -10,6 +10,4 @@ use crate::api::cassette_config::CassetteConfig;
 pub struct Builder {
     /// The resolved cassette policy.
     pub(crate) config: CassetteConfig,
-    /// Cassette name (maps to a `<name>.yaml` fixture file).
-    pub(crate) cassette_name: String,
 }

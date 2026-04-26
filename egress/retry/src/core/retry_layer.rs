@@ -49,22 +49,14 @@ impl RetryLayer {
     fn status_retryable(&self, status: reqwest::StatusCode) -> bool {
         self.config.retryable_statuses.contains(&status.as_u16())
     }
+}
 
-    /// Should we retry given the outcome of an attempt?
-    /// Separated out so the middleware's control flow stays
-    /// readable + this logic is unit-testable without spinning
-    /// up reqwest.
-    fn should_retry(
-        &self,
-        outcome: &Result<reqwest::StatusCode, bool>,
-    ) -> bool {
+#[cfg(test)]
+impl RetryLayer {
+    /// Test helper: should we retry given this outcome?
+    fn should_retry(&self, outcome: &Result<reqwest::StatusCode, bool>) -> bool {
         match outcome {
-            // Success-at-HTTP-layer: retry iff status is in the
-            // configured retryable set.
             Ok(status) => self.status_retryable(*status),
-            // Transport error: `true` = transient, retry; `false`
-            // = not transient (DNS hard-fail, TLS cert, etc.),
-            // don't retry.
             Err(is_transient) => *is_transient,
         }
     }
