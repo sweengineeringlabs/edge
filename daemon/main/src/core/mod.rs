@@ -1,3 +1,3 @@
-mod default_runtime_manager;
+mod runtime_manager;
 
-pub(crate) use default_runtime_manager::DefaultRuntimeManager;
+pub(crate) use runtime_manager::DefaultRuntimeManager;

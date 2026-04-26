@@ -7,7 +7,7 @@ use edge_controller::LifecycleMonitor;
 use crate::core::DefaultRuntimeManager;
 
 pub use crate::api::error::{RuntimeError, RuntimeResult};
-pub use crate::api::traits::RuntimeManager;
+pub use crate::api::runtime_manager::RuntimeManager;
 pub use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 pub use crate::api::types::runtime_health::ComponentHealth;
 pub use crate::gateway::input::IngressGateway;

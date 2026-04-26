@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use edge_controller::{HealthStatus, LifecycleMonitor};
 
 use crate::api::error::{RuntimeError, RuntimeResult};
-use crate::api::traits::RuntimeManager;
+use crate::api::runtime_manager::RuntimeManager;
 use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 use crate::api::types::runtime_health::ComponentHealth;
 use crate::gateway::input::IngressGateway;
@@ -183,6 +183,14 @@ mod tests {
         fn health_check(&self) -> BoxFuture<'_, HttpOutboundResult<()>> {
             Box::pin(async { Ok(()) })
         }
+    }
+
+    /// @covers: new
+    #[test]
+    fn test_new_creates_stopped_status() {
+        let m = make_manager();
+        assert_eq!(*m.status.lock(), RuntimeStatus::Stopped);
+        assert!(m.started_at.lock().is_none());
     }
 
     fn make_manager() -> DefaultRuntimeManager {
