@@ -7,7 +7,8 @@ use std::net::SocketAddr;
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::stream;
-use http_body_util::{BodyExt as _, Full};
+use http_body::Frame;
+use http_body_util::{BodyExt as _, Full, StreamBody};
 
 use swe_edge_egress_grpc::{
     GrpcMessageStream, GrpcMetadata, GrpcOutbound, GrpcOutboundError, GrpcRequest, GrpcResponse,
@@ -122,6 +123,58 @@ async fn spawn_error_server(listener: tokio::net::TcpListener) -> SocketAddr {
                             .header("grpc-message", "server-side error")
                             .body(Full::new(Bytes::new()))
                             .unwrap();
+                        Ok::<_, Infallible>(resp)
+                    }),
+                )
+                .await;
+            });
+        }
+    });
+
+    addr
+}
+
+/// Spawn a server that echoes request frames back and sends custom metadata as HTTP/2 trailers.
+async fn spawn_metadata_server(listener: tokio::net::TcpListener) -> SocketAddr {
+    let addr = listener.local_addr().expect("local_addr");
+
+    tokio::spawn(async move {
+        loop {
+            let (stream, _) = match listener.accept().await {
+                Ok(v)  => v,
+                Err(_) => break,
+            };
+            tokio::spawn(async move {
+                let io = hyper_util::rt::TokioIo::new(stream);
+                let _ = hyper::server::conn::http2::Builder::new(
+                    hyper_util::rt::TokioExecutor::new(),
+                )
+                .serve_connection(
+                    io,
+                    hyper::service::service_fn(|req: http::Request<hyper::body::Incoming>| async {
+                        let collected = req.into_body().collect().await.unwrap();
+                        let body_bytes = collected.to_bytes();
+                        let frames = decode_frames(body_bytes);
+                        let mut resp_buf = BytesMut::new();
+                        for f in &frames {
+                            resp_buf.put(encode_frame(f));
+                        }
+
+                        let mut trailers = http::HeaderMap::new();
+                        trailers.insert("grpc-status",   http::HeaderValue::from_static("0"));
+                        trailers.insert("x-response-id", http::HeaderValue::from_static("meta-42"));
+
+                        let body = StreamBody::new(futures::stream::iter(vec![
+                            Ok::<Frame<Bytes>, Infallible>(Frame::data(resp_buf.freeze())),
+                            Ok(Frame::trailers(trailers)),
+                        ]));
+
+                        let resp = http::Response::builder()
+                            .status(200)
+                            .header(http::header::CONTENT_TYPE, "application/grpc")
+                            .body(body.boxed())
+                            .unwrap();
+
                         Ok::<_, Infallible>(resp)
                     }),
                 )
@@ -279,4 +332,27 @@ fn test_grpc_status_code_ok_is_distinct_from_internal() {
 fn test_grpc_response_holds_body_bytes() {
     let resp = GrpcResponse { body: vec![0x08, 0x01], metadata: GrpcMetadata::default() };
     assert_eq!(resp.body, vec![0x08, 0x01]);
+}
+
+/// @covers: TonicGrpcClient::call_unary — response metadata from HTTP/2 trailers is preserved.
+#[tokio::test]
+async fn test_call_unary_receives_response_metadata_from_trailers() {
+    let listener = bind_listener().await;
+    let addr = spawn_metadata_server(listener).await;
+
+    let client = TonicGrpcClient::new(format!("http://{addr}"));
+    let req = GrpcRequest {
+        method:   "echo/Echo".into(),
+        body:     b"hi".to_vec(),
+        metadata: GrpcMetadata::default(),
+    };
+
+    let resp = client.call_unary(req).await.expect("call_unary should succeed");
+    assert_eq!(resp.body, b"hi", "body must be echoed");
+    assert_eq!(
+        resp.metadata.headers.get("x-response-id").map(String::as_str),
+        Some("meta-42"),
+        "x-response-id trailer must be present in response metadata; got: {:?}",
+        resp.metadata.headers
+    );
 }
