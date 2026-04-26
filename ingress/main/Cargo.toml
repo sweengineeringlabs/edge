@@ -43,7 +43,7 @@ swe-edge-ingress-grpc.workspace  = true
 swe-edge-ingress-file.workspace  = true
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal"] }
 tempfile = "3"
 
 [lints]
