@@ -134,24 +134,31 @@ impl HttpOutbound for DefaultHttpOutbound {
     }
 
     fn health_check(&self) -> BoxFuture<'_, HttpOutboundResult<()>> {
-        let base_url = self.base_url.clone();
         Box::pin(async move {
-            let url = match base_url {
-                Some(ref u) => u.clone(),
-                None        => return Ok(()),
+            let url = match &self.base_url {
+                Some(u) => u.clone(),
+                None    => return Ok(()),
             };
-            let uri: http::Uri = url
-                .parse()
-                .map_err(|e| HttpOutboundError::Internal(format!("invalid base_url `{url}`: {e}")))?;
-            let host = uri.host().unwrap_or("127.0.0.1").to_owned();
-            let port = uri.port_u16().unwrap_or_else(|| {
-                if uri.scheme_str() == Some("https") { 443 } else { 80 }
-            });
-            let addr = format!("{host}:{port}");
-            tokio::net::TcpStream::connect(&addr)
+            let resp = self.client
+                .get(&url)
+                .send()
                 .await
-                .map(|_| ())
-                .map_err(|e| HttpOutboundError::ConnectionFailed(format!("{addr}: {e}")))
+                .map_err(|e| {
+                    if let reqwest_middleware::Error::Reqwest(ref re) = e {
+                        if re.is_timeout() {
+                            return HttpOutboundError::Timeout(e.to_string());
+                        }
+                    }
+                    HttpOutboundError::ConnectionFailed(e.to_string())
+                })?;
+            if resp.status().is_success() {
+                Ok(())
+            } else {
+                Err(HttpOutboundError::Internal(format!(
+                    "health check failed: HTTP {}",
+                    resp.status().as_u16()
+                )))
+            }
         })
     }
 }

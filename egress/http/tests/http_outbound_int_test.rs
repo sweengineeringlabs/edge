@@ -138,6 +138,25 @@ async fn test_health_check_fails_when_no_server_is_listening() {
 }
 
 #[tokio::test]
+async fn test_health_check_fails_when_server_returns_non_2xx() {
+    let (port, _jh) = spawn_once(|_req| async {
+        Response::builder()
+            .status(503)
+            .body(Full::new(Bytes::from("unavailable")))
+            .unwrap()
+    })
+    .await;
+
+    let cfg = HttpConfig::with_base_url(format!("http://127.0.0.1:{port}"));
+    let client = plain_http_outbound(cfg).unwrap();
+    let result = client.health_check().await;
+    assert!(
+        matches!(result, Err(HttpOutboundError::Internal(ref msg)) if msg.contains("503")),
+        "expected Internal with status 503, got {result:?}"
+    );
+}
+
+#[tokio::test]
 async fn test_send_with_json_body_sets_application_json_content_type() {
     let (port, _jh) = spawn_once(|req| async move {
         let ct = req
