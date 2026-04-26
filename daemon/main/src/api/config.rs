@@ -54,7 +54,7 @@ impl ConfigOverride {
         if let Some(v) = self.grpc_bind             { base.grpc_bind             = v; }
         if let Some(v) = self.shutdown_timeout_secs { base.shutdown_timeout_secs = v; }
         if let Some(v) = self.systemd_notify        { base.systemd_notify        = v; }
-        if let Some(v) = self.tenant_id             { base.tenant_id             = Some(v); }
+        if let Some(v) = self.tenant_id { if !v.is_empty() { base.tenant_id = Some(v); } }
         base
     }
 }
@@ -103,6 +103,24 @@ mod tests {
         let o = ConfigOverride::from_str(r#"tenant_id = "t-001""#).unwrap();
         let merged = o.apply_to(base);
         assert_eq!(merged.tenant_id.as_deref(), Some("t-001"));
+    }
+
+    /// @covers: ConfigOverride::apply_to
+    #[test]
+    fn test_apply_to_empty_tenant_id_leaves_none() {
+        let base = RuntimeConfig::default();
+        let o = ConfigOverride::from_str(r#"tenant_id = """#).unwrap();
+        let merged = o.apply_to(base);
+        assert!(merged.tenant_id.is_none());
+    }
+
+    /// @covers: ConfigOverride::apply_to
+    #[test]
+    fn test_apply_to_empty_tenant_id_does_not_clear_existing() {
+        let base = RuntimeConfig::default().with_tenant_id("existing");
+        let o = ConfigOverride::from_str(r#"tenant_id = """#).unwrap();
+        let merged = o.apply_to(base);
+        assert_eq!(merged.tenant_id.as_deref(), Some("existing"));
     }
 
     /// @covers: ConfigError
