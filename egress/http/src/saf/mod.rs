@@ -82,15 +82,49 @@ pub fn default_http_outbound() -> Result<impl HttpOutbound, HttpOutboundBuildErr
     )
 }
 
+/// Build a minimal [`HttpOutbound`] from just an [`HttpConfig`] — no middleware layers.
+///
+/// All `HttpConfig` fields are honoured: `timeout_secs`, `connect_timeout_secs`,
+/// `user_agent`, `follow_redirects`, `max_redirects`, `default_headers`, and
+/// `max_response_bytes`.  Useful for integration tests and simple deployments
+/// that do not need the full auth/retry/rate/breaker/cache/cassette stack.
+pub fn plain_http_outbound(config: HttpConfig) -> Result<impl HttpOutbound, HttpOutboundBuildError> {
+    let mut cb = reqwest::Client::builder();
+    cb = cb.timeout(Duration::from_secs(config.timeout_secs));
+    cb = cb.connect_timeout(Duration::from_secs(config.connect_timeout_secs));
+    if let Some(ua) = &config.user_agent {
+        cb = cb.user_agent(ua);
+    }
+    if config.follow_redirects {
+        cb = cb.redirect(reqwest::redirect::Policy::limited(config.max_redirects as usize));
+    } else {
+        cb = cb.redirect(reqwest::redirect::Policy::none());
+    }
+    if !config.default_headers.is_empty() {
+        let mut map = reqwest::header::HeaderMap::new();
+        for (k, v) in &config.default_headers {
+            if let (Ok(name), Ok(val)) = (
+                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                reqwest::header::HeaderValue::from_str(v),
+            ) {
+                map.insert(name, val);
+            }
+        }
+        cb = cb.default_headers(map);
+    }
+    let client = reqwest_middleware::ClientBuilder::new(cb.build()?).build();
+    Ok(DefaultHttpOutbound::new(client, config.base_url, config.max_response_bytes))
+}
+
 fn assemble(
     http_cfg: HttpConfig,
-    auth: swe_edge_egress_auth::AuthMiddleware,
-    retry: swe_edge_egress_retry::RetryLayer,
-    rate: swe_edge_egress_rate::RateLayer,
-    breaker: swe_edge_egress_breaker::BreakerLayer,
-    cache: swe_edge_egress_cache::CacheLayer,
+    auth:     swe_edge_egress_auth::AuthMiddleware,
+    retry:    swe_edge_egress_retry::RetryLayer,
+    rate:     swe_edge_egress_rate::RateLayer,
+    breaker:  swe_edge_egress_breaker::BreakerLayer,
+    cache:    swe_edge_egress_cache::CacheLayer,
     cassette: swe_edge_egress_cassette::CassetteLayer,
-    tls: swe_edge_egress_tls::TlsLayer,
+    tls:      swe_edge_egress_tls::TlsLayer,
 ) -> Result<DefaultHttpOutbound, HttpOutboundBuildError> {
     let mut cb = reqwest::Client::builder();
     cb = tls.apply_to(cb)?;
@@ -106,6 +140,18 @@ fn assemble(
     } else {
         cb = cb.redirect(reqwest::redirect::Policy::none());
     }
+    if !http_cfg.default_headers.is_empty() {
+        let mut map = reqwest::header::HeaderMap::new();
+        for (k, v) in &http_cfg.default_headers {
+            if let (Ok(name), Ok(val)) = (
+                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                reqwest::header::HeaderValue::from_str(v),
+            ) {
+                map.insert(name, val);
+            }
+        }
+        cb = cb.default_headers(map);
+    }
     let reqwest_client = cb.build()?;
 
     let client = ClientBuilder::new(reqwest_client)
@@ -117,5 +163,5 @@ fn assemble(
         .with(cassette)
         .build();
 
-    Ok(DefaultHttpOutbound::new(client, http_cfg.base_url))
+    Ok(DefaultHttpOutbound::new(client, http_cfg.base_url, http_cfg.max_response_bytes))
 }
