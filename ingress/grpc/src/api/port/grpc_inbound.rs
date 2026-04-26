@@ -1,11 +1,17 @@
 //! gRPC inbound trait — handles incoming gRPC requests.
 
+use std::pin::Pin;
+
 use futures::future::BoxFuture;
 
-use crate::api::value_object::{GrpcRequest, GrpcResponse};
+use crate::api::value_object::{GrpcMetadata, GrpcRequest, GrpcResponse};
 
 /// Result type for gRPC inbound operations.
 pub type GrpcInboundResult<T> = Result<T, GrpcInboundError>;
+
+/// A stream of raw gRPC message bytes — one item per decoded gRPC frame.
+pub type GrpcMessageStream =
+    Pin<Box<dyn futures::Stream<Item = GrpcInboundResult<Vec<u8>>> + Send>>;
 
 /// Error type for gRPC inbound operations.
 #[derive(Debug, thiserror::Error)]
@@ -40,7 +46,40 @@ impl GrpcHealthCheck {
 
 /// Handles inbound gRPC requests (server-side).
 pub trait GrpcInbound: Send + Sync {
+    /// Handle a single unary request.
     fn handle_unary(&self, request: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>>;
+
+    /// Handle a streaming request (client-streaming, server-streaming, or bidi).
+    ///
+    /// The default implementation reads the first message from the input stream,
+    /// forwards it to [`handle_unary`], and wraps the response in a single-item
+    /// output stream.  Implementors that need true streaming override this method.
+    ///
+    /// [`handle_unary`]: GrpcInbound::handle_unary
+    fn handle_stream(
+        &self,
+        method: String,
+        metadata: GrpcMetadata,
+        messages: GrpcMessageStream,
+    ) -> BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+        Box::pin(async move {
+            use futures::StreamExt;
+            let mut messages = messages;
+            let body = match messages.next().await {
+                Some(Ok(b))  => b,
+                Some(Err(e)) => return Err(e),
+                None         => vec![],
+            };
+            let req  = GrpcRequest { method, body, metadata };
+            let resp = self.handle_unary(req).await?;
+            let out: GrpcMessageStream = Box::pin(futures::stream::once(
+                futures::future::ready(Ok(resp.body)),
+            ));
+            Ok(out)
+        })
+    }
+
+    /// Perform a health check.
     fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>>;
 }
 
