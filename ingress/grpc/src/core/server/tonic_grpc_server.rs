@@ -138,7 +138,7 @@ async fn dispatch(
     ));
 
     match handler.handle_stream(method, GrpcMetadata { headers: metadata }, message_stream).await {
-        Ok(resp_stream) => grpc_stream_response(resp_stream).await,
+        Ok((resp_stream, resp_meta)) => grpc_stream_response(resp_stream, resp_meta).await,
         Err(e)          => {
             let (code, msg) = map_error(e);
             grpc_error(code, msg)
@@ -179,8 +179,8 @@ fn decode_grpc_frames(data: &Bytes) -> Vec<Bytes> {
 }
 
 /// Collect a response stream into a single HTTP/2 response with one DATA frame
-/// per stream item plus a trailing `grpc-status=0` header.
-async fn grpc_stream_response(mut stream: GrpcMessageStream) -> Response<BoxBody> {
+/// per stream item plus a trailing `grpc-status=0` header and any response metadata.
+async fn grpc_stream_response(mut stream: GrpcMessageStream, meta: GrpcMetadata) -> Response<BoxBody> {
     use futures::StreamExt;
 
     // Collect all response messages.
@@ -204,6 +204,14 @@ async fn grpc_stream_response(mut stream: GrpcMessageStream) -> Response<BoxBody
 
     let mut trailers = http::HeaderMap::new();
     trailers.insert("grpc-status", http::HeaderValue::from_static("0"));
+    for (k, v) in &meta.headers {
+        if let (Ok(name), Ok(val)) = (
+            http::HeaderName::from_bytes(k.as_bytes()),
+            http::HeaderValue::from_str(v),
+        ) {
+            trailers.insert(name, val);
+        }
+    }
 
     // Build the response body: one DATA frame per response message, then trailers.
     let mut http_frames: Vec<Result<http_body::Frame<Bytes>, Infallible>> =
@@ -220,38 +228,6 @@ async fn grpc_stream_response(mut stream: GrpcMessageStream) -> Response<BoxBody
 }
 
 // ── gRPC framing helpers ──────────────────────────────────────────────────────
-
-fn grpc_success(body: Vec<u8>, extra_headers: HashMap<String, String>) -> Response<BoxBody> {
-    // Build length-prefixed gRPC data frame.
-    let mut buf = BytesMut::with_capacity(5 + body.len());
-    buf.put_u8(0); // not compressed
-    buf.put_u32(body.len() as u32);
-    buf.put_slice(&body);
-
-    // Trailing headers carry the gRPC status.
-    let mut trailers = http::HeaderMap::new();
-    trailers.insert("grpc-status", http::HeaderValue::from_static("0"));
-    for (k, v) in &extra_headers {
-        if let (Ok(name), Ok(val)) = (
-            http::HeaderName::from_bytes(k.as_bytes()),
-            http::HeaderValue::from_str(v),
-        ) {
-            trailers.insert(name, val);
-        }
-    }
-
-    let response_body = StreamBody::new(futures::stream::iter([
-        Ok::<http_body::Frame<Bytes>, Infallible>(http_body::Frame::data(buf.freeze())),
-        Ok(http_body::Frame::trailers(trailers)),
-    ]))
-    .boxed();
-
-    Response::builder()
-        .status(200)
-        .header("content-type", "application/grpc")
-        .body(response_body)
-        .unwrap()
-}
 
 fn grpc_error(code: tonic::Code, message: impl Into<String>) -> Response<BoxBody> {
     let message = message.into();
@@ -279,7 +255,13 @@ fn grpc_error(code: tonic::Code, message: impl Into<String>) -> Response<BoxBody
 fn collect_metadata(headers: &http::HeaderMap) -> HashMap<String, String> {
     headers
         .iter()
-        .filter_map(|(k, v)| v.to_str().ok().map(|vs| (k.to_string(), vs.to_string())))
+        .filter_map(|(k, v)| match v.to_str() {
+            Ok(vs) => Some((k.to_string(), vs.to_string())),
+            Err(_) => {
+                tracing::warn!(header = %k, "dropping non-UTF-8 gRPC request header");
+                None
+            }
+        })
         .collect()
 }
 
@@ -318,18 +300,6 @@ mod tests {
             let (code, _) = map_error(err);
             assert_eq!(code, expected_code);
         }
-    }
-
-    // ── grpc_success ──────────────────────────────────────────────────────
-
-    #[test]
-    fn test_grpc_success_returns_200_with_grpc_content_type() {
-        let resp = grpc_success(vec![1, 2, 3], HashMap::new());
-        assert_eq!(resp.status(), 200);
-        assert_eq!(
-            resp.headers().get("content-type").unwrap(),
-            "application/grpc"
-        );
     }
 
     // ── grpc_error ────────────────────────────────────────────────────────
