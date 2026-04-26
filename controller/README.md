@@ -1,4 +1,4 @@
-# controlroom
+# Controller
 
 A SEA-compliant Rust project.
 

@@ -1,13 +1,13 @@
-//! Job trait — **Job** concern of the 5-Concern ControlRoom pattern.
+//! Job trait — **Job** concern of the 5-Concern Controller pattern.
 //!
-//! The single entry point the gateway calls. Each controlroom implementation
+//! The single entry point the gateway calls. Each Controller implementation
 //! provides one `Job` impl that orchestrates its full request→response flow.
 
 use async_trait::async_trait;
 
 use super::error::JobError;
 
-/// The single entry point for controlroom work.
+/// The single entry point for Controller work.
 ///
 /// Gateway holds `Arc<dyn Job<Req, Resp>>` and calls `run` for each request.
 ///

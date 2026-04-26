@@ -1,4 +1,4 @@
-# controlroom Documentation
+# Controller Documentation
 
 Project documentation organized by phase.
 

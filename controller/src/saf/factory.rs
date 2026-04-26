@@ -1,6 +1,6 @@
 //! Factory functions — Static Access Facade (SAF).
 //!
-//! Top-level `fn` entrypoints for constructing controlroom building blocks.
+//! Top-level `fn` entrypoints for constructing Controller building blocks.
 //! Kept deliberately small: each factory wraps a single `new` so downstream
 //! crates have a stable entry point even if internal constructors change.
 
@@ -13,7 +13,7 @@ use crate::core::null_lifecycle_monitor::NullLifecycleMonitor;
 /// Construct a fresh empty `HandlerRegistry`.
 ///
 /// Returned as `Arc<_>` because the registry is shared between the
-/// controlroom's `Job` impl and any operator tooling that lists or
+/// Controller's `Job` impl and any operator tooling that lists or
 /// mutates the handler set.
 pub fn new_handler_registry<Req, Resp>() -> Arc<HandlerRegistry<Req, Resp>>
 where

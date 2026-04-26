@@ -4,21 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Structure
 
-This is **swe-edge**: a three-workspace Rust library stack. There is no top-level Cargo workspace — each peer directory is an independent workspace:
+This is **swe-edge**: a four-workspace Rust library stack. There is no top-level Cargo workspace — each peer directory is an independent workspace:
 
 | Workspace | Layer | Purpose |
 |-----------|-------|---------|
-| `gateway/` | L1 | Hexagonal gateway abstractions (DB, File, HTTP, Notification, Payment, gRPC) |
-| `controlroom/` | L2 | 5-Concern orchestration facade (Job → Router → Handler → LifecycleMonitor → Gateway) |
+| `ingress/` | L1 | Inbound port contracts (HTTP, gRPC, File) |
+| `egress/` | L1 | Outbound port contracts (HTTP, gRPC, Database, File, Notification, Payment) |
+| `controller/` | L2 | 5-Concern orchestration facade (Job → Router → Handler → LifecycleMonitor → Gateway) |
 | `http/` | L3 | 7-crate HTTP middleware workspace (auth, retry, rate, breaker, cache, cassette, tls) |
 
 All commands must be run from within the workspace directory — there is no root-level Cargo project.
 
 ## Commands
 
-### Gateway
+### Ingress
 ```bash
-cd gateway
+cd ingress
 cargo build
 cargo test
 cargo test --test <test_file_name>          # single integration test file
@@ -27,9 +28,18 @@ cargo fmt --check
 cargo clippy -- -D warnings
 ```
 
-### Controlroom
+### Egress
 ```bash
-cd controlroom
+cd egress
+cargo build
+cargo test
+cargo fmt --check
+cargo clippy -- -D warnings
+```
+
+### Controller
+```bash
+cd controller
 cargo build --release
 cargo test
 ./scripts/ci/lint.sh    # fmt + clippy
@@ -50,8 +60,8 @@ cargo clippy -- -D warnings
 ### Data Flow
 A request enters via `Job::run(req)` → `Router::dispatch(req)` classifies it to a handler ID → `HandlerRegistry::get(id)` retrieves the `Handler` impl → `Handler::execute(req)` runs business logic. Middleware wraps each stage and can short-circuit with `MiddlewareAction::ShortCircuit` before reaching the handler.
 
-### Gateway Traits
-Gateway abstractions split on direction. `DatabaseGateway` composes `DatabaseRead + DatabaseWrite`; `FileGateway` composes `FileInbound + FileOutbound`. Factories in `saf/` return `impl Trait` — callers never name concrete types from `core/`.
+### Ingress / Egress Port Contracts
+Ingress defines inbound port traits (`HttpInbound`, `GrpcInbound`, `FileInbound`). Egress defines outbound port traits (`HttpOutbound`, `GrpcOutbound`, `DatabaseGateway`, `FileOutbound`, `NotificationSender`, `PaymentGateway`). Factories in `saf/` return `impl Trait` — callers never name concrete types from `core/`.
 
 ### HTTP Middleware
 Each middleware crate (auth, retry, rate, breaker, cache, cassette, tls) is independent. Policy lives in TOML config, never as hardcoded Rust literals. Config layers: `config/default.toml` (SWE defaults) → `http/main/config/application.toml` (workspace override) → consumer application config → `Builder::with_config(..)` (test override).
@@ -85,8 +95,8 @@ src/
 
 ## Linting
 
-The HTTP workspace enforces `#![deny(unsafe_code)]` and `#![warn(missing_docs)]` at the workspace level. All three workspaces run `cargo clippy -- -D warnings` in CI — zero warnings is the bar.
+All workspaces enforce `#![deny(unsafe_code)]` and `#![warn(missing_docs)]` at the workspace level. All four workspaces run `cargo clippy -- -D warnings` in CI — zero warnings is the bar.
 
-## Feature Flags (Gateway)
+## Feature Flags (Egress)
 
-All gateway backends are opt-in. Default is no features. Available: `postgres`, `mysql`, `sqlite`, `s3`, `graphql`, `reqwest`, `email`, `stripe`, `tauri`, `full`.
+All egress backends are opt-in. Default is no features. Available: `postgres`, `mysql`, `sqlite`, `s3`, `graphql`, `reqwest`, `email`, `stripe`, `tauri`, `full`.

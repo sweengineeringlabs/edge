@@ -1,5 +1,5 @@
 //! `NullLifecycleMonitor` — a no-op `LifecycleMonitor` useful for tests and
-//! for bootstrapping a controlroom that does not (yet) need real lifecycle
+//! for bootstrapping a Controller that does not (yet) need real lifecycle
 //! management.
 //!
 //! Always reports `Healthy`. `start_background_tasks` does nothing.

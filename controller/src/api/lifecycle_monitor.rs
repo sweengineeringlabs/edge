@@ -1,4 +1,4 @@
-//! LifecycleMonitor trait — **Lifecycle** concern of the 5-Concern ControlRoom
+//! LifecycleMonitor trait — **Lifecycle** concern of the 5-Concern Controller
 //! pattern.
 //!
 //! Runtime state management: aggregate health, background tasks, and graceful
@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use super::error::LifecycleError;
 use super::health::HealthReport;
 
-/// Runtime lifecycle management for a controlroom instance.
+/// Runtime lifecycle management for a Controller instance.
 #[async_trait]
 pub trait LifecycleMonitor: Send + Sync {
     /// Aggregate health across all handlers and subsystems.

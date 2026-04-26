@@ -1,6 +1,6 @@
-//! Handler trait — **Handlers** concern of the 5-Concern ControlRoom pattern.
+//! Handler trait — **Handlers** concern of the 5-Concern Controller pattern.
 //!
-//! A single execution unit. Every agent/service/VM in a controlroom implements
+//! A single execution unit. Every agent/service/VM in a Controller implements
 //! `Handler`, providing a uniform contract that routing and registries can
 //! dispatch to without knowing the domain specifics.
 

@@ -1,7 +1,7 @@
-//! Barrel re-export of the 5-Concern ControlRoom traits.
+//! Barrel re-export of the 5-Concern Controller traits.
 //!
 //! Consumers who want a single import path can write
-//! `use edge_controlroom::api::traits::*;` and get all concern traits.
+//! `use edge_controller::api::traits::*;` and get all concern traits.
 
 pub use super::job::Job;
 pub use super::router::Router;
@@ -16,4 +16,4 @@ pub use super::lifecycle_monitor::LifecycleMonitor;
 /// 3. **Handlers** — [`Handler`]
 /// 4. **Lifecycle** — [`LifecycleMonitor`]
 /// 5. **Gateway (boundary types)** — `crate::gateway` module (internal)
-pub struct ControlRoomPattern;
+pub struct ControllerPattern;

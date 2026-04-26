@@ -1,4 +1,4 @@
-//! Error types — one per concern of the 5-Concern ControlRoom pattern.
+//! Error types — one per concern of the 5-Concern Controller pattern.
 //!
 //! Kept as separate enums so callers can pattern-match narrowly on the
 //! concern that failed, and so boundary types between concerns stay

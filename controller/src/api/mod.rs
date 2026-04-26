@@ -1,4 +1,4 @@
-//! Public API layer — the 5-Concern ControlRoom pattern.
+//! Public API layer — the 5-Concern Controller pattern.
 //!
 //! Each concern lives in its own file (SEA rule 108):
 //!

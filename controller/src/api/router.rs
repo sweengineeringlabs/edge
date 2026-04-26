@@ -1,4 +1,4 @@
-//! Router trait — **Routing** concern of the 5-Concern ControlRoom pattern.
+//! Router trait — **Routing** concern of the 5-Concern Controller pattern.
 //!
 //! Classifies an inbound input and returns a domain-defined `Intent` that
 //! downstream logic (typically a `HandlerRegistry`) uses to pick the right

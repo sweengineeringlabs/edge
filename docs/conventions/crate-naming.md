@@ -45,7 +45,7 @@ crate, two spellings — Cargo does the conversion.
 | Slot | Role | Example |
 |------|------|---------|
 | `<umbrella>` | Project name — bare, portmanteau, or `<brand>_<project>` | `edge`, `swedge` (= swe + edge), `swe_observ`, `swe_iam` |
-| `<domain>` | Functional area within the umbrella | `gateway`, `controlroom`, `context` |
+| `<domain>` | Functional area within the umbrella | `ingress`, `egress`, `controller`, `context` |
 | `<module>` | Sub-split of a domain (only if domain has multiple crates) | `contract`, `adapters`, `runtime` |
 | `<submodule>` | Further nesting (rare) | — |
 
@@ -68,7 +68,7 @@ edge/                                       umbrella=edge
 ├── main/
 │   └── features/
 │       ├── gateway/{api,core,saf}      →  edge_gateway        (2 parts)
-│       └── controlroom/{api,core,saf}  →  edge_controlroom    (2 parts)
+│       └── controller/{api,core,saf}   →  edge_controller     (2 parts)
 ```
 
 If `gateway` later splits into `gateway/contract/` + `gateway/adapters/`,
@@ -104,7 +104,7 @@ fix that.
 | Name | What it signals | Fix |
 |------|-----------------|-----|
 | `edge_gateway_edge` | `edge` appears as umbrella and module | Collapse to `edge_gateway` OR rename the module to what it specifically contains (`adapters`, `runtime`) |
-| `edge_controlroom_controlroom` | Module repeats its parent domain | Collapse to `edge_controlroom` |
+| `edge_controller_controller` | Module repeats its parent domain | Collapse to `edge_controller` |
 | `swe_edge_observ_observ_context` | Domain and module both `observ` | Collapse or rename the module to what it specifically is |
 
 ## Depth budget

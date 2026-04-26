@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum HealthStatus {
     /// All subsystems responsive and within operating parameters.
     Healthy,
-    /// One or more subsystems impaired but the controlroom can still serve.
+    /// One or more subsystems impaired but the Controller can still serve.
     Degraded,
     /// Cannot serve requests; operator intervention expected.
     Unhealthy,
