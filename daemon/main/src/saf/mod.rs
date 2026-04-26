@@ -15,6 +15,7 @@ pub use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 pub use crate::api::types::runtime_health::ComponentHealth;
 pub use crate::gateway::input::IngressGateway;
 pub use crate::gateway::output::EgressGateway;
+pub use swe_edge_egress::{GrpcMessageStream, GrpcOutbound, GrpcOutboundError, GrpcOutboundResult, TonicGrpcClient};
 
 /// Load config using the default layered chain
 /// (`default.toml` → `application.toml` → env vars).
