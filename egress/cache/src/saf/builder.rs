@@ -4,7 +4,6 @@ use crate::api::cache_config::CacheConfig;
 use crate::api::cache_layer::CacheLayer;
 use crate::api::error::Error;
 
-use crate::core::cache_layer as _;
 
 /// Start configuring the cache with the SWE baseline loaded
 /// from the crate-shipped `config/application.toml`.
