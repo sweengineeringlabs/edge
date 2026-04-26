@@ -1,0 +1,12 @@
+# Per-tenant config example.
+# Copy to config/tenants/<tenant-id>.toml and customise.
+# Only set fields that differ from application.toml — unset fields
+# fall through to the operator defaults.
+#
+# The tenant-id is injected at runtime via:
+#   SWE_EDGE_TENANT_ID=<id>   (env var)
+#   or load_tenant_config("<id>") in code.
+
+service_name = "swe-edge-example"
+http_bind    = "0.0.0.0:8081"
+grpc_bind    = "0.0.0.0:50052"

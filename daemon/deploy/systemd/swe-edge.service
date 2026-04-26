@@ -1,0 +1,66 @@
+[Unit]
+Description=SWE Edge Daemon
+Documentation=https://github.com/sweengineeringlabs/edge
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/swe-edge
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+WatchdogSec=60s
+
+# Identity — dedicated user, no shell, no home writes
+User=swe-edge
+Group=swe-edge
+DynamicUser=yes
+
+# Filesystem hardening
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/swe-edge /var/log/swe-edge
+RuntimeDirectory=swe-edge
+RuntimeDirectoryMode=0750
+
+# Privilege hardening
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SecureBits=noroot noroot-locked
+
+# Network restriction — only what the daemon actually needs
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Kernel hardening
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProtectHostname=true
+ProtectClock=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+
+# Syscall filter — standard service set, no exotic calls
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+SystemCallArchitectures=native
+
+# Environment
+Environment=RUST_LOG=info
+EnvironmentFile=-/etc/swe-edge/env
+
+[Install]
+WantedBy=multi-user.target
