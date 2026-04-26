@@ -16,5 +16,5 @@ pub use builder::{file_input, passthrough_validator};
 
 // Domain crate re-exports
 pub use swe_edge_ingress_http::{HttpAuth, HttpBody, FormPart, HttpConfig, HttpHealthCheck, HttpMethod, HttpRequest, HttpResponse, HttpInbound, HttpInboundError, HttpInboundResult};
-pub use swe_edge_ingress_grpc::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode, GrpcInbound, GrpcInboundError, GrpcInboundResult};
-pub use swe_edge_ingress_file::{FileInfo, FileMetadata, FileStorageConfig, FileStorageType, ListOptions, ListResult, PresignedUrl, FileInbound, FileInboundError, FileInboundResult};
+pub use swe_edge_ingress_grpc::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode, GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcHealthCheck};
+pub use swe_edge_ingress_file::{FileInfo, FileMetadata, FileStorageConfig, FileStorageType, ListOptions, ListResult, PresignedUrl, FileInbound, FileInboundError, FileInboundResult, FileHealthCheck};
