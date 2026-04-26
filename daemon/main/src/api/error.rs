@@ -13,6 +13,9 @@ pub enum RuntimeError {
     BindFailed(String),
     #[error("internal: {0}")]
     Internal(String),
+    /// Graceful shutdown did not complete within the configured timeout.
+    #[error("shutdown timed out after {0}s")]
+    ShutdownTimeout(u64),
 }
 
 /// Result type for runtime manager operations.
@@ -38,5 +41,11 @@ mod tests {
     fn test_runtime_error_display_bind_failed() {
         let e = RuntimeError::BindFailed("addr already in use".into());
         assert_eq!(e.to_string(), "bind failed: addr already in use");
+    }
+
+    #[test]
+    fn test_runtime_error_display_shutdown_timeout() {
+        let e = RuntimeError::ShutdownTimeout(30);
+        assert_eq!(e.to_string(), "shutdown timed out after 30s");
     }
 }
