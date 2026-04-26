@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members  = ["main"]
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2021"
+license      = "MIT"
+rust-version = "1.75"
+authors      = ["SWE Engineering Labs"]
+repository   = "https://github.com/sweengineeringlabs/edge"
+
+[workspace.dependencies]
+serde       = { version = "1.0", features = ["derive"] }
+serde_json  = "1.0"
+thiserror   = "2"
+async-trait = "0.1"
+futures     = "0.3"
+tokio       = { version = "1.0", features = ["rt", "rt-multi-thread", "sync", "signal", "macros", "time"] }
+tracing     = "0.1"
+uuid        = { version = "1.0", features = ["v4"] }
+chrono      = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+
+# Cross-workspace deps
+edge-controller       = { path = "../controller" }
+swe-edge-ingress      = { path = "../ingress/main" }
+swe-edge-egress       = { path = "../egress/main" }
+swe-edge-egress-http  = { path = "../egress/http" }
+
+# Workspace-internal
+swe-edge-daemon = { path = "main" }
+
+[workspace.lints.rust]
+unsafe_code  = "deny"
+missing_docs = "warn"

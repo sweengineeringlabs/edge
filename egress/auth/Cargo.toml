@@ -1,0 +1,54 @@
+[package]
+name = "swe-edge-egress-auth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "HTTP auth middleware for reqwest-middleware — attaches Authorization (Bearer/Basic) or custom credential headers to outbound requests. Config-driven; credentials resolved from env vars, never stored in TOML."
+keywords = ["http", "auth", "bearer", "reqwest", "middleware"]
+categories = ["web-programming::http-client", "authentication"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "processor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+reqwest = { workspace = true }
+reqwest-middleware = { workspace = true }
+http = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+# `from_config` loads policy from TOML. Credentials themselves
+# are referenced by env-var NAME in config — never stored as
+# plaintext in the TOML itself.
+serde = { workspace = true }
+toml = { workspace = true }
+# Secret-String wrapper — blocks accidental Debug/Display of
+# credential bytes.
+secrecy = { workspace = true }
+# Base64 encoding for the Basic scheme.
+base64 = { workspace = true }
+# Crypto primitives — SigV4 (sha2 + hmac), Digest (md-5). Shared:
+# hex for lower-hex encoding of hash/MAC outputs.
+sha2 = { workspace = true }
+hmac = { workspace = true }
+md-5 = { workspace = true }
+hex = { workspace = true }
+# SigV4 requires UTC timestamps in ISO 8601 basic format.
+time = { workspace = true }
+# SigV4 canonical-request percent-encodes URI path + query.
+percent-encoding = { workspace = true }
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
+
+[features]
+default = []
+tracing = ["dep:tracing"]
