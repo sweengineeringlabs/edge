@@ -10,10 +10,8 @@ use std::sync::Arc;
 
 use crate::api::auth_config::AuthConfig;
 use crate::api::auth_middleware::AuthMiddleware;
-use crate::api::credential_resolver::CredentialResolver;
 use crate::api::error::Error;
 
-use crate::core::auth_middleware as _;
 use crate::core::credential::EnvCredentialResolver;
 use crate::core::default_http_auth::DefaultHttpAuth;
 

@@ -4,7 +4,6 @@ use crate::api::error::Error;
 use crate::api::rate_config::RateConfig;
 use crate::api::rate_layer::RateLayer;
 
-use crate::core::rate_layer as _;
 
 /// Start configuring the rate limiter with the SWE baseline
 /// loaded from the crate-shipped `config/application.toml`.

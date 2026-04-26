@@ -19,10 +19,10 @@ pub(crate) enum CredentialSource {
     EnvVar(String),
 }
 
+impl CredentialSource {}
+
+#[cfg(test)]
 impl CredentialSource {
-    /// Short human-readable label — safe to log. Does NOT
-    /// include the credential value itself (that's always held
-    /// in `SecretString` once resolved).
     pub(crate) fn label(&self) -> String {
         match self {
             Self::EnvVar(name) => format!("env:{name}"),

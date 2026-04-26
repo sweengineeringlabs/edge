@@ -11,8 +11,6 @@ use crate::api::auth_strategy::AuthStrategy;
 use crate::api::credential_resolver::CredentialResolver;
 use crate::api::error::Error;
 use crate::api::http_auth::HttpAuth;
-use crate::api::traits::AuthProcessor;
-
 use crate::core::strategy::build_strategy;
 
 /// Default HTTP auth processor. Holds the resolved strategy;
@@ -63,8 +61,6 @@ impl HttpAuth for DefaultHttpAuth {
         self.strategy.authorize(req)
     }
 }
-
-impl AuthProcessor for DefaultHttpAuth {}
 
 #[cfg(test)]
 mod tests {

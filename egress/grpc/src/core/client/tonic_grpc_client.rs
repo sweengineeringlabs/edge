@@ -10,8 +10,12 @@ use crate::api::port::{GrpcMessageStream, GrpcOutbound, GrpcOutboundError, GrpcO
 use crate::api::value_object::{GrpcMetadata, GrpcRequest, GrpcResponse};
 
 /// Hyper HTTP/2 client type alias.
+///
+/// `HttpsConnector<HttpConnector>` with `https_or_http()` transparently routes:
+/// - `http://` URIs → plain h2c (HTTP/2 clear text, prior knowledge)
+/// - `https://` URIs → HTTP/2 over TLS (standard gRPCS)
 type HyperClient =
-    hyper_util::client::legacy::Client<HttpConnector, Full<Bytes>>;
+    hyper_util::client::legacy::Client<hyper_rustls::HttpsConnector<HttpConnector>, Full<Bytes>>;
 
 /// Concrete `GrpcOutbound` implementation using hyper HTTP/2 (h2c prior knowledge).
 ///
@@ -128,10 +132,15 @@ impl TonicGrpcClient {
 
     /// Create a client with an explicit request timeout.
     pub fn with_timeout(base_uri: impl Into<String>, timeout: std::time::Duration) -> Self {
+        let connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_webpki_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
         let client =
             hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
                 .http2_only(true)
-                .build_http();
+                .build(connector);
         Self { base_uri: base_uri.into(), client, timeout }
     }
 }
@@ -188,6 +197,15 @@ impl GrpcOutbound for TonicGrpcClient {
         })
     }
 
+    /// Send a gRPC streaming call.
+    ///
+    /// **Buffering limitation**: both the request and response are fully buffered
+    /// in memory before this future resolves. The `GrpcMessageStream` input is
+    /// collected into a single HTTP/2 DATA frame sequence, and the response body
+    /// is collected before returning. This is functionally correct for small
+    /// message sets but is not suitable for large or infinite streams. True
+    /// chunked streaming requires replacing hyper's `Full<Bytes>` body type with
+    /// a streaming body, which is a separate task.
     fn call_stream(
         &self,
         method: String,
