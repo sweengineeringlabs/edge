@@ -57,4 +57,47 @@ mod tests {
     fn test_grpc_outbound_is_object_safe() {
         fn _assert_object_safe(_: &dyn GrpcOutbound) {}
     }
+
+    /// Verifies that the default `call_stream` impl returns an error without requiring
+    /// an override — any `GrpcOutbound` impl gets this for free and it must not silently succeed.
+    #[tokio::test]
+    async fn test_call_stream_default_returns_streaming_not_supported_error() {
+        use crate::api::value_object::{GrpcMetadata, GrpcRequest, GrpcResponse};
+
+        struct UnaryOnlyClient;
+        impl GrpcOutbound for UnaryOnlyClient {
+            fn call_unary(
+                &self,
+                _: GrpcRequest,
+            ) -> futures::future::BoxFuture<'_, GrpcOutboundResult<GrpcResponse>> {
+                Box::pin(futures::future::ready(Ok(GrpcResponse {
+                    body:     vec![],
+                    metadata: GrpcMetadata::default(),
+                })))
+            }
+            fn health_check(&self) -> futures::future::BoxFuture<'_, GrpcOutboundResult<()>> {
+                Box::pin(futures::future::ready(Ok(())))
+            }
+        }
+
+        let client = UnaryOnlyClient;
+        let messages: GrpcMessageStream =
+            Box::pin(futures::stream::empty::<GrpcOutboundResult<Vec<u8>>>());
+        let result = client
+            .call_stream("svc/Method".into(), GrpcMetadata::default(), messages)
+            .await;
+        let err = match result {
+            Err(e) => e,
+            Ok(_)  => panic!("default call_stream must return Err, got Ok"),
+        };
+        match err {
+            GrpcOutboundError::Internal(msg) => {
+                assert!(
+                    msg.contains("streaming not supported"),
+                    "error message was: {msg}"
+                );
+            }
+            other => panic!("expected Internal error, got {other:?}"),
+        }
+    }
 }

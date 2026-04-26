@@ -37,14 +37,14 @@ impl GrpcInbound for ThreeFrameServerStreamHandler {
         _method: String,
         _metadata: GrpcMetadata,
         _messages: GrpcMessageStream,
-    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
         Box::pin(async move {
             let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![
                 Ok(vec![1u8]),
                 Ok(vec![2u8]),
                 Ok(vec![3u8]),
             ]));
-            Ok(out)
+            Ok((out, GrpcMetadata::default()))
         })
     }
 
@@ -59,7 +59,7 @@ struct FrameCountHandler;
 impl GrpcInbound for FrameCountHandler {
     fn handle_unary(&self, _req: GrpcRequest) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
         Box::pin(async move {
-            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata { headers: HashMap::new() } })
+            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata::default() })
         })
     }
 
@@ -68,14 +68,14 @@ impl GrpcInbound for FrameCountHandler {
         _method: String,
         _metadata: GrpcMetadata,
         messages: GrpcMessageStream,
-    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
         Box::pin(async move {
             use futures::StreamExt;
             let count = messages.count().await;
             let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![
                 Ok(vec![count as u8]),
             ]));
-            Ok(out)
+            Ok((out, GrpcMetadata::default()))
         })
     }
 
@@ -90,7 +90,7 @@ struct EchoStreamHandler;
 impl GrpcInbound for EchoStreamHandler {
     fn handle_unary(&self, req: GrpcRequest) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
         Box::pin(async move {
-            Ok(GrpcResponse { body: req.body, metadata: GrpcMetadata { headers: HashMap::new() } })
+            Ok(GrpcResponse { body: req.body, metadata: GrpcMetadata::default() })
         })
     }
 
@@ -99,12 +99,12 @@ impl GrpcInbound for EchoStreamHandler {
         _method: String,
         _metadata: GrpcMetadata,
         messages: GrpcMessageStream,
-    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
         Box::pin(async move {
             use futures::StreamExt;
             let items: Vec<GrpcInboundResult<Vec<u8>>> = messages.collect().await;
             let out: GrpcMessageStream = Box::pin(futures::stream::iter(items));
-            Ok(out)
+            Ok((out, GrpcMetadata::default()))
         })
     }
 
@@ -135,6 +135,99 @@ struct NotFoundHandler;
 impl GrpcInbound for NotFoundHandler {
     fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
         Box::pin(async move { Err(GrpcInboundError::NotFound("no such method".into())) })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+struct InvalidArgumentHandler;
+
+impl GrpcInbound for InvalidArgumentHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move { Err(GrpcInboundError::InvalidArgument("bad field".into())) })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+struct DeadlineExceededHandler;
+
+impl GrpcInbound for DeadlineExceededHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move { Err(GrpcInboundError::DeadlineExceeded("took too long".into())) })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+struct PermissionDeniedHandler;
+
+impl GrpcInbound for PermissionDeniedHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move { Err(GrpcInboundError::PermissionDenied("not allowed".into())) })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+struct UnimplementedHandler;
+
+impl GrpcInbound for UnimplementedHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move { Err(GrpcInboundError::Unimplemented("not built yet".into())) })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// Handler that returns custom metadata headers alongside an echo response.
+struct MetadataHandler;
+
+impl GrpcInbound for MetadataHandler {
+    fn handle_unary(&self, req: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move {
+            let mut headers = HashMap::new();
+            headers.insert("x-response-id".to_string(), "meta-42".to_string());
+            Ok(GrpcResponse { body: req.body, metadata: GrpcMetadata { headers } })
+        })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// Handler whose response stream yields one successful frame then an error.
+struct MidStreamErrorHandler;
+
+impl GrpcInbound for MidStreamErrorHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move { Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata::default() }) })
+    }
+
+    fn handle_stream(
+        &self,
+        _method: String,
+        _metadata: GrpcMetadata,
+        _messages: GrpcMessageStream,
+    ) -> BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
+        Box::pin(async move {
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![
+                Ok(vec![0u8]),
+                Err(GrpcInboundError::Internal("mid-stream fail".into())),
+            ]));
+            Ok((out, GrpcMetadata::default()))
+        })
     }
 
     fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
@@ -244,6 +337,48 @@ async fn grpc_call_body(
     let data = collected.to_bytes();
 
     (status, grpc_status, data)
+}
+
+/// Like `grpc_call` but also returns all trailer headers for metadata assertions.
+async fn grpc_call_with_trailers(
+    addr:    SocketAddr,
+    path:    &str,
+    payload: &[u8],
+) -> (StatusCode, Option<String>, Bytes, HashMap<String, String>) {
+    let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let io = TokioIo::new(stream);
+    let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+        .handshake(io)
+        .await
+        .unwrap();
+    tokio::spawn(conn);
+
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("http://{addr}{path}"))
+        .header("content-type", "application/grpc")
+        .header("te", "trailers")
+        .body(Full::new(grpc_frame(payload)))
+        .unwrap();
+
+    let resp      = sender.send_request(req).await.unwrap();
+    let status    = resp.status();
+    let collected = resp.into_body().collect().await.unwrap();
+    let grpc_status = collected
+        .trailers()
+        .and_then(|t| t.get("grpc-status"))
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+    let trailers: HashMap<String, String> = collected
+        .trailers()
+        .map(|t| {
+            t.iter()
+                .filter_map(|(k, v)| v.to_str().ok().map(|vs| (k.to_string(), vs.to_string())))
+                .collect()
+        })
+        .unwrap_or_default();
+    let data = collected.to_bytes();
+    (status, grpc_status, data, trailers)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -412,4 +547,73 @@ async fn test_bidi_streaming_echoes_all_messages() {
     for (i, expected) in payloads.iter().enumerate() {
         assert_eq!(frames[i].as_ref(), *expected, "frame {i} payload mismatch");
     }
+}
+
+// ── Error variant coverage ────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_server_returns_grpc_invalid_argument_status_for_bad_input() {
+    let (addr, _shutdown) = start_server(InvalidArgumentHandler).await;
+    let (status, grpc_status, _) = grpc_call(addr, "/pkg.Svc/Create", b"x").await;
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::InvalidArgument == 3
+    assert_eq!(grpc_status.as_deref(), Some("3"));
+}
+
+#[tokio::test]
+async fn test_server_returns_grpc_deadline_exceeded_status_for_timeout_error() {
+    let (addr, _shutdown) = start_server(DeadlineExceededHandler).await;
+    let (status, grpc_status, _) = grpc_call(addr, "/pkg.Svc/Slow", b"x").await;
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::DeadlineExceeded == 4
+    assert_eq!(grpc_status.as_deref(), Some("4"));
+}
+
+#[tokio::test]
+async fn test_server_returns_grpc_permission_denied_status_for_auth_error() {
+    let (addr, _shutdown) = start_server(PermissionDeniedHandler).await;
+    let (status, grpc_status, _) = grpc_call(addr, "/pkg.Svc/Admin", b"x").await;
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::PermissionDenied == 7
+    assert_eq!(grpc_status.as_deref(), Some("7"));
+}
+
+#[tokio::test]
+async fn test_server_returns_grpc_unimplemented_status_for_unknown_method() {
+    let (addr, _shutdown) = start_server(UnimplementedHandler).await;
+    let (status, grpc_status, _) = grpc_call(addr, "/pkg.Svc/Unknown", b"x").await;
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::Unimplemented == 12
+    assert_eq!(grpc_status.as_deref(), Some("12"));
+}
+
+// ── Response metadata threading ───────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_server_threads_response_metadata_into_trailers() {
+    // MetadataHandler returns x-response-id: meta-42 in its GrpcResponse.metadata.
+    // After the fix, grpc_stream_response threads those into HTTP/2 trailers.
+    let (addr, _shutdown) = start_server(MetadataHandler).await;
+    let (status, grpc_status, _, trailers) =
+        grpc_call_with_trailers(addr, "/pkg.Svc/Meta", b"ping").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("0"));
+    assert_eq!(
+        trailers.get("x-response-id").map(String::as_str),
+        Some("meta-42"),
+        "response metadata must be forwarded as HTTP/2 trailers; got trailers: {trailers:?}"
+    );
+}
+
+// ── Mid-stream output error ───────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_server_returns_grpc_internal_status_for_mid_stream_output_error() {
+    // MidStreamErrorHandler returns a stream: Ok([0]) then Err(Internal).
+    // The server must stop collecting, discard partial output, and return grpc-status=13.
+    let (addr, _shutdown) = start_server(MidStreamErrorHandler).await;
+    let (status, grpc_status, _) = grpc_call(addr, "/pkg.Svc/Broken", b"x").await;
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::Internal == 13
+    assert_eq!(grpc_status.as_deref(), Some("13"));
 }

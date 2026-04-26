@@ -51,9 +51,14 @@ pub trait GrpcInbound: Send + Sync {
 
     /// Handle a streaming request (client-streaming, server-streaming, or bidi).
     ///
+    /// Returns the response stream **and** any response metadata (trailers) as a
+    /// tuple `(stream, metadata)`. The server threads the metadata into HTTP/2
+    /// trailers alongside `grpc-status: 0`.
+    ///
     /// The default implementation reads the first message from the input stream,
     /// forwards it to [`handle_unary`], and wraps the response in a single-item
-    /// output stream.  Implementors that need true streaming override this method.
+    /// output stream, preserving the response metadata.  Implementors that need
+    /// true streaming override this method.
     ///
     /// [`handle_unary`]: GrpcInbound::handle_unary
     fn handle_stream(
@@ -61,7 +66,7 @@ pub trait GrpcInbound: Send + Sync {
         method: String,
         metadata: GrpcMetadata,
         messages: GrpcMessageStream,
-    ) -> BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+    ) -> BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
         Box::pin(async move {
             use futures::StreamExt;
             let mut messages = messages;
@@ -75,7 +80,7 @@ pub trait GrpcInbound: Send + Sync {
             let out: GrpcMessageStream = Box::pin(futures::stream::once(
                 futures::future::ready(Ok(resp.body)),
             ));
-            Ok(out)
+            Ok((out, resp.metadata))
         })
     }
 
