@@ -1,0 +1,9 @@
+# swe-edge daemon — operator overrides.
+# Loaded at runtime from the working directory or SWE_EDGE_CONFIG_DIR.
+# Uncomment and set fields to override the shipped defaults.
+
+# service_name          = "my-edge"
+# http_bind             = "0.0.0.0:8080"
+# grpc_bind             = "0.0.0.0:50051"
+# shutdown_timeout_secs = 30
+# systemd_notify        = false
