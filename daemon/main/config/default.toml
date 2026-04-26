@@ -6,3 +6,4 @@ http_bind             = "0.0.0.0:8080"
 grpc_bind             = "0.0.0.0:50051"
 shutdown_timeout_secs = 30
 systemd_notify        = false
+tenant_id             = ""    # empty = single-tenant mode
