@@ -16,6 +16,8 @@ pub struct RuntimeConfig {
     pub shutdown_timeout_secs: u64,
     /// Emit systemd sd_notify signals (READY=1, STOPPING=1).
     pub systemd_notify: bool,
+    /// Tenant identifier — `None` for single-tenant deployments.
+    pub tenant_id: Option<String>,
 }
 
 impl Default for RuntimeConfig {
@@ -26,6 +28,7 @@ impl Default for RuntimeConfig {
             grpc_bind:             "0.0.0.0:50051".into(),
             shutdown_timeout_secs: 30,
             systemd_notify:        false,
+            tenant_id:             None,
         }
     }
 }
@@ -53,6 +56,12 @@ impl RuntimeConfig {
 
     pub fn with_systemd_notify(mut self, enabled: bool) -> Self {
         self.systemd_notify = enabled;
+        self
+    }
+
+    /// Set the tenant identifier for multi-tenant deployments.
+    pub fn with_tenant_id(mut self, id: impl Into<String>) -> Self {
+        self.tenant_id = Some(id.into());
         self
     }
 }
