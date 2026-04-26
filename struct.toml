@@ -1,5 +1,5 @@
 # SEA project configuration (L0)
 [project]
 name = "swe-edge"
-workspaces = ["ingress", "egress", "controller", "http"]
+workspaces = ["ingress", "egress", "controller"]
 

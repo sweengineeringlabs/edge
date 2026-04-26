@@ -1,1 +1,3 @@
-//! HTTP core adapter implementations (empty — no default impl needed).
+mod default_http_outbound;
+
+pub(crate) use default_http_outbound::DefaultHttpOutbound;

@@ -11,7 +11,7 @@ This is **swe-edge**: a four-workspace Rust library stack. There is no top-level
 | `ingress/` | L1 | Inbound port contracts (HTTP, gRPC, File) |
 | `egress/` | L1 | Outbound port contracts (HTTP, gRPC, Database, File, Notification, Payment) |
 | `controller/` | L2 | 5-Concern orchestration facade (Job → Router → Handler → LifecycleMonitor → Gateway) |
-| `http/` | L3 | 7-crate HTTP middleware workspace (auth, retry, rate, breaker, cache, cassette, tls) |
+| `egress/{auth,retry,rate,breaker,cache,cassette,tls}` | L3 | HTTP middleware crates (reqwest-middleware based), assembled by `DefaultHttpOutbound` |
 
 All commands must be run from within the workspace directory — there is no root-level Cargo project.
 
@@ -46,12 +46,11 @@ cargo test
 ./scripts/ci/test.sh
 ```
 
-### HTTP (all 7 middleware crates)
+### Egress middleware crates (auth, retry, rate, breaker, cache, cassette, tls)
 ```bash
-cd http
-cargo build
-cargo test
-cargo test -p swe_http_auth     # single crate
+cd egress
+cargo build -p swe-edge-egress-auth     # single crate
+cargo test --workspace
 cargo clippy -- -D warnings
 ```
 

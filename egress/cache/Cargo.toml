@@ -1,0 +1,48 @@
+[package]
+name = "swe-edge-egress-cache"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "TTL-based HTTP cache middleware with configurable default_ttl_seconds + RFC 7234 Cache-Control honor. Simpler than full RFC 7234 (no Vary, no ETag conditional revalidation)."
+keywords = ["http", "cache", "reqwest", "middleware", "swe"]
+categories = ["web-programming::http-client"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "processor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+reqwest = { workspace = true }
+reqwest-middleware = { workspace = true }
+http = { workspace = true }
+moka = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+# `from_config` loads policy from TOML. `serde` derives the
+# schema; `toml` parses it. Policy values live in
+# `config/default.toml` + consumer overrides — never as hardcoded
+# literals in source.
+serde = { workspace = true }
+toml = { workspace = true }
+tracing = { workspace = true, optional = true }
+# `tokio::spawn` fires the stale-while-revalidate background
+# refresh task. Only `rt` is needed at runtime — the caller's
+# runtime (tokio itself, typically) executes the spawned future.
+tokio = { workspace = true, features = ["rt"] }
+
+[dev-dependencies]
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
+
+[features]
+default = []
+# Emit spans via the `tracing` crate. Off by default so consumers
+# without tracing infrastructure don't pay the cost.
+tracing = ["dep:tracing"]
