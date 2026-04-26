@@ -41,6 +41,7 @@ swe-observ-processes.workspace    = true
 swe-edge-ingress-http.workspace  = true
 swe-edge-ingress-grpc.workspace  = true
 swe-edge-ingress-file.workspace  = true
+swe-edge-ingress-tls.workspace   = true
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal"] }
