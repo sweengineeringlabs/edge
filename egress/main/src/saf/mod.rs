@@ -22,7 +22,8 @@ pub use swe_edge_egress_http::{
     HttpOutboundResult, HttpRequest, HttpResponse,
 };
 pub use swe_edge_egress_grpc::{
-    GrpcMetadata, GrpcOutbound, GrpcRequest, GrpcResponse, GrpcStatusCode,
+    GrpcMessageStream, GrpcMetadata, GrpcOutbound, GrpcOutboundError, GrpcOutboundResult,
+    GrpcRequest, GrpcResponse, GrpcStatusCode, TonicGrpcClient,
 };
 pub use swe_edge_egress_database::{
     DatabaseConfig, DatabaseGateway, DatabaseRead, DatabaseType, DatabaseWrite, IsolationLevel,
