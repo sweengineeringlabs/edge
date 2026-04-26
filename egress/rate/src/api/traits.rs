@@ -1,7 +1,5 @@
 //! Primary trait re-export hub and trait definitions for `swe_edge_egress_rate`.
 
-pub(crate) type HttpRateTrait = dyn crate::api::http_rate::HttpRate;
-
 /// Contract for token-bucket rate limiters. Implementations
 /// track per-host (or global) token counts and report whether
 /// the current request may proceed or must wait.

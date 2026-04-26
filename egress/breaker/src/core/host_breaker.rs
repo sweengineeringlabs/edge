@@ -42,10 +42,6 @@ pub(crate) enum State {
 }
 
 impl CircuitBreakerNode for HostBreaker {
-    fn is_open(&self) -> bool {
-        matches!(self.state, State::Open { .. })
-    }
-
     fn admit(&mut self, config: &BreakerConfig) -> Admission {
         match self.state {
             State::Closed => Admission::Proceed,
@@ -110,7 +106,14 @@ impl HostBreaker {
         }
     }
 
-    /// Observability hook — expose current state for diagnostics / tests.
+}
+
+#[cfg(test)]
+impl HostBreaker {
+    fn is_open(&self) -> bool {
+        matches!(self.state, State::Open { .. })
+    }
+
     fn state(&self) -> State {
         self.state
     }
