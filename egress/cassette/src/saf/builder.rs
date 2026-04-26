@@ -9,7 +9,6 @@ use crate::api::cassette_config::CassetteConfig;
 use crate::api::cassette_layer::CassetteLayer;
 use crate::api::error::Error;
 
-use crate::core::cassette_layer as _;
 
 /// Start configuring the cassette with the SWE baseline.
 pub fn builder() -> Result<Builder, Error> {
@@ -22,10 +21,7 @@ pub use crate::api::builder::Builder;
 impl Builder {
     /// Construct from a caller-supplied config.
     pub fn with_config(config: CassetteConfig) -> Self {
-        Self {
-            config,
-            cassette_name: String::new(),
-        }
+        Self { config }
     }
 
     /// Borrow the current policy.
