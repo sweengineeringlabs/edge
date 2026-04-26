@@ -94,15 +94,44 @@ pub fn runtime_manager(
 /// (Ctrl+C on all platforms), then calls [`RuntimeManager::shutdown`].
 /// If shutdown does not complete within `config.shutdown_timeout_secs`,
 /// returns [`RuntimeError::ShutdownTimeout`].
+///
+/// If `ingress` includes an HTTP transport, an Axum HTTP server is
+/// spawned automatically against `config.http_bind`. The server is
+/// signalled to drain before `RuntimeManager::shutdown` is called.
 pub async fn run(
     config:    RuntimeConfig,
     ingress:   IngressGateway,
     egress:    EgressGateway,
     lifecycle: Arc<dyn LifecycleMonitor>,
 ) -> RuntimeResult<()> {
+    use swe_edge_ingress::AxumHttpServer;
+    use tokio::sync::oneshot;
+
     let timeout_secs = config.shutdown_timeout_secs;
-    let mgr = runtime_manager(config, ingress, egress, lifecycle);
-    run_until_signal(mgr, timeout_secs, wait_for_signal()).await
+    let http_bind    = config.http_bind.clone();
+
+    // Spawn the Axum HTTP server if an HTTP handler is wired in.
+    let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel::<()>();
+    let server_task = ingress.http.clone().map(|handler| {
+        let server = AxumHttpServer::new(http_bind, handler);
+        tokio::spawn(async move {
+            let signal = async move { let _ = http_shutdown_rx.await; };
+            if let Err(e) = server.serve(signal).await {
+                tracing::error!("HTTP server error: {e}");
+            }
+        })
+    });
+
+    let mgr    = runtime_manager(config, ingress, egress, lifecycle);
+    let result = run_until_signal(mgr, timeout_secs, wait_for_signal()).await;
+
+    // Drain the HTTP server and await its task.
+    let _ = http_shutdown_tx.send(());
+    if let Some(task) = server_task {
+        let _ = tokio::time::timeout(Duration::from_secs(5), task).await;
+    }
+
+    result
 }
 
 /// Testable core: start `manager`, await `signal`, then shut down within

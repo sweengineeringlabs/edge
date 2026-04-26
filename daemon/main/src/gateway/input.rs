@@ -2,27 +2,52 @@
 
 use std::sync::Arc;
 
-use swe_edge_ingress::{HttpInbound, GrpcInbound, FileInbound};
+use swe_edge_ingress::{FileInbound, GrpcInbound, HttpInbound};
 
 /// Holds the bound ingress adapters the daemon serves traffic through.
+///
+/// Every transport is optional at construction time so consumer apps can
+/// wire only what they need. At least one must be configured before
+/// [`RuntimeManager::start`] is called — the runtime enforces this.
 pub struct IngressGateway {
-    pub(crate) http:  Arc<dyn HttpInbound>,
-    pub(crate) grpc:  Option<Arc<dyn GrpcInbound>>,
-    pub(crate) file:  Option<Arc<dyn FileInbound>>,
+    pub(crate) http: Option<Arc<dyn HttpInbound>>,
+    pub(crate) grpc: Option<Arc<dyn GrpcInbound>>,
+    pub(crate) file: Option<Arc<dyn FileInbound>>,
 }
 
 impl IngressGateway {
+    /// Start with HTTP as the sole transport.
     pub fn http(http: Arc<dyn HttpInbound>) -> Self {
-        Self { http, grpc: None, file: None }
+        Self { http: Some(http), grpc: None, file: None }
     }
 
+    /// Start with gRPC as the sole transport.
+    pub fn grpc(grpc: Arc<dyn GrpcInbound>) -> Self {
+        Self { http: None, grpc: Some(grpc), file: None }
+    }
+
+    /// Start with file as the sole transport.
+    pub fn file(file: Arc<dyn FileInbound>) -> Self {
+        Self { http: None, grpc: None, file: Some(file) }
+    }
+
+    /// Add (or replace) the HTTP transport.
+    pub fn with_http(mut self, http: Arc<dyn HttpInbound>) -> Self {
+        self.http = Some(http); self
+    }
+
+    /// Add (or replace) the gRPC transport.
     pub fn with_grpc(mut self, grpc: Arc<dyn GrpcInbound>) -> Self {
-        self.grpc = Some(grpc);
-        self
+        self.grpc = Some(grpc); self
     }
 
+    /// Add (or replace) the file transport.
     pub fn with_file(mut self, file: Arc<dyn FileInbound>) -> Self {
-        self.file = Some(file);
-        self
+        self.file = Some(file); self
+    }
+
+    /// Returns `true` if at least one transport is configured.
+    pub(crate) fn has_any(&self) -> bool {
+        self.http.is_some() || self.grpc.is_some() || self.file.is_some()
     }
 }
