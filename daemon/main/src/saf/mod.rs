@@ -96,23 +96,25 @@ pub fn runtime_manager(
 /// returns [`RuntimeError::ShutdownTimeout`].
 ///
 /// If `ingress` includes an HTTP transport, an Axum HTTP server is
-/// spawned automatically against `config.http_bind`. The server is
-/// signalled to drain before `RuntimeManager::shutdown` is called.
+/// spawned automatically against `config.http_bind`. If `ingress` includes
+/// a gRPC transport, a gRPC server is spawned against `config.grpc_bind`.
+/// Both servers are signalled to drain before `RuntimeManager::shutdown`.
 pub async fn run(
     config:    RuntimeConfig,
     ingress:   IngressGateway,
     egress:    EgressGateway,
     lifecycle: Arc<dyn LifecycleMonitor>,
 ) -> RuntimeResult<()> {
-    use swe_edge_ingress::AxumHttpServer;
+    use swe_edge_ingress::{AxumHttpServer, TonicGrpcServer};
     use tokio::sync::oneshot;
 
     let timeout_secs = config.shutdown_timeout_secs;
     let http_bind    = config.http_bind.clone();
+    let grpc_bind    = config.grpc_bind.clone();
 
     // Spawn the Axum HTTP server if an HTTP handler is wired in.
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel::<()>();
-    let server_task = ingress.http.clone().map(|handler| {
+    let http_task = ingress.http.clone().map(|handler| {
         let server = AxumHttpServer::new(http_bind, handler);
         tokio::spawn(async move {
             let signal = async move { let _ = http_shutdown_rx.await; };
@@ -122,12 +124,28 @@ pub async fn run(
         })
     });
 
+    // Spawn the gRPC server if a gRPC handler is wired in.
+    let (grpc_shutdown_tx, grpc_shutdown_rx) = oneshot::channel::<()>();
+    let grpc_task = ingress.grpc.clone().map(|handler| {
+        let server = TonicGrpcServer::new(grpc_bind, handler);
+        tokio::spawn(async move {
+            let signal = async move { let _ = grpc_shutdown_rx.await; };
+            if let Err(e) = server.serve(signal).await {
+                tracing::error!("gRPC server error: {e}");
+            }
+        })
+    });
+
     let mgr    = runtime_manager(config, ingress, egress, lifecycle);
     let result = run_until_signal(mgr, timeout_secs, wait_for_signal()).await;
 
-    // Drain the HTTP server and await its task.
+    // Drain both servers and await their tasks.
     let _ = http_shutdown_tx.send(());
-    if let Some(task) = server_task {
+    let _ = grpc_shutdown_tx.send(());
+    if let Some(task) = http_task {
+        let _ = tokio::time::timeout(Duration::from_secs(5), task).await;
+    }
+    if let Some(task) = grpc_task {
         let _ = tokio::time::timeout(Duration::from_secs(5), task).await;
     }
 
