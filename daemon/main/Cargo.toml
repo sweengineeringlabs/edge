@@ -40,6 +40,7 @@ swe-edge-egress.workspace   = true
 [dev-dependencies]
 tokio        = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 tempfile     = "3"
+reqwest.workspace      = true
 async-trait.workspace  = true
 edge-controller.workspace   = true
 swe-edge-ingress.workspace  = true
