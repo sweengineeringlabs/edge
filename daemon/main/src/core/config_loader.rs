@@ -10,38 +10,76 @@ use crate::api::types::RuntimeConfig;
 /// Shipped defaults embedded at compile time.
 const DEFAULT_TOML: &str = include_str!("../../config/default.toml");
 
-/// Loads [`RuntimeConfig`] from the full layered chain:
+/// Loads [`RuntimeConfig`] from the full layered chain.
 ///
-/// 1. `default.toml` (compiled in)
-/// 2. `<config_dir>/application.toml` (runtime, optional)
-/// 3. `<config_dir>/tenants/<id>.toml` (runtime, optional, tenant-scoped only)
-/// 4. Environment variables (`SWE_EDGE_*`)
+/// `config_dirs` is an ordered list of directories applied from
+/// lowest to highest priority — each directory's `application.toml`
+/// (and `tenants/<id>.toml`) overlays the previous result.
 ///
-/// `config_dir` defaults to `config/` relative to the working directory
-/// unless `SWE_EDGE_CONFIG_DIR` is set.
+/// Construct via [`DefaultConfigLoader::new`] (env/cwd default),
+/// [`DefaultConfigLoader::with_dir`] (single explicit path), or
+/// [`DefaultConfigLoader::xdg`] (full XDG Base Directory chain).
 pub(crate) struct DefaultConfigLoader {
-    config_dir: PathBuf,
+    config_dirs: Vec<PathBuf>,
 }
 
 impl DefaultConfigLoader {
+    /// Resolve config directory from `SWE_EDGE_CONFIG_DIR` env var,
+    /// falling back to `config/` relative to the working directory.
     pub(crate) fn new() -> Self {
         let dir = env::var("SWE_EDGE_CONFIG_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("config"));
-        Self { config_dir: dir }
+        Self { config_dirs: vec![dir] }
     }
 
-    /// Construct with an explicit config directory — for consumers
-    /// that manage their own config paths rather than relying on
-    /// `SWE_EDGE_CONFIG_DIR` or the working-directory default.
+    /// Use a single explicit directory — for consumer apps that own
+    /// their config path rather than relying on env or cwd.
     pub(crate) fn with_dir(dir: impl Into<PathBuf>) -> Self {
-        Self { config_dir: dir.into() }
+        Self { config_dirs: vec![dir.into()] }
+    }
+
+    /// Build the full XDG Base Directory chain for `app_name`.
+    ///
+    /// Applied in order (last wins):
+    /// 1. Each entry in `$XDG_CONFIG_DIRS/<app_name>/`
+    ///    (default: `/etc/xdg/<app_name>/`) — lowest priority first
+    /// 2. `$XDG_CONFIG_HOME/<app_name>/` (default: `~/.config/<app_name>/`)
+    /// 3. `$SWE_EDGE_CONFIG_DIR/` — explicit override, if set
+    ///
+    /// Env vars (`SWE_EDGE_*`) are always applied on top regardless.
+    pub(crate) fn xdg(app_name: &str) -> Self {
+        let mut dirs: Vec<PathBuf> = Vec::new();
+
+        // XDG_CONFIG_DIRS — system-wide, colon-separated, lowest priority.
+        // The spec lists them highest-to-lowest, so reverse before applying.
+        let xdg_config_dirs = env::var("XDG_CONFIG_DIRS")
+            .unwrap_or_else(|_| "/etc/xdg".to_owned());
+        for segment in xdg_config_dirs.split(':').rev() {
+            if !segment.is_empty() {
+                dirs.push(PathBuf::from(segment).join(app_name));
+            }
+        }
+
+        // XDG_CONFIG_HOME — user-level, higher priority than CONFIG_DIRS.
+        if let Some(home) = dirs::config_dir() {
+            dirs.push(home.join(app_name));
+        }
+
+        // Explicit override — highest file-level priority.
+        if let Ok(v) = env::var("SWE_EDGE_CONFIG_DIR") {
+            dirs.push(PathBuf::from(v));
+        }
+
+        Self { config_dirs: dirs }
     }
 
     fn base(&self) -> Result<RuntimeConfig, ConfigError> {
-        let base = ConfigOverride::from_str(DEFAULT_TOML)?.apply_to(RuntimeConfig::default());
-        let app_path = self.config_dir.join("application.toml");
-        self.apply_file_if_exists(base, &app_path)
+        let mut cfg = ConfigOverride::from_str(DEFAULT_TOML)?.apply_to(RuntimeConfig::default());
+        for dir in &self.config_dirs {
+            cfg = self.apply_file_if_exists(cfg, &dir.join("application.toml"))?;
+        }
+        Ok(cfg)
     }
 
     fn apply_file_if_exists(
@@ -58,32 +96,37 @@ impl DefaultConfigLoader {
     }
 
     fn apply_env(mut cfg: RuntimeConfig) -> RuntimeConfig {
-        if let Ok(v) = env::var("SWE_EDGE_SERVICE_NAME")      { cfg.service_name          = v; }
-        if let Ok(v) = env::var("SWE_EDGE_HTTP_BIND")         { cfg.http_bind             = v; }
-        if let Ok(v) = env::var("SWE_EDGE_GRPC_BIND")         { cfg.grpc_bind             = v; }
-        if let Ok(v) = env::var("SWE_EDGE_SHUTDOWN_TIMEOUT")  {
+        if let Ok(v) = env::var("SWE_EDGE_SERVICE_NAME")     { cfg.service_name          = v; }
+        if let Ok(v) = env::var("SWE_EDGE_HTTP_BIND")        { cfg.http_bind             = v; }
+        if let Ok(v) = env::var("SWE_EDGE_GRPC_BIND")        { cfg.grpc_bind             = v; }
+        if let Ok(v) = env::var("SWE_EDGE_SHUTDOWN_TIMEOUT") {
             if let Ok(n) = v.parse::<u64>() { cfg.shutdown_timeout_secs = n; }
         }
-        if let Ok(v) = env::var("SWE_EDGE_SYSTEMD_NOTIFY")   {
+        if let Ok(v) = env::var("SWE_EDGE_SYSTEMD_NOTIFY") {
             cfg.systemd_notify = matches!(v.to_lowercase().as_str(), "1" | "true" | "yes");
         }
-        if let Ok(v) = env::var("SWE_EDGE_TENANT_ID")        { cfg.tenant_id             = Some(v); }
+        if let Ok(v) = env::var("SWE_EDGE_TENANT_ID") { cfg.tenant_id = Some(v); }
         cfg
+    }
+
+    fn tenant_path(&self, tenant_id: &str) -> Option<PathBuf> {
+        self.config_dirs.iter().rev().find_map(|dir| {
+            let p = dir.join("tenants").join(format!("{tenant_id}.toml"));
+            p.exists().then_some(p)
+        })
     }
 }
 
 impl ConfigLoader for DefaultConfigLoader {
     fn load(&self) -> Result<RuntimeConfig, ConfigError> {
-        let cfg = self.base()?;
-        Ok(Self::apply_env(cfg))
+        Ok(Self::apply_env(self.base()?))
     }
 
     fn load_for_tenant(&self, tenant_id: &str) -> Result<RuntimeConfig, ConfigError> {
         let cfg = self.base()?;
-        let tenant_path = self.config_dir.join("tenants").join(format!("{tenant_id}.toml"));
-        if !tenant_path.exists() {
-            return Err(ConfigError::UnknownTenant(tenant_id.to_owned()));
-        }
+        let tenant_path = self
+            .tenant_path(tenant_id)
+            .ok_or_else(|| ConfigError::UnknownTenant(tenant_id.to_owned()))?;
         let cfg = self.apply_file_if_exists(cfg, &tenant_path)?;
         let mut cfg = Self::apply_env(cfg);
         if cfg.tenant_id.is_none() {
@@ -100,7 +143,7 @@ mod tests {
     use tempfile::TempDir;
 
     fn loader_in(dir: &Path) -> DefaultConfigLoader {
-        DefaultConfigLoader { config_dir: dir.to_path_buf() }
+        DefaultConfigLoader::with_dir(dir)
     }
 
     fn write(dir: &Path, name: &str, content: &str) {
@@ -115,14 +158,14 @@ mod tests {
     #[test]
     fn test_new_uses_default_config_dir() {
         let l = DefaultConfigLoader::new();
-        assert_eq!(l.config_dir, PathBuf::from("config"));
+        assert_eq!(l.config_dirs, vec![PathBuf::from("config")]);
     }
 
     /// @covers: DefaultConfigLoader::with_dir
     #[test]
     fn test_with_dir_uses_supplied_path() {
         let l = DefaultConfigLoader::with_dir("/etc/myapp/edge");
-        assert_eq!(l.config_dir, PathBuf::from("/etc/myapp/edge"));
+        assert_eq!(l.config_dirs, vec![PathBuf::from("/etc/myapp/edge")]);
     }
 
     /// @covers: DefaultConfigLoader::with_dir
@@ -130,7 +173,7 @@ mod tests {
     fn test_with_dir_load_reads_application_toml_from_supplied_dir() {
         let dir = TempDir::new().unwrap();
         write(dir.path(), "application.toml", r#"service_name = "consumer-app""#);
-        let cfg = DefaultConfigLoader::with_dir(dir.path()).load().unwrap();
+        let cfg = loader_in(dir.path()).load().unwrap();
         assert_eq!(cfg.service_name, "consumer-app");
     }
 
@@ -139,7 +182,7 @@ mod tests {
     fn test_with_dir_load_for_tenant_reads_tenant_from_supplied_dir() {
         let dir = TempDir::new().unwrap();
         write(dir.path(), "tenants/t1.toml", r#"service_name = "t1""#);
-        let cfg = DefaultConfigLoader::with_dir(dir.path()).load_for_tenant("t1").unwrap();
+        let cfg = loader_in(dir.path()).load_for_tenant("t1").unwrap();
         assert_eq!(cfg.service_name, "t1");
         assert_eq!(cfg.tenant_id.as_deref(), Some("t1"));
     }
@@ -161,22 +204,7 @@ mod tests {
         write(dir.path(), "application.toml", r#"service_name = "ops-edge""#);
         let cfg = loader_in(dir.path()).load().unwrap();
         assert_eq!(cfg.service_name, "ops-edge");
-        assert_eq!(cfg.http_bind, "0.0.0.0:8080"); // default unchanged
-    }
-
-    /// @covers: DefaultConfigLoader::load
-    #[test]
-    fn test_load_applies_env_var_over_application_toml() {
-        let dir = TempDir::new().unwrap();
-        write(dir.path(), "application.toml", r#"http_bind = "0.0.0.0:9000""#);
-        env::set_var("SWE_EDGE_HTTP_BIND_TEST_ONLY", "0.0.0.0:7777");
-        // Use direct env override path via apply_env with manual setup
-        let mut cfg = loader_in(dir.path()).load().unwrap();
-        assert_eq!(cfg.http_bind, "0.0.0.0:9000"); // file took effect
-        // Simulate env override on top
-        cfg.http_bind = "0.0.0.0:7777".into();
-        assert_eq!(cfg.http_bind, "0.0.0.0:7777");
-        env::remove_var("SWE_EDGE_HTTP_BIND_TEST_ONLY");
+        assert_eq!(cfg.http_bind, "0.0.0.0:8080");
     }
 
     /// @covers: DefaultConfigLoader::load_for_tenant
@@ -184,8 +212,7 @@ mod tests {
     fn test_load_for_tenant_applies_tenant_toml() {
         let dir = TempDir::new().unwrap();
         write(dir.path(), "tenants/acme.toml",
-            r#"service_name = "acme-edge"
-               http_bind    = "0.0.0.0:8081""#);
+            "service_name = \"acme-edge\"\nhttp_bind = \"0.0.0.0:8081\"");
         let cfg = loader_in(dir.path()).load_for_tenant("acme").unwrap();
         assert_eq!(cfg.service_name, "acme-edge");
         assert_eq!(cfg.http_bind, "0.0.0.0:8081");
@@ -204,10 +231,53 @@ mod tests {
     #[test]
     fn test_load_for_tenant_layers_over_application_toml() {
         let dir = TempDir::new().unwrap();
-        write(dir.path(), "application.toml",  r#"shutdown_timeout_secs = 60"#);
-        write(dir.path(), "tenants/beta.toml", r#"service_name = "beta""#);
+        write(dir.path(), "application.toml",  "shutdown_timeout_secs = 60");
+        write(dir.path(), "tenants/beta.toml", "service_name = \"beta\"");
         let cfg = loader_in(dir.path()).load_for_tenant("beta").unwrap();
         assert_eq!(cfg.service_name, "beta");
-        assert_eq!(cfg.shutdown_timeout_secs, 60); // from application.toml
+        assert_eq!(cfg.shutdown_timeout_secs, 60);
+    }
+
+    /// @covers: DefaultConfigLoader::xdg
+    #[test]
+    fn test_xdg_higher_priority_dir_wins_over_lower() {
+        let sys_dir  = TempDir::new().unwrap();
+        let user_dir = TempDir::new().unwrap();
+        write(sys_dir.path(),  "application.toml", "service_name = \"sys\"");
+        write(user_dir.path(), "application.toml", "service_name = \"user\"");
+        let loader = DefaultConfigLoader {
+            config_dirs: vec![sys_dir.path().to_path_buf(), user_dir.path().to_path_buf()],
+        };
+        let cfg = loader.load().unwrap();
+        assert_eq!(cfg.service_name, "user"); // last dir wins
+    }
+
+    /// @covers: DefaultConfigLoader::xdg
+    #[test]
+    fn test_xdg_lower_priority_dir_fills_unset_fields() {
+        let sys_dir  = TempDir::new().unwrap();
+        let user_dir = TempDir::new().unwrap();
+        write(sys_dir.path(),  "application.toml", "shutdown_timeout_secs = 90");
+        write(user_dir.path(), "application.toml", "service_name = \"user\"");
+        let loader = DefaultConfigLoader {
+            config_dirs: vec![sys_dir.path().to_path_buf(), user_dir.path().to_path_buf()],
+        };
+        let cfg = loader.load().unwrap();
+        assert_eq!(cfg.service_name, "user");
+        assert_eq!(cfg.shutdown_timeout_secs, 90); // from sys dir, not overridden
+    }
+
+    /// @covers: DefaultConfigLoader::xdg
+    #[test]
+    fn test_xdg_tenant_found_in_any_dir() {
+        let sys_dir  = TempDir::new().unwrap();
+        let user_dir = TempDir::new().unwrap();
+        // Tenant only in sys dir — user dir has no tenants/
+        write(sys_dir.path(), "tenants/corp.toml", "service_name = \"corp\"");
+        let loader = DefaultConfigLoader {
+            config_dirs: vec![sys_dir.path().to_path_buf(), user_dir.path().to_path_buf()],
+        };
+        let cfg = loader.load_for_tenant("corp").unwrap();
+        assert_eq!(cfg.service_name, "corp");
     }
 }

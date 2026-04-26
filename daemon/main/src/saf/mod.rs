@@ -53,6 +53,29 @@ pub fn load_tenant_config_from(
     DefaultConfigLoader::with_dir(dir).load_for_tenant(tenant_id)
 }
 
+/// Load config following the XDG Base Directory specification.
+///
+/// Layer chain (last wins):
+/// - `$XDG_CONFIG_DIRS/<app_name>/application.toml` (system-wide, default `/etc/xdg/`)
+/// - `$XDG_CONFIG_HOME/<app_name>/application.toml` (user-level, default `~/.config/`)
+/// - `$SWE_EDGE_CONFIG_DIR/application.toml` (explicit override, if set)
+/// - `SWE_EDGE_*` environment variables (always top priority)
+pub fn load_config_xdg(app_name: &str) -> Result<RuntimeConfig, ConfigError> {
+    DefaultConfigLoader::xdg(app_name).load()
+}
+
+/// Load tenant config following the XDG Base Directory specification.
+///
+/// Same XDG layer chain as [`load_config_xdg`], with
+/// `tenants/<tenant_id>.toml` applied on top at the highest-priority
+/// directory where it exists.
+pub fn load_tenant_config_xdg(
+    app_name: &str,
+    tenant_id: &str,
+) -> Result<RuntimeConfig, ConfigError> {
+    DefaultConfigLoader::xdg(app_name).load_for_tenant(tenant_id)
+}
+
 /// Assemble a [`RuntimeManager`] from the supplied config, ingress, egress,
 /// and lifecycle monitor.
 pub fn runtime_manager(
