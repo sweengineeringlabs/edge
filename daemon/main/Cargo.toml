@@ -22,6 +22,8 @@ default = []
 
 [dependencies]
 serde.workspace       = true
+toml.workspace        = true
+dirs.workspace        = true
 serde_json.workspace  = true
 thiserror.workspace   = true
 async-trait.workspace = true
@@ -37,6 +39,7 @@ swe-edge-egress.workspace   = true
 
 [dev-dependencies]
 tokio        = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tempfile     = "3"
 async-trait.workspace  = true
 edge-controller.workspace   = true
 swe-edge-ingress.workspace  = true
