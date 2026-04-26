@@ -1,0 +1,29 @@
+[package]
+name         = "swe-edge-ingress-grpc"
+version.workspace     = true
+edition.workspace     = true
+license.workspace     = true
+rust-version.workspace = true
+authors.workspace     = true
+repository.workspace  = true
+description  = "swe-edge ingress — gRPC inbound domain (value objects + GrpcInbound port)"
+keywords     = ["grpc", "inbound", "edge", "swe"]
+categories   = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace       = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

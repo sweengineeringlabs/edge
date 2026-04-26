@@ -1,0 +1,31 @@
+[package]
+name         = "swe-edge-egress-database"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+repository.workspace   = true
+description  = "edge — egress database outbound domain: read/write traits, record types, in-memory adapter."
+keywords     = ["gateway", "egress", "database", "sea", "swe"]
+categories   = ["network-programming"]
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+serde.workspace       = true
+serde_json.workspace  = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+tokio.workspace       = true
+parking_lot.workspace = true
+uuid.workspace        = true
+chrono.workspace      = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

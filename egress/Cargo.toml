@@ -1,96 +1,74 @@
-[package]
-name = "swe_edge_egress"
-version = "0.1.0"
-edition = "2021"
-license = "MIT"
+[workspace]
+resolver = "2"
+members = ["main", "http", "grpc", "database", "file", "notification", "payment",
+           "auth", "retry", "rate", "breaker", "cache", "cassette", "tls"]
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2021"
+license      = "MIT"
 rust-version = "1.75"
-authors = ["SWE Engineering Labs"]
-repository = "https://github.com/sweengineeringlabs/edge"
-description = "edge — L1 egress gateway: outbound adapters (database, HTTP client, payment, notification, file write, gRPC client)."
-keywords = ["gateway", "egress", "outbound", "sea", "swe"]
-categories = ["network-programming"]
+authors      = ["SWE Engineering Labs"]
+repository   = "https://github.com/sweengineeringlabs/edge"
 
-[package.metadata.struct-engine]
-application_type = "lib"
-service_type = "gateway"
-
-[lib]
-path = "src/lib.rs"
-
-[features]
-default = []
-
-# Database backends
-postgres = ["sqlx/postgres", "sqlx/runtime-tokio"]
-mysql = ["sqlx/mysql", "sqlx/runtime-tokio"]
-sqlite = ["sqlx/sqlite", "sqlx/runtime-tokio"]
-
-# File storage backends
-s3 = ["aws-sdk-s3", "aws-config"]
-
-# HTTP backends
-graphql = ["graphql_client"]
-
-# Real outbound HTTP (reqwest-backed RestClient).
-reqwest = ["dep:reqwest"]
-
-# Notification backends
-email = ["lettre"]
-
-# Payment backends
-stripe = ["async-stripe"]
-
-# Meta features
-full = ["postgres", "s3", "email", "stripe"]
-
-[dependencies]
-# Core
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-toml = "0.8"
-thiserror = "2"
+[workspace.dependencies]
+serde       = { version = "1.0", features = ["derive"] }
+serde_json  = "1.0"
+serde_yaml  = "0.9"
+thiserror   = "2"
 async-trait = "0.1"
-futures = "0.3"
-
-# Async runtime
-tokio = { version = "1.0", features = ["rt", "sync", "fs", "io-util"] }
-
-# Sync primitives
+futures     = "0.3"
+tokio       = { version = "1.0", features = ["rt", "sync", "fs", "io-util"] }
 parking_lot = "0.12"
-
-# File system
-walkdir = "2"
-
-# Utilities
-uuid = { version = "1.0", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
-tracing = "0.1"
+walkdir     = "2"
+uuid        = { version = "1.0", features = ["v4"] }
+chrono      = { version = "0.4", features = ["serde"] }
+tracing     = { version = "0.1", default-features = false }
+mime_guess  = "2"
+base64      = "0.22"
+toml        = "0.8"
+anyhow      = "1"
 swe_justobserv_context = { git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
-swe-observ-processes = { package = "swe_justobserv_processes", git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
-mime_guess = "2"
-base64 = "0.22"
+swe-observ-processes   = { package = "swe_justobserv_processes", git = "ssh://git@github.com/sweengineeringlabs/justobserv.git", tag = "v0.2.1" }
+reqwest     = { version = "0.12", features = ["json", "stream", "multipart", "native-tls", "rustls-tls"], default-features = false }
 
-# Optional: HTTP client
-reqwest = { version = "0.12", features = ["json"], default-features = false, optional = true }
+# reqwest middleware stack
+reqwest-middleware = { version = "0.3", features = ["json", "multipart"] }
+reqwest-retry      = "0.6"
+http               = "1"
+http-cache-reqwest = { version = "0.14", features = ["manager-moka"] }
+moka               = { version = "0.12", features = ["future"] }
 
-# Optional: Database
-sqlx = { version = "0.8", optional = true, default-features = false }
+# Auth / TLS crypto
+secrecy          = "0.10"
+sha2             = "0.10"
+hmac             = "0.12"
+md-5             = "0.10"
+hex              = "0.4"
+time             = { version = "0.3", features = ["formatting", "macros"] }
+percent-encoding = "2.3"
 
-# Optional: S3
-aws-sdk-s3 = { version = "1", optional = true }
-aws-config = { version = "1", optional = true }
-
-# Optional: GraphQL
-graphql_client = { version = "0.14", optional = true }
-
-# Optional: Email
-lettre = { version = "0.11", optional = true, default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
-
-# Optional: Stripe
-async-stripe = { version = "0.39", optional = true }
-
-[dev-dependencies]
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
-tempfile = "3"
-reqwest = { version = "0.12", features = ["json"], default-features = false }
+# Optional
+sqlx     = { version = "0.8", default-features = false }
 wiremock = "0.6"
+
+# Workspace-internal domain crates
+swe-edge-egress-http         = { path = "http" }
+swe-edge-egress-grpc         = { path = "grpc" }
+swe-edge-egress-database     = { path = "database" }
+swe-edge-egress-file         = { path = "file" }
+swe-edge-egress-notification = { path = "notification" }
+swe-edge-egress-payment      = { path = "payment" }
+
+# Workspace-internal middleware crates
+swe-edge-egress-auth         = { path = "auth" }
+swe-edge-egress-retry        = { path = "retry" }
+swe-edge-egress-rate         = { path = "rate" }
+swe-edge-egress-breaker      = { path = "breaker" }
+swe-edge-egress-cache        = { path = "cache" }
+swe-edge-egress-cassette     = { path = "cassette" }
+swe-edge-egress-tls          = { path = "tls" }
+
+[workspace.lints.rust]
+unsafe_code  = "deny"
+missing_docs = "warn"

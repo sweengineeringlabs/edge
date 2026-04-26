@@ -1,0 +1,30 @@
+[package]
+name         = "swe-edge-egress-file"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+repository.workspace   = true
+description  = "edge — egress file outbound domain: file storage types and outbound trait."
+keywords     = ["gateway", "egress", "file", "sea", "swe"]
+categories   = ["network-programming"]
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+serde.workspace       = true
+serde_json.workspace  = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+chrono.workspace      = true
+mime_guess.workspace  = true
+walkdir.workspace     = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

@@ -1,0 +1,26 @@
+[package]
+name         = "swe-edge-egress-grpc"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+repository.workspace   = true
+description  = "edge — egress gRPC outbound domain: request/response types and outbound trait."
+keywords     = ["gateway", "egress", "grpc", "sea", "swe"]
+categories   = ["network-programming"]
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+serde.workspace       = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

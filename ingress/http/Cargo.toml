@@ -1,0 +1,31 @@
+[package]
+name         = "swe-edge-ingress-http"
+version.workspace     = true
+edition.workspace     = true
+license.workspace     = true
+rust-version.workspace = true
+authors.workspace     = true
+repository.workspace  = true
+description  = "swe-edge ingress — HTTP inbound domain (value objects + HttpInbound port)"
+keywords     = ["http", "inbound", "edge", "swe"]
+categories   = ["web-programming", "network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace       = true
+serde_json.workspace  = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+chrono.workspace      = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

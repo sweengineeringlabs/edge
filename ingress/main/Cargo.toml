@@ -1,0 +1,50 @@
+[package]
+name         = "swe-edge-ingress"
+version.workspace     = true
+edition.workspace     = true
+license.workspace     = true
+rust-version.workspace = true
+authors.workspace     = true
+repository.workspace  = true
+description  = "edge — L1 ingress gateway: inbound adapters (HTTP server, file read, gRPC server, queue consumer)."
+keywords     = ["gateway", "ingress", "inbound", "sea", "swe"]
+categories   = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type     = "gateway"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+serde.workspace            = true
+serde_json.workspace       = true
+thiserror.workspace        = true
+async-trait.workspace      = true
+futures.workspace          = true
+tokio.workspace            = true
+parking_lot.workspace      = true
+walkdir.workspace          = true
+uuid.workspace             = true
+chrono.workspace           = true
+tracing.workspace          = true
+mime_guess.workspace       = true
+base64.workspace           = true
+toml.workspace             = true
+swe_justobserv_context.workspace  = true
+swe-observ-processes.workspace    = true
+
+swe-edge-ingress-http.workspace  = true
+swe-edge-ingress-grpc.workspace  = true
+swe-edge-ingress-file.workspace  = true
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+tempfile = "3"
+
+[lints]
+workspace = true
