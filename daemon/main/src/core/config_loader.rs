@@ -117,12 +117,24 @@ impl DefaultConfigLoader {
     }
 }
 
+/// Reject any tenant ID that could escape the `tenants/` directory.
+///
+/// Only `[a-zA-Z0-9_-]` are allowed — every other character (`.`, `/`, `\`,
+/// NUL, whitespace) can be abused in path construction.
+fn validate_tenant_id(id: &str) -> Result<(), ConfigError> {
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err(ConfigError::InvalidTenantId(id.to_owned()));
+    }
+    Ok(())
+}
+
 impl ConfigLoader for DefaultConfigLoader {
     fn load(&self) -> Result<RuntimeConfig, ConfigError> {
         Ok(Self::apply_env(self.base()?))
     }
 
     fn load_for_tenant(&self, tenant_id: &str) -> Result<RuntimeConfig, ConfigError> {
+        validate_tenant_id(tenant_id)?;
         let cfg = self.base()?;
         let tenant_path = self
             .tenant_path(tenant_id)
@@ -279,5 +291,46 @@ mod tests {
         };
         let cfg = loader.load_for_tenant("corp").unwrap();
         assert_eq!(cfg.service_name, "corp");
+    }
+
+    /// @covers: validate_tenant_id
+    #[test]
+    fn test_load_for_tenant_rejects_path_traversal_dotdot() {
+        let dir = TempDir::new().unwrap();
+        let err = loader_in(dir.path()).load_for_tenant("../../etc/passwd").unwrap_err();
+        assert!(matches!(err, ConfigError::InvalidTenantId(_)));
+    }
+
+    /// @covers: validate_tenant_id
+    #[test]
+    fn test_load_for_tenant_rejects_absolute_path() {
+        let dir = TempDir::new().unwrap();
+        let err = loader_in(dir.path()).load_for_tenant("/etc/passwd").unwrap_err();
+        assert!(matches!(err, ConfigError::InvalidTenantId(_)));
+    }
+
+    /// @covers: validate_tenant_id
+    #[test]
+    fn test_load_for_tenant_rejects_slash_in_id() {
+        let dir = TempDir::new().unwrap();
+        let err = loader_in(dir.path()).load_for_tenant("foo/bar").unwrap_err();
+        assert!(matches!(err, ConfigError::InvalidTenantId(_)));
+    }
+
+    /// @covers: validate_tenant_id
+    #[test]
+    fn test_load_for_tenant_rejects_empty_id() {
+        let dir = TempDir::new().unwrap();
+        let err = loader_in(dir.path()).load_for_tenant("").unwrap_err();
+        assert!(matches!(err, ConfigError::InvalidTenantId(_)));
+    }
+
+    /// @covers: validate_tenant_id
+    #[test]
+    fn test_load_for_tenant_accepts_valid_alphanum_dash_underscore() {
+        let dir = TempDir::new().unwrap();
+        write(dir.path(), "tenants/tenant-01_prod.toml", "service_name = \"ok\"");
+        let cfg = loader_in(dir.path()).load_for_tenant("tenant-01_prod").unwrap();
+        assert_eq!(cfg.service_name, "ok");
     }
 }

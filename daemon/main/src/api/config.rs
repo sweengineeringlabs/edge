@@ -17,6 +17,12 @@ pub enum ConfigError {
     /// The requested tenant config file does not exist.
     #[error("unknown tenant: '{0}'")]
     UnknownTenant(String),
+    /// The tenant ID contains characters that are not permitted.
+    ///
+    /// Only `[a-zA-Z0-9_-]` are allowed; `.`, `/`, `\`, and NUL are rejected
+    /// to prevent path traversal attacks.
+    #[error("invalid tenant id: '{0}' — only [a-zA-Z0-9_-] are allowed")]
+    InvalidTenantId(String),
 }
 
 /// A partial `RuntimeConfig` — all fields optional so any
@@ -108,5 +114,13 @@ mod tests {
     fn test_config_error_display_unknown_tenant() {
         let e = ConfigError::UnknownTenant("ghost".into());
         assert!(e.to_string().contains("ghost"));
+    }
+
+    /// @covers: ConfigError::InvalidTenantId
+    #[test]
+    fn test_config_error_display_invalid_tenant_id() {
+        let e = ConfigError::InvalidTenantId("../../etc".into());
+        assert!(e.to_string().contains("../../etc"));
+        assert!(e.to_string().contains("[a-zA-Z0-9_-]"));
     }
 }
