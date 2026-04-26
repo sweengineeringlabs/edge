@@ -23,6 +23,9 @@ pub enum ConfigError {
     /// to prevent path traversal attacks.
     #[error("invalid tenant id: '{0}' — only [a-zA-Z0-9_-] are allowed")]
     InvalidTenantId(String),
+    /// An environment variable was set but its value could not be parsed.
+    #[error("invalid env var: {0}")]
+    BadEnvVar(String),
 }
 
 /// A partial `RuntimeConfig` — all fields optional so any
@@ -122,5 +125,12 @@ mod tests {
         let e = ConfigError::InvalidTenantId("../../etc".into());
         assert!(e.to_string().contains("../../etc"));
         assert!(e.to_string().contains("[a-zA-Z0-9_-]"));
+    }
+
+    /// @covers: ConfigError::BadEnvVar
+    #[test]
+    fn test_config_error_display_bad_env_var() {
+        let e = ConfigError::BadEnvVar("SWE_EDGE_SHUTDOWN_TIMEOUT=\"abc\": expected a non-negative integer".into());
+        assert!(e.to_string().contains("SWE_EDGE_SHUTDOWN_TIMEOUT"));
     }
 }

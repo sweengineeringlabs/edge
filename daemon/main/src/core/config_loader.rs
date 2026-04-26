@@ -10,6 +10,10 @@ use crate::api::types::RuntimeConfig;
 /// Shipped defaults embedded at compile time.
 const DEFAULT_TOML: &str = include_str!("../../config/default.toml");
 
+/// Refuse to read a config file larger than this — prevents accidental or
+/// deliberate memory exhaustion via an oversized TOML blob.
+const MAX_CONFIG_FILE_BYTES: u64 = 1_048_576; // 1 MiB
+
 /// Loads [`RuntimeConfig`] from the full layered chain.
 ///
 /// `config_dirs` is an ordered list of directories applied from
@@ -90,23 +94,32 @@ impl DefaultConfigLoader {
         if !path.exists() {
             return Ok(cfg);
         }
+        let meta = std::fs::metadata(path)
+            .map_err(|e| ConfigError::Io(format!("{}: {e}", path.display())))?;
+        if meta.len() > MAX_CONFIG_FILE_BYTES {
+            return Err(ConfigError::Io(format!(
+                "{}: config file exceeds the 1 MiB limit ({} bytes)",
+                path.display(),
+                meta.len(),
+            )));
+        }
         let text = std::fs::read_to_string(path)
             .map_err(|e| ConfigError::Io(format!("{}: {e}", path.display())))?;
         Ok(ConfigOverride::from_str(&text)?.apply_to(cfg))
     }
 
-    fn apply_env(mut cfg: RuntimeConfig) -> RuntimeConfig {
-        if let Ok(v) = env::var("SWE_EDGE_SERVICE_NAME")     { cfg.service_name          = v; }
-        if let Ok(v) = env::var("SWE_EDGE_HTTP_BIND")        { cfg.http_bind             = v; }
-        if let Ok(v) = env::var("SWE_EDGE_GRPC_BIND")        { cfg.grpc_bind             = v; }
+    fn apply_env(mut cfg: RuntimeConfig) -> Result<RuntimeConfig, ConfigError> {
+        if let Ok(v) = env::var("SWE_EDGE_SERVICE_NAME")  { cfg.service_name = v; }
+        if let Ok(v) = env::var("SWE_EDGE_HTTP_BIND")     { cfg.http_bind    = v; }
+        if let Ok(v) = env::var("SWE_EDGE_GRPC_BIND")     { cfg.grpc_bind    = v; }
         if let Ok(v) = env::var("SWE_EDGE_SHUTDOWN_TIMEOUT") {
-            if let Ok(n) = v.parse::<u64>() { cfg.shutdown_timeout_secs = n; }
+            cfg.shutdown_timeout_secs = parse_shutdown_timeout(&v)?;
         }
         if let Ok(v) = env::var("SWE_EDGE_SYSTEMD_NOTIFY") {
             cfg.systemd_notify = matches!(v.to_lowercase().as_str(), "1" | "true" | "yes");
         }
         if let Ok(v) = env::var("SWE_EDGE_TENANT_ID") { cfg.tenant_id = Some(v); }
-        cfg
+        Ok(cfg)
     }
 
     fn tenant_path(&self, tenant_id: &str) -> Option<PathBuf> {
@@ -115,6 +128,14 @@ impl DefaultConfigLoader {
             p.exists().then_some(p)
         })
     }
+}
+
+fn parse_shutdown_timeout(v: &str) -> Result<u64, ConfigError> {
+    v.parse::<u64>().map_err(|_| {
+        ConfigError::BadEnvVar(format!(
+            "SWE_EDGE_SHUTDOWN_TIMEOUT={v:?}: expected a non-negative integer"
+        ))
+    })
 }
 
 /// Reject any tenant ID that could escape the `tenants/` directory.
@@ -130,7 +151,7 @@ fn validate_tenant_id(id: &str) -> Result<(), ConfigError> {
 
 impl ConfigLoader for DefaultConfigLoader {
     fn load(&self) -> Result<RuntimeConfig, ConfigError> {
-        Ok(Self::apply_env(self.base()?))
+        Self::apply_env(self.base()?)
     }
 
     fn load_for_tenant(&self, tenant_id: &str) -> Result<RuntimeConfig, ConfigError> {
@@ -140,7 +161,7 @@ impl ConfigLoader for DefaultConfigLoader {
             .tenant_path(tenant_id)
             .ok_or_else(|| ConfigError::UnknownTenant(tenant_id.to_owned()))?;
         let cfg = self.apply_file_if_exists(cfg, &tenant_path)?;
-        let mut cfg = Self::apply_env(cfg);
+        let mut cfg = Self::apply_env(cfg)?;
         if cfg.tenant_id.is_none() {
             cfg.tenant_id = Some(tenant_id.to_owned());
         }
@@ -332,5 +353,40 @@ mod tests {
         write(dir.path(), "tenants/tenant-01_prod.toml", "service_name = \"ok\"");
         let cfg = loader_in(dir.path()).load_for_tenant("tenant-01_prod").unwrap();
         assert_eq!(cfg.service_name, "ok");
+    }
+
+    /// @covers: apply_file_if_exists size guard
+    #[test]
+    fn test_load_rejects_application_toml_exceeding_size_limit() {
+        let dir = TempDir::new().unwrap();
+        // Write a file one byte over the 1 MiB limit
+        let oversized = vec![b'#'; (MAX_CONFIG_FILE_BYTES + 1) as usize];
+        std::fs::write(dir.path().join("application.toml"), &oversized).unwrap();
+        let err = loader_in(dir.path()).load().unwrap_err();
+        assert!(matches!(err, ConfigError::Io(_)));
+        assert!(err.to_string().contains("1 MiB"));
+    }
+
+    /// @covers: parse_shutdown_timeout
+    #[test]
+    fn test_parse_shutdown_timeout_rejects_non_numeric_value() {
+        let err = parse_shutdown_timeout("not-a-number").unwrap_err();
+        assert!(matches!(err, ConfigError::BadEnvVar(_)));
+        assert!(err.to_string().contains("SWE_EDGE_SHUTDOWN_TIMEOUT"));
+        assert!(err.to_string().contains("not-a-number"));
+    }
+
+    /// @covers: parse_shutdown_timeout
+    #[test]
+    fn test_parse_shutdown_timeout_rejects_negative_representation() {
+        let err = parse_shutdown_timeout("-1").unwrap_err();
+        assert!(matches!(err, ConfigError::BadEnvVar(_)));
+    }
+
+    /// @covers: parse_shutdown_timeout
+    #[test]
+    fn test_parse_shutdown_timeout_accepts_valid_integer() {
+        assert_eq!(parse_shutdown_timeout("120").unwrap(), 120);
+        assert_eq!(parse_shutdown_timeout("0").unwrap(), 0);
     }
 }
