@@ -1,0 +1,42 @@
+[package]
+name         = "swe-edge-daemon"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+repository.workspace   = true
+description  = "edge — process-level runtime manager: wires ingress + controller + egress, lifecycle, and systemd notify."
+keywords     = ["daemon", "runtime", "lifecycle", "systemd", "swe"]
+categories   = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type     = "runtime"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+serde.workspace       = true
+serde_json.workspace  = true
+thiserror.workspace   = true
+async-trait.workspace = true
+futures.workspace     = true
+tokio.workspace       = true
+tracing.workspace     = true
+uuid.workspace        = true
+chrono.workspace      = true
+parking_lot.workspace = true
+edge-controller.workspace   = true
+swe-edge-ingress.workspace  = true
+swe-edge-egress.workspace   = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true
