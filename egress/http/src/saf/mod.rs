@@ -116,6 +116,7 @@ pub fn plain_http_outbound(config: HttpConfig) -> Result<impl HttpOutbound, Http
     Ok(DefaultHttpOutbound::new(client, config.base_url, config.max_response_bytes))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn assemble(
     http_cfg: HttpConfig,
     auth:     swe_edge_egress_auth::AuthMiddleware,

@@ -3,7 +3,6 @@
 
 use crate::api::error::Error;
 use crate::api::http_tls::HttpTls;
-use crate::api::traits::TlsIdentityProvider;
 
 pub(crate) struct PemHttpTls {
     pem_bytes: Vec<u8>,
@@ -29,8 +28,6 @@ impl PemHttpTls {
         Ok(Self { pem_bytes, path })
     }
 }
-
-impl TlsIdentityProvider for PemHttpTls {}
 
 impl HttpTls for PemHttpTls {
     fn describe(&self) -> &'static str {

@@ -4,7 +4,6 @@ use secrecy::{ExposeSecret, SecretString};
 
 use crate::api::error::Error;
 use crate::api::http_tls::HttpTls;
-use crate::api::traits::TlsIdentityProvider;
 
 pub(crate) struct Pkcs12HttpTls {
     /// Pre-loaded DER bytes.
@@ -41,8 +40,6 @@ impl Pkcs12HttpTls {
         })
     }
 }
-
-impl TlsIdentityProvider for Pkcs12HttpTls {}
 
 impl HttpTls for Pkcs12HttpTls {
     fn describe(&self) -> &'static str {
