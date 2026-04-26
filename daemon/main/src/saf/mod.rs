@@ -10,16 +10,16 @@ pub use crate::api::error::{RuntimeError, RuntimeResult};
 pub use crate::api::traits::RuntimeManager;
 pub use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 pub use crate::api::types::runtime_health::ComponentHealth;
+pub use crate::gateway::input::IngressGateway;
+pub use crate::gateway::output::EgressGateway;
 
-/// Assemble a [`RuntimeManager`] from the supplied config and lifecycle monitor.
+/// Assemble a [`RuntimeManager`] from the supplied config, ingress, egress,
+/// and lifecycle monitor.
 pub fn runtime_manager(
-    config: RuntimeConfig,
+    config:    RuntimeConfig,
+    ingress:   IngressGateway,
+    egress:    EgressGateway,
     lifecycle: Arc<dyn LifecycleMonitor>,
 ) -> impl RuntimeManager {
-    DefaultRuntimeManager::new(config, lifecycle)
-}
-
-/// Assemble a [`RuntimeManager`] with SWE defaults and the supplied lifecycle monitor.
-pub fn default_runtime_manager(lifecycle: Arc<dyn LifecycleMonitor>) -> impl RuntimeManager {
-    DefaultRuntimeManager::new(RuntimeConfig::default(), lifecycle)
+    DefaultRuntimeManager::new(config, ingress, egress, lifecycle)
 }

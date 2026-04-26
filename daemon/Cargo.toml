@@ -23,9 +23,10 @@ chrono      = { version = "0.4", features = ["serde"] }
 parking_lot = "0.12"
 
 # Cross-workspace deps
-edge-controller  = { path = "../controller" }
-swe-edge-ingress = { path = "../ingress/main" }
-swe-edge-egress  = { path = "../egress/main" }
+edge-controller       = { path = "../controller" }
+swe-edge-ingress      = { path = "../ingress/main" }
+swe-edge-egress       = { path = "../egress/main" }
+swe-edge-egress-http  = { path = "../egress/http" }
 
 # Workspace-internal
 swe-edge-daemon = { path = "main" }

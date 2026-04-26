@@ -18,7 +18,8 @@ pub use builder::{
 
 // Domain crate re-exports
 pub use swe_edge_egress_http::{
-    FormPart, HttpAuth, HttpBody, HttpConfig, HttpMethod, HttpOutbound, HttpRequest, HttpResponse,
+    FormPart, HttpAuth, HttpBody, HttpConfig, HttpMethod, HttpOutbound, HttpOutboundError,
+    HttpOutboundResult, HttpRequest, HttpResponse,
 };
 pub use swe_edge_egress_grpc::{
     GrpcMetadata, GrpcOutbound, GrpcRequest, GrpcResponse, GrpcStatusCode,

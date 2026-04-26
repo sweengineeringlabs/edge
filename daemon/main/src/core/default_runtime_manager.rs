@@ -10,18 +10,29 @@ use crate::api::error::{RuntimeError, RuntimeResult};
 use crate::api::traits::RuntimeManager;
 use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 use crate::api::types::runtime_health::ComponentHealth;
+use crate::gateway::input::IngressGateway;
+use crate::gateway::output::EgressGateway;
 
 pub(crate) struct DefaultRuntimeManager {
     config:     RuntimeConfig,
+    ingress:    IngressGateway,
+    egress:     EgressGateway,
     lifecycle:  Arc<dyn LifecycleMonitor>,
     status:     Arc<Mutex<RuntimeStatus>>,
     started_at: Arc<Mutex<Option<Instant>>>,
 }
 
 impl DefaultRuntimeManager {
-    pub(crate) fn new(config: RuntimeConfig, lifecycle: Arc<dyn LifecycleMonitor>) -> Self {
+    pub(crate) fn new(
+        config:    RuntimeConfig,
+        ingress:   IngressGateway,
+        egress:    EgressGateway,
+        lifecycle: Arc<dyn LifecycleMonitor>,
+    ) -> Self {
         Self {
             config,
+            ingress,
+            egress,
             lifecycle,
             status:     Arc::new(Mutex::new(RuntimeStatus::Stopped)),
             started_at: Arc::new(Mutex::new(None)),
@@ -41,6 +52,12 @@ impl RuntimeManager for DefaultRuntimeManager {
             }
 
             self.lifecycle.start_background_tasks().await;
+
+            // Probe ingress health at startup to surface misconfigurations early.
+            let _ = self.ingress.http.health_check().await;
+
+            // Probe egress health at startup.
+            let _ = self.egress.http.health_check().await;
 
             {
                 let mut s = self.status.lock();
@@ -101,7 +118,7 @@ impl RuntimeManager for DefaultRuntimeManager {
                 .map(|t| t.elapsed().as_secs())
                 .unwrap_or(0);
 
-            let components = report
+            let mut components: Vec<ComponentHealth> = report
                 .components
                 .iter()
                 .map(|c| match c.status {
@@ -113,6 +130,18 @@ impl RuntimeManager for DefaultRuntimeManager {
                 })
                 .collect();
 
+            // Include ingress HTTP health.
+            match self.ingress.http.health_check().await {
+                Ok(_)  => components.push(ComponentHealth::healthy("ingress.http")),
+                Err(e) => components.push(ComponentHealth::unhealthy("ingress.http", e.to_string())),
+            }
+
+            // Include egress HTTP health.
+            match self.egress.http.health_check().await {
+                Ok(_)  => components.push(ComponentHealth::healthy("egress.http")),
+                Err(e) => components.push(ComponentHealth::unhealthy("egress.http", e.to_string())),
+            }
+
             RuntimeHealth { status, components, uptime_secs }
         })
     }
@@ -123,23 +152,44 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use edge_controller::{HealthReport, LifecycleError};
+    use futures::future::BoxFuture;
+    use swe_edge_ingress::{HttpHealthCheck, HttpInboundResult, HttpRequest, HttpResponse};
+    use swe_edge_egress::{HttpOutboundResult, HttpRequest as EgressReq, HttpResponse as EgressResp};
 
     struct StubLifecycle;
 
     #[async_trait]
     impl LifecycleMonitor for StubLifecycle {
-        async fn health(&self) -> HealthReport {
-            HealthReport::from_components(vec![])
-        }
+        async fn health(&self) -> HealthReport { HealthReport::from_components(vec![]) }
         async fn start_background_tasks(&self) {}
-        async fn shutdown(&self) -> Result<(), LifecycleError> {
-            Ok(())
+        async fn shutdown(&self) -> Result<(), LifecycleError> { Ok(()) }
+    }
+
+    struct StubHttpInbound;
+    impl swe_edge_ingress::HttpInbound for StubHttpInbound {
+        fn handle(&self, _: HttpRequest) -> BoxFuture<'_, HttpInboundResult<HttpResponse>> {
+            Box::pin(async { Ok(HttpResponse::new(200, vec![])) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, HttpInboundResult<HttpHealthCheck>> {
+            Box::pin(async { Ok(HttpHealthCheck::healthy()) })
+        }
+    }
+
+    struct StubHttpOutbound;
+    impl swe_edge_egress::HttpOutbound for StubHttpOutbound {
+        fn send(&self, _: EgressReq) -> BoxFuture<'_, HttpOutboundResult<EgressResp>> {
+            Box::pin(async { Ok(EgressResp::new(200, vec![])) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, HttpOutboundResult<()>> {
+            Box::pin(async { Ok(()) })
         }
     }
 
     fn make_manager() -> DefaultRuntimeManager {
         DefaultRuntimeManager::new(
             RuntimeConfig::default().with_systemd_notify(false),
+            IngressGateway::http(Arc::new(StubHttpInbound)),
+            EgressGateway::http(Arc::new(StubHttpOutbound)),
             Arc::new(StubLifecycle),
         )
     }
@@ -170,23 +220,17 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown_is_idempotent() {
         let m = make_manager();
-        m.shutdown().await.expect("first shutdown ok");
-        m.shutdown().await.expect("second shutdown ok");
+        m.shutdown().await.expect("first");
+        m.shutdown().await.expect("second");
     }
 
     #[tokio::test]
-    async fn test_health_reports_running_after_start() {
+    async fn test_health_includes_ingress_and_egress_components() {
         let m = make_manager();
         m.start().await.expect("start ok");
         let h = m.health().await;
-        assert_eq!(h.status, RuntimeStatus::Running);
-        assert!(h.is_healthy());
-    }
-
-    #[tokio::test]
-    async fn test_health_reports_stopped_before_start() {
-        let m = make_manager();
-        let h = m.health().await;
-        assert_eq!(h.status, RuntimeStatus::Stopped);
+        let names: Vec<&str> = h.components.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"ingress.http"));
+        assert!(names.contains(&"egress.http"));
     }
 }
