@@ -66,6 +66,7 @@ impl RuntimeManager for DefaultRuntimeManager {
 
             // Probe egress.
             let _ = self.egress.http.health_check().await;
+            if let Some(g) = &self.egress.grpc { let _ = g.health_check().await; }
 
             {
                 let mut s = self.status.lock();
@@ -158,10 +159,16 @@ impl RuntimeManager for DefaultRuntimeManager {
                 }
             }
 
-            // Report egress HTTP health.
+            // Report egress transport health.
             match self.egress.http.health_check().await {
                 Ok(_)  => components.push(ComponentHealth::healthy("egress.http")),
                 Err(e) => components.push(ComponentHealth::unhealthy("egress.http", e.to_string())),
+            }
+            if let Some(g) = &self.egress.grpc {
+                match g.health_check().await {
+                    Ok(_)  => components.push(ComponentHealth::healthy("egress.grpc")),
+                    Err(e) => components.push(ComponentHealth::unhealthy("egress.grpc", e.to_string())),
+                }
             }
 
             RuntimeHealth { status, components, uptime_secs }
@@ -181,7 +188,12 @@ mod tests {
         GrpcInbound, GrpcInboundResult, GrpcHealthCheck, GrpcRequest, GrpcResponse, GrpcMetadata,
         FileInbound, FileInboundResult, FileHealthCheck, FileInfo, ListOptions, ListResult, PresignedUrl,
     };
-    use swe_edge_egress::{HttpOutboundResult, HttpRequest as EgressReq, HttpResponse as EgressResp};
+    use swe_edge_egress::{
+        GrpcOutbound, GrpcOutboundError, GrpcOutboundResult,
+        GrpcRequest as EgressGrpcRequest, GrpcResponse as EgressGrpcResponse,
+        GrpcMetadata as EgressGrpcMetadata,
+        HttpOutboundResult, HttpRequest as EgressReq, HttpResponse as EgressResp,
+    };
     use chrono::Utc;
 
     struct StubLifecycle;
@@ -249,6 +261,26 @@ mod tests {
         }
         fn health_check(&self) -> BoxFuture<'_, HttpOutboundResult<()>> {
             Box::pin(async { Ok(()) })
+        }
+    }
+
+    struct StubGrpcOutbound;
+    impl GrpcOutbound for StubGrpcOutbound {
+        fn call_unary(&self, _: EgressGrpcRequest) -> BoxFuture<'_, GrpcOutboundResult<EgressGrpcResponse>> {
+            Box::pin(async { Ok(EgressGrpcResponse { body: vec![], metadata: EgressGrpcMetadata::default() }) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, GrpcOutboundResult<()>> {
+            Box::pin(async { Ok(()) })
+        }
+    }
+
+    struct DownGrpcOutbound;
+    impl GrpcOutbound for DownGrpcOutbound {
+        fn call_unary(&self, _: EgressGrpcRequest) -> BoxFuture<'_, GrpcOutboundResult<EgressGrpcResponse>> {
+            Box::pin(async { Err(GrpcOutboundError::Unavailable("down".into())) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, GrpcOutboundResult<()>> {
+            Box::pin(async { Err(GrpcOutboundError::Unavailable("unreachable".into())) })
         }
     }
 
@@ -357,5 +389,42 @@ mod tests {
         assert!(names.contains(&"ingress.http"));
         assert!(names.contains(&"ingress.grpc"));
         assert!(names.contains(&"ingress.file"));
+    }
+
+    /// @covers: egress.grpc healthy
+    #[tokio::test]
+    async fn test_health_reports_egress_grpc_when_configured() {
+        let m = DefaultRuntimeManager::new(
+            RuntimeConfig::default(),
+            IngressGateway::http(Arc::new(StubHttpInbound)),
+            EgressGateway::http(Arc::new(StubHttpOutbound))
+                .with_grpc(Arc::new(StubGrpcOutbound)),
+            Arc::new(StubLifecycle),
+        );
+        m.start().await.expect("start ok");
+        let h = m.health().await;
+        let names: Vec<&str> = h.components.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"egress.grpc"), "egress.grpc must appear in health report");
+        assert!(names.contains(&"egress.http"));
+    }
+
+    /// @covers: egress.grpc unhealthy
+    #[tokio::test]
+    async fn test_health_reports_egress_grpc_unhealthy_when_down() {
+        let m = DefaultRuntimeManager::new(
+            RuntimeConfig::default(),
+            IngressGateway::http(Arc::new(StubHttpInbound)),
+            EgressGateway::http(Arc::new(StubHttpOutbound))
+                .with_grpc(Arc::new(DownGrpcOutbound)),
+            Arc::new(StubLifecycle),
+        );
+        m.start().await.expect("start ok");
+        let h = m.health().await;
+        let grpc_comp = h.components.iter().find(|c| c.name == "egress.grpc")
+            .expect("egress.grpc component must be present");
+        assert!(
+            !grpc_comp.healthy,
+            "egress.grpc must be unhealthy when health_check returns Err"
+        );
     }
 }
