@@ -19,6 +19,8 @@ futures          = "0.3"
 tokio            = { version = "1.0", features = ["rt", "sync", "fs", "io-util", "net"] }
 axum             = "0.8"
 bytes            = "1"
+tonic            = { version = "0.12", default-features = false, features = ["transport"] }
+http-body-util   = "0.1"
 parking_lot      = "0.12"
 walkdir          = "2"
 uuid             = { version = "1.0", features = ["v4"] }

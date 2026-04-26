@@ -17,13 +17,24 @@ application_type = "lib"
 path = "src/lib.rs"
 
 [dependencies]
-serde.workspace       = true
-thiserror.workspace   = true
-async-trait.workspace = true
-futures.workspace     = true
+serde.workspace          = true
+thiserror.workspace      = true
+async-trait.workspace    = true
+futures.workspace        = true
+tokio.workspace          = true
+bytes.workspace          = true
+tracing.workspace        = true
+tonic.workspace          = true
+http-body-util.workspace = true
+http                     = "1"
+http-body               = "1"
+hyper                    = { version = "1", features = ["http2", "server"] }
+hyper-util               = { version = "0.1", features = ["tokio"] }
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+tokio    = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+hyper    = { version = "1", features = ["http2", "client"] }
+bytes    = { workspace = true }
 
 [lints]
 workspace = true
