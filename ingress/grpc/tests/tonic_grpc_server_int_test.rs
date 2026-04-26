@@ -16,11 +16,102 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 use swe_edge_ingress_grpc::{
-    GrpcHealthCheck, GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcMetadata, GrpcRequest,
-    GrpcResponse, TonicGrpcServer,
+    GrpcHealthCheck, GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcMessageStream,
+    GrpcMetadata, GrpcRequest, GrpcResponse, TonicGrpcServer,
 };
 
 // ── Test handlers ─────────────────────────────────────────────────────────────
+
+/// Handler whose `handle_stream` always returns exactly three fixed response frames.
+struct ThreeFrameServerStreamHandler;
+
+impl GrpcInbound for ThreeFrameServerStreamHandler {
+    fn handle_unary(&self, _req: GrpcRequest) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move {
+            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata { headers: HashMap::new() } })
+        })
+    }
+
+    fn handle_stream(
+        &self,
+        _method: String,
+        _metadata: GrpcMetadata,
+        _messages: GrpcMessageStream,
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+        Box::pin(async move {
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![
+                Ok(vec![1u8]),
+                Ok(vec![2u8]),
+                Ok(vec![3u8]),
+            ]));
+            Ok(out)
+        })
+    }
+
+    fn health_check(&self) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// Handler whose `handle_stream` counts input frames and returns the count as a 1-byte response.
+struct FrameCountHandler;
+
+impl GrpcInbound for FrameCountHandler {
+    fn handle_unary(&self, _req: GrpcRequest) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move {
+            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata { headers: HashMap::new() } })
+        })
+    }
+
+    fn handle_stream(
+        &self,
+        _method: String,
+        _metadata: GrpcMetadata,
+        messages: GrpcMessageStream,
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+        Box::pin(async move {
+            use futures::StreamExt;
+            let count = messages.count().await;
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![
+                Ok(vec![count as u8]),
+            ]));
+            Ok(out)
+        })
+    }
+
+    fn health_check(&self) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// Handler whose `handle_stream` echoes every input frame back as a separate output frame.
+struct EchoStreamHandler;
+
+impl GrpcInbound for EchoStreamHandler {
+    fn handle_unary(&self, req: GrpcRequest) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        Box::pin(async move {
+            Ok(GrpcResponse { body: req.body, metadata: GrpcMetadata { headers: HashMap::new() } })
+        })
+    }
+
+    fn handle_stream(
+        &self,
+        _method: String,
+        _metadata: GrpcMetadata,
+        messages: GrpcMessageStream,
+    ) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcMessageStream>> {
+        Box::pin(async move {
+            use futures::StreamExt;
+            let items: Vec<GrpcInboundResult<Vec<u8>>> = messages.collect().await;
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(items));
+            Ok(out)
+        })
+    }
+
+    fn health_check(&self) -> futures::future::BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
 
 struct EchoHandler;
 
@@ -77,12 +168,54 @@ fn grpc_frame(payload: &[u8]) -> Bytes {
     buf.freeze()
 }
 
+/// Concatenate multiple payloads into a single body containing one gRPC frame per payload.
+fn grpc_frames_body(payloads: &[&[u8]]) -> Bytes {
+    let total = payloads.iter().map(|p| 5 + p.len()).sum();
+    let mut buf = BytesMut::with_capacity(total);
+    for p in payloads {
+        buf.put_u8(0);
+        buf.put_u32(p.len() as u32);
+        buf.put_slice(p);
+    }
+    buf.freeze()
+}
+
+/// Parse all gRPC frames from a body, returning the raw payloads.
+fn parse_grpc_frames(data: &Bytes) -> Vec<Bytes> {
+    const HEADER: usize = 5;
+    let mut out = Vec::new();
+    let mut offset = 0usize;
+    while offset + HEADER <= data.len() {
+        let len = u32::from_be_bytes([
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+            data[offset + 4],
+        ]) as usize;
+        let start = offset + HEADER;
+        let end   = start + len;
+        if end > data.len() { break; }
+        out.push(data.slice(start..end));
+        offset = end;
+    }
+    out
+}
+
 /// Open an HTTP/2 prior-knowledge connection, POST a gRPC frame to `path`,
 /// and return `(http-status, grpc-status-trailer, body-data-bytes)`.
 async fn grpc_call(
     addr:    SocketAddr,
     path:    &str,
     payload: &[u8],
+) -> (StatusCode, Option<String>, Bytes) {
+    grpc_call_body(addr, path, grpc_frame(payload)).await
+}
+
+/// Like `grpc_call` but accepts a pre-built request body (may contain multiple frames).
+async fn grpc_call_body(
+    addr: SocketAddr,
+    path: &str,
+    body: Bytes,
 ) -> (StatusCode, Option<String>, Bytes) {
     let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
     let io = TokioIo::new(stream);
@@ -97,7 +230,7 @@ async fn grpc_call(
         .uri(format!("http://{addr}{path}"))
         .header("content-type", "application/grpc")
         .header("te", "trailers")
-        .body(Full::new(grpc_frame(payload)))
+        .body(Full::new(body))
         .unwrap();
 
     let resp      = sender.send_request(req).await.unwrap();
@@ -218,4 +351,65 @@ async fn test_server_graceful_shutdown_refuses_new_connections() {
     // New TCP connections must be refused.
     let result = tokio::net::TcpStream::connect(addr).await;
     assert!(result.is_err(), "expected connection refused after shutdown");
+}
+
+// ── Streaming tests ───────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_server_streaming_returns_multiple_response_frames() {
+    // ThreeFrameServerStreamHandler overrides handle_stream to produce 3 frames:
+    // payloads [1], [2], [3].  The test verifies the wire response contains exactly
+    // three 5-byte-prefixed frames.
+    let (addr, _shutdown) = start_server(ThreeFrameServerStreamHandler).await;
+
+    let (status, grpc_status, data) =
+        grpc_call(addr, "/pkg.Svc/Stream", b"trigger").await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("0"));
+
+    let frames = parse_grpc_frames(&data);
+    assert_eq!(frames.len(), 3, "expected exactly 3 response frames, got {}", frames.len());
+    assert_eq!(frames[0].as_ref(), &[1u8], "frame 0 payload mismatch");
+    assert_eq!(frames[1].as_ref(), &[2u8], "frame 1 payload mismatch");
+    assert_eq!(frames[2].as_ref(), &[3u8], "frame 2 payload mismatch");
+}
+
+#[tokio::test]
+async fn test_client_streaming_sends_multiple_request_frames() {
+    // FrameCountHandler overrides handle_stream to count input items and respond
+    // with a single byte equal to the count.  Client sends 2 frames; expect count == 2.
+    let (addr, _shutdown) = start_server(FrameCountHandler).await;
+
+    let body = grpc_frames_body(&[b"frame-a", b"frame-b"]);
+    let (status, grpc_status, data) =
+        grpc_call_body(addr, "/pkg.Svc/ClientStream", body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("0"));
+
+    let frames = parse_grpc_frames(&data);
+    assert_eq!(frames.len(), 1, "expected a single count frame");
+    assert_eq!(frames[0].as_ref(), &[2u8], "handler should have seen 2 input frames");
+}
+
+#[tokio::test]
+async fn test_bidi_streaming_echoes_all_messages() {
+    // EchoStreamHandler overrides handle_stream to echo every input frame.
+    // Client sends 3 frames with distinct payloads; response must contain all 3.
+    let (addr, _shutdown) = start_server(EchoStreamHandler).await;
+
+    let payloads: &[&[u8]] = &[b"alpha", b"beta", b"gamma"];
+    let body = grpc_frames_body(payloads);
+    let (status, grpc_status, data) =
+        grpc_call_body(addr, "/pkg.Svc/Bidi", body).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("0"));
+
+    let frames = parse_grpc_frames(&data);
+    assert_eq!(frames.len(), 3, "expected 3 echoed frames, got {}", frames.len());
+    for (i, expected) in payloads.iter().enumerate() {
+        assert_eq!(frames[i].as_ref(), *expected, "frame {i} payload mismatch");
+    }
 }
