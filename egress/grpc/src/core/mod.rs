@@ -1,1 +1,3 @@
-//! gRPC core adapter implementations (empty — no default impl needed).
+//! gRPC core adapter implementations.
+pub(crate) mod client;
+pub use client::TonicGrpcClient;

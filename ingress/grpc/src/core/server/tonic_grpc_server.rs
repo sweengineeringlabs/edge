@@ -14,8 +14,8 @@ use http_body_util::{BodyExt, Limited, StreamBody};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use tokio::net::TcpListener;
 
-use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError};
-use crate::api::value_object::{GrpcMetadata, GrpcRequest};
+use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError, GrpcMessageStream};
+use crate::api::value_object::GrpcMetadata;
 
 /// Hard cap on incoming message size.
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
@@ -131,26 +131,92 @@ async fn dispatch(
         Err(_)        => return grpc_error(tonic::Code::ResourceExhausted, "message too large"),
     };
 
-    // Strip the 5-byte gRPC length-prefix frame (1 compressed flag + 4 length bytes).
-    let msg = if body_bytes.len() >= 5 {
-        body_bytes.slice(5..)
-    } else {
-        body_bytes
-    };
+    // Decode all gRPC length-prefix frames from the body.
+    let frames = decode_grpc_frames(&body_bytes);
+    let message_stream: GrpcMessageStream = Box::pin(futures::stream::iter(
+        frames.into_iter().map(|f| Ok::<Vec<u8>, GrpcInboundError>(f.to_vec())),
+    ));
 
-    let grpc_req = GrpcRequest {
-        method,
-        body: msg.to_vec(),
-        metadata: GrpcMetadata { headers: metadata },
-    };
-
-    match handler.handle_unary(grpc_req).await {
-        Ok(resp) => grpc_success(resp.body, resp.metadata.headers),
-        Err(e)   => {
+    match handler.handle_stream(method, GrpcMetadata { headers: metadata }, message_stream).await {
+        Ok(resp_stream) => grpc_stream_response(resp_stream).await,
+        Err(e)          => {
             let (code, msg) = map_error(e);
             grpc_error(code, msg)
         }
     }
+}
+
+/// Parse all gRPC length-prefix frames from a raw body.
+///
+/// Each frame: 1 byte compressed flag + 4 bytes big-endian message length + payload.
+/// Frames with a compressed flag != 0 are still yielded (payload returned as-is).
+fn decode_grpc_frames(data: &Bytes) -> Vec<Bytes> {
+    const HEADER: usize = 5;
+    let mut frames = Vec::new();
+    let mut offset = 0usize;
+    while offset + HEADER <= data.len() {
+        // bytes 1-4 are the big-endian message length; byte 0 is the compressed flag.
+        let len = u32::from_be_bytes([
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+            data[offset + 4],
+        ]) as usize;
+        let payload_start = offset + HEADER;
+        let payload_end   = payload_start + len;
+        if payload_end > data.len() {
+            break; // truncated — stop rather than panic
+        }
+        frames.push(data.slice(payload_start..payload_end));
+        offset = payload_end;
+    }
+    // If no valid frame header was found treat the entire body as one raw payload
+    // (handles the degenerate case of an empty or header-only body gracefully).
+    if frames.is_empty() && !data.is_empty() {
+        frames.push(data.clone());
+    }
+    frames
+}
+
+/// Collect a response stream into a single HTTP/2 response with one DATA frame
+/// per stream item plus a trailing `grpc-status=0` header.
+async fn grpc_stream_response(mut stream: GrpcMessageStream) -> Response<BoxBody> {
+    use futures::StreamExt;
+
+    // Collect all response messages.
+    let mut frames: Vec<Bytes> = Vec::new();
+    loop {
+        match stream.next().await {
+            Some(Ok(payload)) => {
+                let mut buf = BytesMut::with_capacity(5 + payload.len());
+                buf.put_u8(0); // not compressed
+                buf.put_u32(payload.len() as u32);
+                buf.put_slice(&payload);
+                frames.push(buf.freeze());
+            }
+            Some(Err(e)) => {
+                let (code, msg) = map_error(e);
+                return grpc_error(code, msg);
+            }
+            None => break,
+        }
+    }
+
+    let mut trailers = http::HeaderMap::new();
+    trailers.insert("grpc-status", http::HeaderValue::from_static("0"));
+
+    // Build the response body: one DATA frame per response message, then trailers.
+    let mut http_frames: Vec<Result<http_body::Frame<Bytes>, Infallible>> =
+        frames.into_iter().map(|b| Ok(http_body::Frame::data(b))).collect();
+    http_frames.push(Ok(http_body::Frame::trailers(trailers)));
+
+    let response_body = BodyExt::boxed(StreamBody::new(futures::stream::iter(http_frames)));
+
+    Response::builder()
+        .status(200)
+        .header("content-type", "application/grpc")
+        .body(response_body)
+        .unwrap()
 }
 
 // ── gRPC framing helpers ──────────────────────────────────────────────────────
