@@ -31,6 +31,13 @@ impl DefaultConfigLoader {
         Self { config_dir: dir }
     }
 
+    /// Construct with an explicit config directory — for consumers
+    /// that manage their own config paths rather than relying on
+    /// `SWE_EDGE_CONFIG_DIR` or the working-directory default.
+    pub(crate) fn with_dir(dir: impl Into<PathBuf>) -> Self {
+        Self { config_dir: dir.into() }
+    }
+
     fn base(&self) -> Result<RuntimeConfig, ConfigError> {
         let base = ConfigOverride::from_str(DEFAULT_TOML)?.apply_to(RuntimeConfig::default());
         let app_path = self.config_dir.join("application.toml");
@@ -109,6 +116,32 @@ mod tests {
     fn test_new_uses_default_config_dir() {
         let l = DefaultConfigLoader::new();
         assert_eq!(l.config_dir, PathBuf::from("config"));
+    }
+
+    /// @covers: DefaultConfigLoader::with_dir
+    #[test]
+    fn test_with_dir_uses_supplied_path() {
+        let l = DefaultConfigLoader::with_dir("/etc/myapp/edge");
+        assert_eq!(l.config_dir, PathBuf::from("/etc/myapp/edge"));
+    }
+
+    /// @covers: DefaultConfigLoader::with_dir
+    #[test]
+    fn test_with_dir_load_reads_application_toml_from_supplied_dir() {
+        let dir = TempDir::new().unwrap();
+        write(dir.path(), "application.toml", r#"service_name = "consumer-app""#);
+        let cfg = DefaultConfigLoader::with_dir(dir.path()).load().unwrap();
+        assert_eq!(cfg.service_name, "consumer-app");
+    }
+
+    /// @covers: DefaultConfigLoader::with_dir
+    #[test]
+    fn test_with_dir_load_for_tenant_reads_tenant_from_supplied_dir() {
+        let dir = TempDir::new().unwrap();
+        write(dir.path(), "tenants/t1.toml", r#"service_name = "t1""#);
+        let cfg = DefaultConfigLoader::with_dir(dir.path()).load_for_tenant("t1").unwrap();
+        assert_eq!(cfg.service_name, "t1");
+        assert_eq!(cfg.tenant_id.as_deref(), Some("t1"));
     }
 
     /// @covers: DefaultConfigLoader::load
