@@ -30,6 +30,7 @@ hyper-rustls     = { version = "0.27", features = ["http2", "webpki-tokio"] }
 tokio            = { version = "1", features = ["rt", "net", "time"] }
 
 [dev-dependencies]
+rustls     = { version = "0.23", features = ["aws-lc-rs"] }
 tokio      = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
 hyper      = { version = "1", features = ["http2", "server"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
