@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-04-18T18:37:40.661041900+00:00",
+  "results": [
+    {
+      "id": 164,
+      "category": "structure",
+      "description": "Declared workspaces in struct.toml [project].workspaces must exist on disk with Cargo.toml",
+      "result": {
+        "status": "pass"
+      }
+    },
+    {
+      "id": 165,
+      "category": "structure",
+      "description": "Every directory at the project root with a Cargo.toml must be declared in struct.toml [project].workspaces",
+      "result": {
+        "status": "fail",
+        "violations": [
+          {
+            "check_id": 165,
+            "path": "controlroom",
+            "message": "Workspace 'controlroom' has Cargo.toml but not registered in struct.toml [project].workspaces",
+            "severity": "error",
+            "rule_type": "builtin:project_workspaces_all_registered",
+            "expected": "'controlroom' listed in struct.toml [project].workspaces",
+            "actual": "unregistered",
+            "fix_hint": "Add 'controlroom' to struct.toml [project].workspaces or remove the directory if it's not a project peer",
+            "remediation_strategy": "manual"
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "duration_ms": 10.6587
+  },
+  "project_layout": "library",
+  "application_type": "lib"
+}
