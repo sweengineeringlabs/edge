@@ -14,6 +14,7 @@ pub struct EgressGateway {
 }
 
 impl EgressGateway {
+    /// Construct a gateway with only an HTTP outbound adapter; all other adapters default to `None`.
     pub fn http(http: Arc<dyn HttpOutbound>) -> Self {
         Self { http, grpc: None, database: None, notification: None, payment: None }
     }
@@ -24,16 +25,19 @@ impl EgressGateway {
         self
     }
 
+    /// Add (or replace) the database gateway adapter.
     pub fn with_database(mut self, db: Arc<dyn DatabaseGateway>) -> Self {
         self.database = Some(db);
         self
     }
 
+    /// Add (or replace) the notification sender adapter.
     pub fn with_notification(mut self, n: Arc<dyn NotificationSender>) -> Self {
         self.notification = Some(n);
         self
     }
 
+    /// Add (or replace) the payment gateway adapter.
     pub fn with_payment(mut self, p: Arc<dyn PaymentGateway>) -> Self {
         self.payment = Some(p);
         self

@@ -5,12 +5,16 @@ use thiserror::Error;
 /// Errors that can occur during runtime manager operations.
 #[derive(Debug, Error)]
 pub enum RuntimeError {
+    /// A server or subsystem failed to start.
     #[error("start failed: {0}")]
     StartFailed(String),
+    /// A server or subsystem failed to stop cleanly.
     #[error("shutdown failed: {0}")]
     ShutdownFailed(String),
+    /// The runtime could not bind to the configured address.
     #[error("bind failed: {0}")]
     BindFailed(String),
+    /// An unexpected internal error with no specific category.
     #[error("internal: {0}")]
     Internal(String),
     /// Graceful shutdown did not complete within the configured timeout.
