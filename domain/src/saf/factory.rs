@@ -8,9 +8,9 @@ use crate::api::handler_registry::HandlerRegistry;
 ///
 /// Returned as `Arc<_>` because the registry is typically shared between
 /// a `Job` impl and operator tooling that lists or mutates the handler set.
-pub fn new_handler_registry<Req, Response>() -> Arc<HandlerRegistry<Req, Response>>
+pub fn new_handler_registry<Request, Response>() -> Arc<HandlerRegistry<Request, Response>>
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
     Arc::new(HandlerRegistry::new())
