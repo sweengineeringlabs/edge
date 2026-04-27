@@ -5,27 +5,37 @@ use serde::{Deserialize, Serialize};
 /// Pagination parameters for list operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Pagination {
+    /// Zero-based index of the first item to return.
     pub offset: usize,
+    /// Maximum number of items to return.
     pub limit: usize,
 }
 
 impl Pagination {
+    /// Create pagination with explicit offset and limit.
     pub fn new(offset: usize, limit: usize) -> Self { Self { offset, limit } }
 
+    /// Create pagination starting at offset 0 with the given limit.
     pub fn first(limit: usize) -> Self { Self { offset: 0, limit } }
 }
 
 /// A paginated response containing items and metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PaginatedResponse<T> {
+    /// Items in this page.
     pub items: Vec<T>,
+    /// Total number of items across all pages.
     pub total: usize,
+    /// Offset of the first item in this page.
     pub offset: usize,
+    /// Maximum items per page requested.
     pub limit: usize,
+    /// `true` when more items exist beyond this page.
     pub has_more: bool,
 }
 
 impl<T> PaginatedResponse<T> {
+    /// Create a paginated response, computing [`has_more`](Self::has_more) automatically.
     pub fn new(items: Vec<T>, total: usize, offset: usize, limit: usize) -> Self {
         let has_more = offset + items.len() < total;
         Self { items, total, offset, limit, has_more }

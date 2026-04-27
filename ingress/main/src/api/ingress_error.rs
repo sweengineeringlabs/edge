@@ -9,64 +9,88 @@ pub type IngressResult<T> = Result<T, IngressError>;
 /// Standard error codes for inbound gateway operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IngressErrorCode {
+    /// Internal server error.
     Internal,
+    /// Request input failed validation.
     InvalidInput,
+    /// Resource not found.
     NotFound,
+    /// Resource already exists.
     AlreadyExists,
+    /// Caller lacks permission.
     PermissionDenied,
+    /// Operation timed out.
     Timeout,
+    /// Service unavailable.
     Unavailable,
+    /// Configuration error.
     Configuration,
 }
 
 /// Comprehensive error type for inbound gateway operations.
 #[derive(Debug, Error)]
 pub enum IngressError {
+    /// Connection to a backend failed.
     #[error("connection failed: {0}")]
     ConnectionFailed(String),
 
+    /// Authentication credentials were rejected.
     #[error("authentication failed: {0}")]
     AuthenticationFailed(String),
 
+    /// Resource not found.
     #[error("not found: {0}")]
     NotFound(String),
 
+    /// Resource already exists (conflict).
     #[error("conflict: {0}")]
     Conflict(String),
 
+    /// Input failed validation.
     #[error("validation error: {0}")]
     ValidationError(String),
 
+    /// Rate limit was exceeded.
     #[error("rate limit exceeded: {0}")]
     RateLimitExceeded(String),
 
+    /// Operation timed out.
     #[error("timeout: {0}")]
     Timeout(String),
 
+    /// Operation is not supported.
     #[error("not supported: {0}")]
     NotSupported(String),
 
+    /// Underlying I/O error.
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
 
+    /// Serialisation or deserialisation failure.
     #[error("serialization error: {0}")]
     SerializationError(String),
 
+    /// Backend returned an unexpected error.
     #[error("backend error: {0}")]
     BackendError(String),
 
+    /// Internal server error.
     #[error("internal error: {0}")]
     InternalError(String),
 
+    /// Attempted to create a resource that already exists.
     #[error("already exists: {0}")]
     AlreadyExists(String),
 
+    /// Caller does not have the required permission.
     #[error("permission denied: {0}")]
     PermissionDenied(String),
 
+    /// Service is temporarily unavailable.
     #[error("unavailable: {0}")]
     Unavailable(String),
 
+    /// Invalid or missing configuration.
     #[error("configuration error: {0}")]
     Configuration(String),
 }
@@ -87,38 +111,47 @@ impl IngressError {
         }
     }
 
+    /// Create an internal error.
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::Internal, message)
     }
 
+    /// Create a not-found error.
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::NotFound, message)
     }
 
+    /// Create an invalid-input error.
     pub fn invalid_input(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::InvalidInput, message)
     }
 
+    /// Create an unavailable error.
     pub fn unavailable(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::Unavailable, message)
     }
 
+    /// Create an already-exists error.
     pub fn already_exists(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::AlreadyExists, message)
     }
 
+    /// Create a permission-denied error.
     pub fn permission_denied(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::PermissionDenied, message)
     }
 
+    /// Create a timeout error.
     pub fn timeout(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::Timeout, message)
     }
 
+    /// Create a configuration error.
     pub fn configuration(message: impl Into<String>) -> Self {
         Self::new(IngressErrorCode::Configuration, message)
     }
 
+    /// Append a details string to the error message.
     pub fn with_details(self, details: impl Into<String>) -> Self {
         let d = details.into();
         match self {
@@ -141,6 +174,7 @@ impl IngressError {
         }
     }
 
+    /// Return the canonical [`IngressErrorCode`] for this error.
     pub fn code(&self) -> IngressErrorCode {
         match self {
             IngressError::InternalError(_) | IngressError::BackendError(_) | IngressError::IoError(_) => IngressErrorCode::Internal,
@@ -154,6 +188,7 @@ impl IngressError {
         }
     }
 
+    /// Returns `true` if the operation that produced this error may succeed on retry.
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,
@@ -164,6 +199,7 @@ impl IngressError {
         )
     }
 
+    /// Returns `true` if this is a not-found error.
     pub fn is_not_found(&self) -> bool {
         matches!(self, IngressError::NotFound(_))
     }
@@ -171,6 +207,7 @@ impl IngressError {
 
 /// Extension trait for mapping errors to inbound gateway errors.
 pub trait ResultIngressExt<T> {
+    /// Map any `Result<T, E>` into an [`IngressResult`] with the given context.
     fn ingress_err(self, context: impl Into<String>) -> IngressResult<T>;
 }
 
@@ -184,8 +221,11 @@ impl<T, E: std::error::Error> ResultIngressExt<T> for Result<T, E> {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MockFailureMode {
+    /// Fail every call with a message.
     FailAll(String),
+    /// Fail calls once a counter exceeds a threshold.
     FailOverThreshold(u64),
+    /// Fail calls whose ID appears in the set.
     FailSpecificIds(Vec<String>),
 }
 

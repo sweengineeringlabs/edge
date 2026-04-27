@@ -10,6 +10,7 @@ pub trait Router<
     Resp: Send + Sync + 'static = serde_json::Value,
     Err: Send + Sync + 'static = IngressError,
 >: Send + Sync {
+    /// Dispatch the request and return a response or error.
     async fn dispatch(&self, request: &Req) -> Result<Resp, Err>;
 }
 
@@ -20,6 +21,7 @@ pub trait Pipeline<
     Resp: Send + Sync + 'static = serde_json::Value,
     Err: Send + Sync + 'static = IngressError,
 >: Send + Sync {
+    /// Execute the request through all pipeline stages.
     async fn execute(&self, request: Req) -> Result<Resp, Err>;
 }
 

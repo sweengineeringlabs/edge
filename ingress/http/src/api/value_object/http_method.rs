@@ -2,16 +2,24 @@
 
 use serde::{Deserialize, Serialize};
 
+/// An HTTP request method.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
+    /// HTTP GET.
     #[default]
     Get,
+    /// HTTP POST.
     Post,
+    /// HTTP PUT.
     Put,
+    /// HTTP PATCH.
     Patch,
+    /// HTTP DELETE.
     Delete,
+    /// HTTP HEAD.
     Head,
+    /// HTTP OPTIONS.
     Options,
 }
 

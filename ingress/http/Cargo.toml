@@ -28,9 +28,18 @@ axum.workspace        = true
 bytes.workspace       = true
 tracing.workspace     = true
 
+swe-edge-ingress-tls.workspace = true
+hyper      = { version = "1", features = ["http1", "http2"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "http2"] }
+http       = "1"
+
 [dev-dependencies]
-tokio   = { workspace = true, features = ["rt-multi-thread", "macros"] }
-reqwest = { workspace = true, features = ["json"] }
+tokio    = { workspace = true, features = ["rt-multi-thread", "macros"] }
+reqwest  = { workspace = true, features = ["json"] }
+rcgen    = "0.13"
+rustls   = { version = "0.23", features = ["ring"] }
+tokio-rustls = "0.26"
+tempfile = "3"
 
 [lints]
 workspace = true
