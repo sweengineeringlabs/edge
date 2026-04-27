@@ -68,7 +68,7 @@ edge/                                       umbrella=edge
 ├── main/
 │   └── features/
 │       ├── gateway/{api,core,saf}      →  edge_gateway        (2 parts)
-│       └── controller/{api,core,saf}   →  edge_controller     (2 parts)
+│       └── proxy/{api,core,saf}        →  edge_proxy          (2 parts)
 ```
 
 If `gateway` later splits into `gateway/contract/` + `gateway/adapters/`,
@@ -104,7 +104,7 @@ fix that.
 | Name | What it signals | Fix |
 |------|-----------------|-----|
 | `edge_gateway_edge` | `edge` appears as umbrella and module | Collapse to `edge_gateway` OR rename the module to what it specifically contains (`adapters`, `runtime`) |
-| `edge_controller_controller` | Module repeats its parent domain | Collapse to `edge_controller` |
+| `edge_proxy_proxy` | Module repeats its parent domain | Collapse to `edge_proxy` |
 | `swe_edge_observ_observ_context` | Domain and module both `observ` | Collapse or rename the module to what it specifically is |
 
 ## Depth budget

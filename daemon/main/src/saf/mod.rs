@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use edge_controller::LifecycleMonitor;
+use edge_proxy::LifecycleMonitor;
 
 use crate::core::{DefaultConfigLoader, DefaultRuntimeManager};
 
