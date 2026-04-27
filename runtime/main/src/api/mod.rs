@@ -3,5 +3,7 @@
 pub(crate) mod config;
 pub(crate) mod config_loader;
 pub(crate) mod error;
+pub(crate) mod input;
+pub(crate) mod output;
 pub(crate) mod runtime_manager;
 pub(crate) mod types;
