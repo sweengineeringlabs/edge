@@ -7,16 +7,21 @@ use crate::api::types::runtime_status::RuntimeStatus;
 /// Health of a single named component within the runtime.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentHealth {
+    /// Unique display name of the component (e.g. `"http-server"`).
     pub name:    String,
+    /// `true` if the component is operating normally.
     pub healthy: bool,
+    /// Human-readable detail, populated when `healthy` is `false`.
     pub detail:  Option<String>,
 }
 
 impl ComponentHealth {
+    /// Construct a healthy component with no detail message.
     pub fn healthy(name: impl Into<String>) -> Self {
         Self { name: name.into(), healthy: true, detail: None }
     }
 
+    /// Construct an unhealthy component with a descriptive detail message.
     pub fn unhealthy(name: impl Into<String>, detail: impl Into<String>) -> Self {
         Self { name: name.into(), healthy: false, detail: Some(detail.into()) }
     }
@@ -25,12 +30,16 @@ impl ComponentHealth {
 /// Aggregate health snapshot of the runtime manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeHealth {
+    /// Overall lifecycle state of the runtime.
     pub status:     RuntimeStatus,
+    /// Per-component health entries.
     pub components: Vec<ComponentHealth>,
+    /// Seconds since the runtime reached [`RuntimeStatus::Running`].
     pub uptime_secs: u64,
 }
 
 impl RuntimeHealth {
+    /// Returns `true` only when the runtime is `Running` and every component is healthy.
     pub fn is_healthy(&self) -> bool {
         self.status.is_healthy() && self.components.iter().all(|c| c.healthy)
     }
