@@ -1,12 +1,10 @@
-//! Error types — one per concern of the 5-Concern Controller pattern.
-//!
-//! Kept as separate enums so callers can pattern-match narrowly on the
-//! concern that failed, and so boundary types between concerns stay
-//! explicit (no single "god error").
+//! Error types for proxy dispatch concerns.
 
 use thiserror::Error;
 
-/// Errors raised by `Job::run`.
+pub use edge_domain::HandlerError;
+
+/// Errors raised by [`Job::run`](crate::Job::run).
 #[derive(Debug, Error)]
 pub enum JobError {
     /// The requested handler was not registered or not available.
@@ -25,13 +23,12 @@ pub enum JobError {
     #[error("job cancelled")]
     Cancelled,
 
-    /// Anything the domain wants to surface as a job-level failure that
-    /// doesn't fit the above categories.
+    /// Domain-specific failure that does not fit the above categories.
     #[error("job error: {0}")]
     Other(String),
 }
 
-/// Errors raised by `Router::route`.
+/// Errors raised by [`Router::route`](crate::Router::route).
 #[derive(Debug, Error)]
 pub enum RoutingError {
     /// Input was empty or otherwise unusable.
@@ -47,31 +44,7 @@ pub enum RoutingError {
     Other(String),
 }
 
-/// Errors raised by `Handler::execute`.
-#[derive(Debug, Error)]
-pub enum HandlerError {
-    /// The handler was asked to do something it doesn't support.
-    #[error("unsupported operation: {0}")]
-    Unsupported(String),
-
-    /// Handler input was malformed.
-    #[error("invalid request: {0}")]
-    InvalidRequest(String),
-
-    /// Handler ran to completion but the execution did not succeed.
-    #[error("execution failed: {0}")]
-    ExecutionFailed(String),
-
-    /// The handler is currently unhealthy and refused the request.
-    #[error("handler unhealthy")]
-    Unhealthy,
-
-    /// Anything the domain wants to surface that does not fit the above.
-    #[error("handler error: {0}")]
-    Other(String),
-}
-
-/// Errors raised by `LifecycleMonitor::shutdown` (and related lifecycle ops).
+/// Errors raised by [`LifecycleMonitor::shutdown`](crate::LifecycleMonitor::shutdown).
 #[derive(Debug, Error)]
 pub enum LifecycleError {
     /// Shutdown was called twice or on an already-stopped instance.

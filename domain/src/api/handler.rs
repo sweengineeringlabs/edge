@@ -1,8 +1,4 @@
-//! Handler trait — **Handlers** concern of the 5-Concern Controller pattern.
-//!
-//! A single execution unit. Every agent/service/VM in a Controller implements
-//! `Handler`, providing a uniform contract that routing and registries can
-//! dispatch to without knowing the domain specifics.
+//! Handler trait — the domain execution-unit contract.
 
 use std::any::Any;
 
@@ -12,24 +8,24 @@ use super::error::HandlerError;
 
 /// A single execution unit that processes a request and returns a response.
 ///
-/// Implementations wrap a concrete pattern (ReAct, CoT, direct call, etc.) or a
-/// specific service (auth, authz, VM lifecycle).
+/// Implementations wrap a concrete domain pattern (ReAct, CoT, direct call,
+/// etc.) or a specific service (auth, authz, VM lifecycle).
 ///
 /// `as_any` enables safe downcasting when a caller needs concrete access.
 #[async_trait]
-pub trait Handler<Req, Resp>: Send + Sync
+pub trait Handler<Req, Response>: Send + Sync
 where
     Req: Send + 'static,
-    Resp: Send + 'static,
+    Response: Send + 'static,
 {
-    /// Stable identifier — used as the lookup key in `HandlerRegistry`.
+    /// Stable identifier — used as the lookup key in [`HandlerRegistry`](crate::HandlerRegistry).
     fn id(&self) -> &str;
 
-    /// Human-readable pattern or service name (e.g. "ReAct", "AuthN", "KVM").
+    /// Human-readable pattern or service name (e.g. `"ReAct"`, `"AuthN"`, `"KVM"`).
     fn pattern(&self) -> &str;
 
     /// Execute the handler with the given request.
-    async fn execute(&self, req: Req) -> Result<Resp, HandlerError>;
+    async fn execute(&self, req: Req) -> Result<Response, HandlerError>;
 
     /// Probe whether the handler is healthy and responsive.
     async fn health_check(&self) -> bool;
