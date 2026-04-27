@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-04-18T18:37:50.558297100+00:00",
+  "results": [
+    {
+      "id": 164,
+      "category": "structure",
+      "description": "Declared workspaces in struct.toml [project].workspaces must exist on disk with Cargo.toml",
+      "result": {
+        "status": "pass"
+      }
+    },
+    {
+      "id": 165,
+      "category": "structure",
+      "description": "Every directory at the project root with a Cargo.toml must be declared in struct.toml [project].workspaces",
+      "result": {
+        "status": "pass"
+      }
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 3.7013
+  },
+  "project_layout": "library",
+  "application_type": "lib"
+}
