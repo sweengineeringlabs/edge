@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-04-18T18:37:31.186191500+00:00",
+  "results": [
+    {
+      "id": 164,
+      "category": "structure",
+      "description": "Declared workspaces in struct.toml [project].workspaces must exist on disk with Cargo.toml",
+      "result": {
+        "status": "fail",
+        "violations": [
+          {
+            "check_id": 164,
+            "path": "imaginary",
+            "message": "Declared workspace 'imaginary' does not exist on disk",
+            "severity": "error",
+            "rule_type": "builtin:project_declared_workspaces_exist",
+            "expected": "imaginary/ directory at project root",
+            "actual": "missing directory",
+            "fix_hint": "Create 'imaginary/' at the project root or remove it from struct.toml [project].workspaces",
+            "remediation_strategy": "manual"
+          }
+        ]
+      }
+    },
+    {
+      "id": 165,
+      "category": "structure",
+      "description": "Every directory at the project root with a Cargo.toml must be declared in struct.toml [project].workspaces",
+      "result": {
+        "status": "pass"
+      }
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "duration_ms": 3.9733
+  },
+  "project_layout": "library",
+  "application_type": "lib"
+}
