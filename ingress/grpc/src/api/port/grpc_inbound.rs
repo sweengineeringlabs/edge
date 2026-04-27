@@ -16,18 +16,25 @@ pub type GrpcMessageStream =
 /// Error type for gRPC inbound operations.
 #[derive(Debug, thiserror::Error)]
 pub enum GrpcInboundError {
+    /// Internal server error.
     #[error("internal: {0}")]
     Internal(String),
+    /// Resource not found.
     #[error("not found: {0}")]
     NotFound(String),
+    /// Request argument failed validation.
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
+    /// Service unavailable.
     #[error("unavailable: {0}")]
     Unavailable(String),
+    /// Request deadline exceeded.
     #[error("deadline exceeded: {0}")]
     DeadlineExceeded(String),
+    /// Caller lacks permission.
     #[error("permission denied: {0}")]
     PermissionDenied(String),
+    /// Method not implemented.
     #[error("unimplemented: {0}")]
     Unimplemented(String),
 }
@@ -35,12 +42,16 @@ pub enum GrpcInboundError {
 /// Minimal health-check result for the gRPC domain.
 #[derive(Debug, Clone)]
 pub struct GrpcHealthCheck {
+    /// `true` when the handler is healthy.
     pub healthy: bool,
+    /// Optional human-readable status detail.
     pub message: Option<String>,
 }
 
 impl GrpcHealthCheck {
+    /// Create a healthy result.
     pub fn healthy() -> Self { Self { healthy: true, message: None } }
+    /// Create an unhealthy result with a message.
     pub fn unhealthy(msg: impl Into<String>) -> Self { Self { healthy: false, message: Some(msg.into()) } }
 }
 

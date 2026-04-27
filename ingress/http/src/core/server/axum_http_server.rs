@@ -3,6 +3,7 @@
 //! are handled by Hyper before the request reaches this layer.
 
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::sync::Arc;
 
 use axum::Router;
@@ -10,6 +11,7 @@ use tokio::net::TcpListener;
 
 use crate::api::port::http_inbound::{HttpInbound, HttpInboundError};
 use crate::api::value_object::{HttpBody, HttpMethod, HttpRequest, HttpResponse};
+use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};
 
 /// Hard cap on the request body size the server will read into memory.
 pub const MAX_BODY_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
@@ -17,10 +19,15 @@ pub const MAX_BODY_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
 /// Error returned by [`AxumHttpServer::serve`].
 #[derive(Debug, thiserror::Error)]
 pub enum AxumServerError {
+    /// The server could not bind to the requested address.
     #[error("failed to bind to {0}: {1}")]
     Bind(String, #[source] std::io::Error),
+    /// The underlying HTTP server returned an error.
     #[error("server error: {0}")]
     Serve(#[source] std::io::Error),
+    /// TLS configuration could not be loaded or built.
+    #[error("TLS: {0}")]
+    Tls(#[source] IngressTlsError),
 }
 
 /// Axum-based HTTP server that routes all inbound requests through an
@@ -40,17 +47,26 @@ pub struct AxumHttpServer {
     bind:       String,
     handler:    Arc<dyn HttpInbound>,
     body_limit: usize,
+    tls:        Option<IngressTlsConfig>,
 }
 
 impl AxumHttpServer {
     /// Create a server that will bind to `bind` and delegate to `handler`.
     pub fn new(bind: impl Into<String>, handler: Arc<dyn HttpInbound>) -> Self {
-        Self { bind: bind.into(), handler, body_limit: MAX_BODY_BYTES }
+        Self { bind: bind.into(), handler, body_limit: MAX_BODY_BYTES, tls: None }
     }
 
     /// Override the maximum request body size (default: [`MAX_BODY_BYTES`]).
     pub fn with_body_limit(mut self, limit: usize) -> Self {
         self.body_limit = limit;
+        self
+    }
+
+    /// Enable TLS (or mTLS when [`IngressTlsConfig::client_ca_pem_path`] is
+    /// set). The acceptor is built eagerly in [`serve`] / [`serve_with_listener`]
+    /// so cert/key errors surface at startup.
+    pub fn with_tls(mut self, config: IngressTlsConfig) -> Self {
+        self.tls = Some(config);
         self
     }
 
@@ -81,32 +97,102 @@ impl AxumHttpServer {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        tracing::info!(
-            bind = %listener.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| self.bind.clone()),
-            "HTTP server listening"
-        );
+        let bind_addr = listener
+            .local_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_else(|_| self.bind.clone());
 
-        let handler    = self.handler.clone();
-        let body_limit = self.body_limit;
+        if let Some(ref tls_cfg) = self.tls {
+            tracing::info!(bind = %bind_addr, mtls = tls_cfg.is_mtls(), "HTTPS server listening");
+            serve_tls(listener, self.handler.clone(), self.body_limit, tls_cfg, shutdown).await
+        } else {
+            tracing::info!(bind = %bind_addr, "HTTP server listening");
 
-        let app = Router::new().fallback(move |req: axum::extract::Request| {
-            let handler = handler.clone();
-            async move {
-                match extract_request(req, body_limit).await {
-                    Ok(http_req) => match handler.handle(http_req).await {
-                        Ok(resp) => build_response(resp),
-                        Err(e)   => error_response(e),
-                    },
-                    Err(resp) => resp,
+            let handler    = self.handler.clone();
+            let body_limit = self.body_limit;
+
+            let app = Router::new().fallback(move |req: axum::extract::Request| {
+                let handler = handler.clone();
+                async move {
+                    match extract_request(req, body_limit).await {
+                        Ok(http_req) => match handler.handle(http_req).await {
+                            Ok(resp) => build_response(resp),
+                            Err(e)   => error_response(e),
+                        },
+                        Err(resp) => resp,
+                    }
                 }
-            }
-        });
+            });
 
-        axum::serve(listener, app)
-            .with_graceful_shutdown(shutdown)
-            .await
-            .map_err(AxumServerError::Serve)
+            axum::serve(listener, app)
+                .with_graceful_shutdown(shutdown)
+                .await
+                .map_err(AxumServerError::Serve)
+        }
     }
+}
+
+// ── TLS accept loop ───────────────────────────────────────────────────────────
+
+async fn serve_tls<F>(
+    listener:   TcpListener,
+    handler:    Arc<dyn HttpInbound>,
+    body_limit: usize,
+    tls_cfg:    &IngressTlsConfig,
+    shutdown:   F,
+) -> Result<(), AxumServerError>
+where
+    F: std::future::Future<Output = ()> + Send + 'static,
+{
+    use hyper_util::rt::{TokioExecutor, TokioIo};
+
+    let acceptor = swe_edge_ingress_tls::build_tls_acceptor(tls_cfg)
+        .map_err(AxumServerError::Tls)?;
+
+    let mut shutdown = std::pin::pin!(shutdown);
+
+    loop {
+        tokio::select! {
+            res = listener.accept() => {
+                let (stream, _) = match res {
+                    Ok(s)  => s,
+                    Err(e) => { tracing::warn!("TLS accept error: {e}"); continue; }
+                };
+                let acceptor = acceptor.clone();
+                let handler  = handler.clone();
+                tokio::spawn(async move {
+                    let tls = match acceptor.accept(stream).await {
+                        Ok(s)  => s,
+                        Err(e) => { tracing::debug!("TLS handshake failed: {e}"); return; }
+                    };
+                    let io  = TokioIo::new(tls);
+                    let svc = hyper::service::service_fn(move |req: http::Request<hyper::body::Incoming>| {
+                        let handler = handler.clone();
+                        async move {
+                            let req  = req.map(axum::body::Body::new);
+                            let resp = match extract_request(req, body_limit).await {
+                                Ok(http_req) => match handler.handle(http_req).await {
+                                    Ok(resp) => build_response(resp),
+                                    Err(e)   => error_response(e),
+                                },
+                                Err(resp) => resp,
+                            };
+                            Ok::<_, Infallible>(resp)
+                        }
+                    });
+                    if let Err(e) = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection(io, svc)
+                        .await
+                    {
+                        tracing::debug!("HTTPS connection error: {e}");
+                    }
+                });
+            }
+            _ = &mut shutdown => break,
+        }
+    }
+
+    Ok(())
 }
 
 // ── Request extraction ────────────────────────────────────────────────────────

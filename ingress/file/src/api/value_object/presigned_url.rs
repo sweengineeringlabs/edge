@@ -3,11 +3,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// A presigned URL for file access.
+/// A presigned URL for temporary file access.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PresignedUrl {
+    /// The presigned URL string.
     pub url: String,
+    /// Timestamp when the URL expires.
     pub expires_at: DateTime<Utc>,
+    /// HTTP method the URL is valid for (e.g. `"GET"`).
     pub method: String,
 }
 

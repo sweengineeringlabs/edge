@@ -18,3 +18,4 @@ pub use builder::{file_input, passthrough_validator};
 pub use swe_edge_ingress_http::{HttpAuth, HttpBody, FormPart, HttpConfig, HttpHealthCheck, HttpMethod, HttpRequest, HttpResponse, HttpInbound, HttpInboundError, HttpInboundResult, AxumHttpServer, AxumServerError, MAX_BODY_BYTES};
 pub use swe_edge_ingress_grpc::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode, GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcHealthCheck, GrpcMessageStream, TonicGrpcServer, TonicServerError, MAX_MESSAGE_BYTES};
 pub use swe_edge_ingress_file::{FileInfo, FileMetadata, FileStorageConfig, FileStorageType, ListOptions, ListResult, PresignedUrl, FileInbound, FileInboundError, FileInboundResult, FileHealthCheck};
+pub use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};

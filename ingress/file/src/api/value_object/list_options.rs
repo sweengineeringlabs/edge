@@ -11,14 +11,20 @@ pub const MAX_LIST_RESULTS: usize = 1_000;
 /// Options for listing files.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ListOptions {
+    /// Filter results to paths starting with this prefix.
     pub prefix: Option<String>,
+    /// Hierarchy delimiter (e.g. `"/"` for directory-style listing).
     pub delimiter: Option<String>,
+    /// Maximum number of entries to return (capped at [`MAX_LIST_RESULTS`]).
     pub max_results: Option<usize>,
+    /// Opaque token from the previous page, for pagination.
     pub continuation_token: Option<String>,
+    /// Whether to fetch per-file metadata in the listing.
     pub include_metadata: bool,
 }
 
 impl ListOptions {
+    /// Create options filtered to `prefix`.
     pub fn with_prefix(prefix: impl Into<String>) -> Self {
         Self { prefix: Some(prefix.into()), ..Default::default() }
     }
