@@ -32,7 +32,7 @@ swe-edge-egress       = { path = "../egress/main" }
 swe-edge-egress-http  = { path = "../egress/http" }
 
 # Workspace-internal
-swe-edge-daemon = { path = "main" }
+swe-edge-runtime = { path = "main" }
 
 [workspace.lints.rust]
 unsafe_code  = "deny"

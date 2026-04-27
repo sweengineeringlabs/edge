@@ -1,4 +1,4 @@
-//! `swe_edge_daemon` — process-level runtime manager.
+//! `swe_edge_runtime` — process-level runtime manager.
 
 #![allow(dead_code)]
 

@@ -1,4 +1,4 @@
-# swe-edge daemon — shipped defaults.
+# swe-edge runtime — shipped defaults.
 # Embedded at compile time via include_str!.
 # Overridden by: application.toml → tenants/<id>.toml → env vars.
 service_name          = "swe-edge"
