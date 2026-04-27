@@ -5,7 +5,7 @@
 //!
 //! Demonstrates:
 //!   1. RuntimeConfig loading and customisation via the builder API
-//!   2. IngressGateway + EgressGateway assembly from SAF constructors
+//!   2. DefaultInput + DefaultOutput assembly from SAF constructors
 //!   3. RuntimeManager lifecycle: start → health → shutdown
 //!
 //! SEA constraint: public API is accessed only through each crate's SAF surface.
@@ -23,7 +23,7 @@ use swe_edge_ingress::{
     HttpHealthCheck, HttpInbound, HttpInboundResult, HttpRequest, HttpResponse,
 };
 use swe_edge_runtime::{
-    runtime_manager, EgressGateway, IngressGateway, RuntimeConfig, RuntimeManager, RuntimeStatus,
+    runtime_manager, DefaultInput, DefaultOutput, RuntimeConfig, RuntimeManager, RuntimeStatus,
 };
 use edge_proxy::new_null_lifecycle_monitor;
 
@@ -68,10 +68,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("http:     {}", config.http_bind);
     println!("timeout:  {}s", config.shutdown_timeout_secs);
 
-    // 2. Assemble gateways — IngressGateway and EgressGateway accept `Arc<dyn Trait>`
+    // 2. Assemble gateways — DefaultInput and DefaultOutput accept `Arc<dyn Trait>`
     //    so the runtime never names or imports concrete adapter types.
-    let ingress   = IngressGateway::http(Arc::new(NoopInbound));
-    let egress    = EgressGateway::http(Arc::new(NoopOutbound));
+    let ingress   = Arc::new(DefaultInput::new_http(Arc::new(NoopInbound)));
+    let egress    = Arc::new(DefaultOutput::new_http(Arc::new(NoopOutbound)));
     let lifecycle = new_null_lifecycle_monitor();
 
     // 3. Build the RuntimeManager via the SAF factory (returns `impl RuntimeManager`).

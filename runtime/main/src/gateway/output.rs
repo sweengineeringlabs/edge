@@ -4,18 +4,40 @@ use std::sync::Arc;
 
 use swe_edge_egress::{DatabaseGateway, GrpcOutbound, HttpOutbound, NotificationSender, PaymentGateway};
 
-/// Holds the egress adapters the daemon uses for outbound calls.
-pub struct EgressGateway {
-    pub(crate) http:         Arc<dyn HttpOutbound>,
-    pub(crate) grpc:         Option<Arc<dyn GrpcOutbound>>,
-    pub(crate) database:     Option<Arc<dyn DatabaseGateway>>,
-    pub(crate) notification: Option<Arc<dyn NotificationSender>>,
-    pub(crate) payment:      Option<Arc<dyn PaymentGateway>>,
+/// Outbound gateway contract: supplies the egress adapters the runtime uses for outbound calls.
+pub trait Output: Send + Sync {
+    /// HTTP outbound adapter (required).
+    fn http(&self) -> Arc<dyn HttpOutbound>;
+    /// gRPC outbound adapter, if configured.
+    fn grpc(&self) -> Option<Arc<dyn GrpcOutbound>>;
+    /// Database gateway adapter, if configured.
+    fn database(&self) -> Option<Arc<dyn DatabaseGateway>>;
+    /// Notification sender adapter, if configured.
+    fn notification(&self) -> Option<Arc<dyn NotificationSender>>;
+    /// Payment gateway adapter, if configured.
+    fn payment(&self) -> Option<Arc<dyn PaymentGateway>>;
 }
 
-impl EgressGateway {
+/// Default [`Output`] implementation — holds egress adapters by `Arc`.
+pub struct DefaultOutput {
+    http:         Arc<dyn HttpOutbound>,
+    grpc:         Option<Arc<dyn GrpcOutbound>>,
+    database:     Option<Arc<dyn DatabaseGateway>>,
+    notification: Option<Arc<dyn NotificationSender>>,
+    payment:      Option<Arc<dyn PaymentGateway>>,
+}
+
+impl Output for DefaultOutput {
+    fn http(&self)         -> Arc<dyn HttpOutbound>           { self.http.clone() }
+    fn grpc(&self)         -> Option<Arc<dyn GrpcOutbound>>   { self.grpc.clone() }
+    fn database(&self)     -> Option<Arc<dyn DatabaseGateway>>   { self.database.clone() }
+    fn notification(&self) -> Option<Arc<dyn NotificationSender>> { self.notification.clone() }
+    fn payment(&self)      -> Option<Arc<dyn PaymentGateway>>     { self.payment.clone() }
+}
+
+impl DefaultOutput {
     /// Construct a gateway with only an HTTP outbound adapter; all other adapters default to `None`.
-    pub fn http(http: Arc<dyn HttpOutbound>) -> Self {
+    pub fn new_http(http: Arc<dyn HttpOutbound>) -> Self {
         Self { http, grpc: None, database: None, notification: None, payment: None }
     }
 

@@ -10,13 +10,13 @@ use crate::api::error::{RuntimeError, RuntimeResult};
 use crate::api::runtime_manager::RuntimeManager;
 use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 use crate::api::types::runtime_health::ComponentHealth;
-use crate::gateway::input::IngressGateway;
-use crate::gateway::output::EgressGateway;
+use crate::gateway::input::Input;
+use crate::gateway::output::Output;
 
 pub(crate) struct DefaultRuntimeManager {
     config:     RuntimeConfig,
-    ingress:    IngressGateway,
-    egress:     EgressGateway,
+    ingress:    Arc<dyn Input>,
+    egress:     Arc<dyn Output>,
     lifecycle:  Arc<dyn LifecycleMonitor>,
     status:     Arc<Mutex<RuntimeStatus>>,
     started_at: Arc<Mutex<Option<Instant>>>,
@@ -25,8 +25,8 @@ pub(crate) struct DefaultRuntimeManager {
 impl DefaultRuntimeManager {
     pub(crate) fn new(
         config:    RuntimeConfig,
-        ingress:   IngressGateway,
-        egress:    EgressGateway,
+        ingress:   Arc<dyn Input>,
+        egress:    Arc<dyn Output>,
         lifecycle: Arc<dyn LifecycleMonitor>,
     ) -> Self {
         Self {
@@ -60,13 +60,13 @@ impl RuntimeManager for DefaultRuntimeManager {
             self.lifecycle.start_background_tasks().await;
 
             // Probe each configured ingress transport to surface misconfigurations early.
-            if let Some(h) = &self.ingress.http { let _ = h.health_check().await; }
-            if let Some(g) = &self.ingress.grpc { let _ = g.health_check().await; }
-            if let Some(f) = &self.ingress.file { let _ = f.health_check().await; }
+            if let Some(h) = self.ingress.http() { let _ = h.health_check().await; }
+            if let Some(g) = self.ingress.grpc() { let _ = g.health_check().await; }
+            if let Some(f) = self.ingress.file() { let _ = f.health_check().await; }
 
             // Probe egress.
-            let _ = self.egress.http.health_check().await;
-            if let Some(g) = &self.egress.grpc { let _ = g.health_check().await; }
+            let _ = self.egress.http().health_check().await;
+            if let Some(g) = self.egress.grpc() { let _ = g.health_check().await; }
 
             {
                 let mut s = self.status.lock();
@@ -140,19 +140,19 @@ impl RuntimeManager for DefaultRuntimeManager {
                 .collect();
 
             // Report health for each configured ingress transport.
-            if let Some(h) = &self.ingress.http {
+            if let Some(h) = self.ingress.http() {
                 match h.health_check().await {
                     Ok(_)  => components.push(ComponentHealth::healthy("ingress.http")),
                     Err(e) => components.push(ComponentHealth::unhealthy("ingress.http", e.to_string())),
                 }
             }
-            if let Some(g) = &self.ingress.grpc {
+            if let Some(g) = self.ingress.grpc() {
                 match g.health_check().await {
                     Ok(_)  => components.push(ComponentHealth::healthy("ingress.grpc")),
                     Err(e) => components.push(ComponentHealth::unhealthy("ingress.grpc", e.to_string())),
                 }
             }
-            if let Some(f) = &self.ingress.file {
+            if let Some(f) = self.ingress.file() {
                 match f.health_check().await {
                     Ok(_)  => components.push(ComponentHealth::healthy("ingress.file")),
                     Err(e) => components.push(ComponentHealth::unhealthy("ingress.file", e.to_string())),
@@ -160,11 +160,11 @@ impl RuntimeManager for DefaultRuntimeManager {
             }
 
             // Report egress transport health.
-            match self.egress.http.health_check().await {
+            match self.egress.http().health_check().await {
                 Ok(_)  => components.push(ComponentHealth::healthy("egress.http")),
                 Err(e) => components.push(ComponentHealth::unhealthy("egress.http", e.to_string())),
             }
-            if let Some(g) = &self.egress.grpc {
+            if let Some(g) = self.egress.grpc() {
                 match g.health_check().await {
                     Ok(_)  => components.push(ComponentHealth::healthy("egress.grpc")),
                     Err(e) => components.push(ComponentHealth::unhealthy("egress.grpc", e.to_string())),
@@ -195,6 +195,8 @@ mod tests {
         HttpOutboundResult, HttpRequest as EgressReq, HttpResponse as EgressResp,
     };
     use chrono::Utc;
+    use crate::gateway::input::DefaultInput;
+    use crate::gateway::output::DefaultOutput;
 
     struct StubLifecycle;
 
@@ -287,8 +289,8 @@ mod tests {
     fn make_manager() -> DefaultRuntimeManager {
         DefaultRuntimeManager::new(
             RuntimeConfig::default().with_systemd_notify(false),
-            IngressGateway::http(Arc::new(StubHttpInbound)),
-            EgressGateway::http(Arc::new(StubHttpOutbound)),
+            Arc::new(DefaultInput::new_http(Arc::new(StubHttpInbound))),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))),
             Arc::new(StubLifecycle),
         )
     }
@@ -336,8 +338,8 @@ mod tests {
     async fn test_start_fails_when_no_ingress_configured() {
         let m = DefaultRuntimeManager::new(
             RuntimeConfig::default(),
-            IngressGateway { http: None, grpc: None, file: None },
-            EgressGateway::http(Arc::new(StubHttpOutbound)),
+            Arc::new(DefaultInput::empty()),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))),
             Arc::new(StubLifecycle),
         );
         let err = m.start().await.unwrap_err();
@@ -360,8 +362,8 @@ mod tests {
     async fn test_health_reports_grpc_when_only_grpc_configured() {
         let m = DefaultRuntimeManager::new(
             RuntimeConfig::default(),
-            IngressGateway::grpc(Arc::new(StubGrpcInbound)),
-            EgressGateway::http(Arc::new(StubHttpOutbound)),
+            Arc::new(DefaultInput::new_grpc(Arc::new(StubGrpcInbound))),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))),
             Arc::new(StubLifecycle),
         );
         m.start().await.expect("start ok");
@@ -377,10 +379,12 @@ mod tests {
     async fn test_health_reports_all_configured_transports() {
         let m = DefaultRuntimeManager::new(
             RuntimeConfig::default(),
-            IngressGateway::http(Arc::new(StubHttpInbound))
-                .with_grpc(Arc::new(StubGrpcInbound))
-                .with_file(Arc::new(StubFileInbound)),
-            EgressGateway::http(Arc::new(StubHttpOutbound)),
+            Arc::new(
+                DefaultInput::new_http(Arc::new(StubHttpInbound))
+                    .with_grpc(Arc::new(StubGrpcInbound))
+                    .with_file(Arc::new(StubFileInbound)),
+            ),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))),
             Arc::new(StubLifecycle),
         );
         m.start().await.expect("start ok");
@@ -396,9 +400,9 @@ mod tests {
     async fn test_health_reports_egress_grpc_when_configured() {
         let m = DefaultRuntimeManager::new(
             RuntimeConfig::default(),
-            IngressGateway::http(Arc::new(StubHttpInbound)),
-            EgressGateway::http(Arc::new(StubHttpOutbound))
-                .with_grpc(Arc::new(StubGrpcOutbound)),
+            Arc::new(DefaultInput::new_http(Arc::new(StubHttpInbound))),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))
+                .with_grpc(Arc::new(StubGrpcOutbound))),
             Arc::new(StubLifecycle),
         );
         m.start().await.expect("start ok");
@@ -413,9 +417,9 @@ mod tests {
     async fn test_health_reports_egress_grpc_unhealthy_when_down() {
         let m = DefaultRuntimeManager::new(
             RuntimeConfig::default(),
-            IngressGateway::http(Arc::new(StubHttpInbound)),
-            EgressGateway::http(Arc::new(StubHttpOutbound))
-                .with_grpc(Arc::new(DownGrpcOutbound)),
+            Arc::new(DefaultInput::new_http(Arc::new(StubHttpInbound))),
+            Arc::new(DefaultOutput::new_http(Arc::new(StubHttpOutbound))
+                .with_grpc(Arc::new(DownGrpcOutbound))),
             Arc::new(StubLifecycle),
         );
         m.start().await.expect("start ok");
