@@ -279,12 +279,14 @@ mod tests {
 
     #[test]
     fn test_new_client_stores_base_uri() {
+        rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
         let client = TonicGrpcClient::new("http://localhost:50051");
         assert_eq!(client.base_uri, "http://localhost:50051");
     }
 
     #[test]
     fn test_with_timeout_overrides_duration() {
+        rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
         let d = std::time::Duration::from_secs(5);
         let client = TonicGrpcClient::with_timeout("http://localhost:50051", d);
         assert_eq!(client.timeout, d);

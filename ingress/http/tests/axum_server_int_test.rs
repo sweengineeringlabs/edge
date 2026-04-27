@@ -134,7 +134,10 @@ async fn test_server_returns_413_when_body_exceeds_configured_limit() {
 /// @covers: serve — bind to unavailable address returns AxumServerError::Bind
 #[tokio::test]
 async fn test_server_returns_bind_error_for_privileged_port() {
-    let server = AxumHttpServer::new("127.0.0.1:1", Arc::new(EchoHandler));
+    // Hold a listener on an ephemeral port so the second bind must fail cross-platform.
+    let held = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = held.local_addr().unwrap();
+    let server = AxumHttpServer::new(addr.to_string(), Arc::new(EchoHandler));
     let err = server.serve(std::future::pending::<()>()).await;
     assert!(err.is_err());
     let msg = err.unwrap_err().to_string();
