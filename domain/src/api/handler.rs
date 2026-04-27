@@ -13,9 +13,9 @@ use super::error::HandlerError;
 ///
 /// `as_any` enables safe downcasting when a caller needs concrete access.
 #[async_trait]
-pub trait Handler<Req, Response>: Send + Sync
+pub trait Handler<Request, Response>: Send + Sync
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
     /// Stable identifier — used as the lookup key in [`HandlerRegistry`](crate::HandlerRegistry).
@@ -25,7 +25,7 @@ where
     fn pattern(&self) -> &str;
 
     /// Execute the handler with the given request.
-    async fn execute(&self, req: Req) -> Result<Response, HandlerError>;
+    async fn execute(&self, req: Request) -> Result<Response, HandlerError>;
 
     /// Probe whether the handler is healthy and responsive.
     async fn health_check(&self) -> bool;
