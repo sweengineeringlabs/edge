@@ -13,8 +13,8 @@ pub use crate::api::error::{RuntimeError, RuntimeResult};
 pub use crate::api::runtime_manager::RuntimeManager;
 pub use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 pub use crate::api::types::runtime_health::ComponentHealth;
-pub use crate::gateway::input::IngressGateway;
-pub use crate::gateway::output::EgressGateway;
+pub use crate::gateway::input::{DefaultInput, Input};
+pub use crate::gateway::output::{DefaultOutput, Output};
 pub use swe_edge_egress::{GrpcMessageStream, GrpcOutbound, GrpcOutboundError, GrpcOutboundResult, TonicGrpcClient};
 
 /// Load config using the default layered chain
@@ -82,8 +82,8 @@ pub fn load_tenant_config_xdg(
 /// and lifecycle monitor.
 pub fn runtime_manager(
     config:    RuntimeConfig,
-    ingress:   IngressGateway,
-    egress:    EgressGateway,
+    ingress:   Arc<dyn Input>,
+    egress:    Arc<dyn Output>,
     lifecycle: Arc<dyn LifecycleMonitor>,
 ) -> impl RuntimeManager {
     DefaultRuntimeManager::new(config, ingress, egress, lifecycle)
@@ -102,8 +102,8 @@ pub fn runtime_manager(
 /// Both servers are signalled to drain before `RuntimeManager::shutdown`.
 pub async fn run(
     config:    RuntimeConfig,
-    ingress:   IngressGateway,
-    egress:    EgressGateway,
+    ingress:   Arc<dyn Input>,
+    egress:    Arc<dyn Output>,
     lifecycle: Arc<dyn LifecycleMonitor>,
 ) -> RuntimeResult<()> {
     use swe_edge_ingress::{AxumHttpServer, TonicGrpcServer};
@@ -115,7 +115,7 @@ pub async fn run(
 
     // Spawn the Axum HTTP server if an HTTP handler is wired in.
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel::<()>();
-    let http_task = ingress.http.clone().map(|handler| {
+    let http_task = ingress.http().map(|handler| {
         let server = AxumHttpServer::new(http_bind, handler);
         tokio::spawn(async move {
             let signal = async move { let _ = http_shutdown_rx.await; };
@@ -127,7 +127,7 @@ pub async fn run(
 
     // Spawn the gRPC server if a gRPC handler is wired in.
     let (grpc_shutdown_tx, grpc_shutdown_rx) = oneshot::channel::<()>();
-    let grpc_task = ingress.grpc.clone().map(|handler| {
+    let grpc_task = ingress.grpc().map(|handler| {
         let server = TonicGrpcServer::new(grpc_bind, handler);
         tokio::spawn(async move {
             let signal = async move { let _ = grpc_shutdown_rx.await; };

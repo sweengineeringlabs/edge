@@ -4,31 +4,56 @@ use std::sync::Arc;
 
 use swe_edge_ingress::{FileInbound, GrpcInbound, HttpInbound};
 
-/// Holds the bound ingress adapters the daemon serves traffic through.
+/// Inbound gateway contract: supplies the ingress adapters the runtime binds traffic through.
+pub trait Input: Send + Sync {
+    /// HTTP inbound adapter, if configured.
+    fn http(&self) -> Option<Arc<dyn HttpInbound>>;
+    /// gRPC inbound adapter, if configured.
+    fn grpc(&self) -> Option<Arc<dyn GrpcInbound>>;
+    /// File inbound adapter, if configured.
+    fn file(&self) -> Option<Arc<dyn FileInbound>>;
+    /// Returns `true` if at least one transport is configured.
+    fn has_any(&self) -> bool {
+        self.http().is_some() || self.grpc().is_some() || self.file().is_some()
+    }
+}
+
+/// Default [`Input`] implementation — holds optional ingress adapters by `Arc`.
 ///
 /// Every transport is optional at construction time so consumer apps can
 /// wire only what they need. At least one must be configured before
 /// [`RuntimeManager::start`] is called — the runtime enforces this.
-pub struct IngressGateway {
-    pub(crate) http: Option<Arc<dyn HttpInbound>>,
-    pub(crate) grpc: Option<Arc<dyn GrpcInbound>>,
-    pub(crate) file: Option<Arc<dyn FileInbound>>,
+pub struct DefaultInput {
+    http: Option<Arc<dyn HttpInbound>>,
+    grpc: Option<Arc<dyn GrpcInbound>>,
+    file: Option<Arc<dyn FileInbound>>,
 }
 
-impl IngressGateway {
+impl Input for DefaultInput {
+    fn http(&self) -> Option<Arc<dyn HttpInbound>> { self.http.clone() }
+    fn grpc(&self) -> Option<Arc<dyn GrpcInbound>> { self.grpc.clone() }
+    fn file(&self) -> Option<Arc<dyn FileInbound>> { self.file.clone() }
+}
+
+impl DefaultInput {
     /// Start with HTTP as the sole transport.
-    pub fn http(http: Arc<dyn HttpInbound>) -> Self {
+    pub fn new_http(http: Arc<dyn HttpInbound>) -> Self {
         Self { http: Some(http), grpc: None, file: None }
     }
 
     /// Start with gRPC as the sole transport.
-    pub fn grpc(grpc: Arc<dyn GrpcInbound>) -> Self {
+    pub fn new_grpc(grpc: Arc<dyn GrpcInbound>) -> Self {
         Self { http: None, grpc: Some(grpc), file: None }
     }
 
     /// Start with file as the sole transport.
-    pub fn file(file: Arc<dyn FileInbound>) -> Self {
+    pub fn new_file(file: Arc<dyn FileInbound>) -> Self {
         Self { http: None, grpc: None, file: Some(file) }
+    }
+
+    /// Construct with no transports configured (used to test the no-ingress guard).
+    pub fn empty() -> Self {
+        Self { http: None, grpc: None, file: None }
     }
 
     /// Add (or replace) the HTTP transport.
@@ -44,10 +69,5 @@ impl IngressGateway {
     /// Add (or replace) the file transport.
     pub fn with_file(mut self, file: Arc<dyn FileInbound>) -> Self {
         self.file = Some(file); self
-    }
-
-    /// Returns `true` if at least one transport is configured.
-    pub(crate) fn has_any(&self) -> bool {
-        self.http.is_some() || self.grpc.is_some() || self.file.is_some()
     }
 }
