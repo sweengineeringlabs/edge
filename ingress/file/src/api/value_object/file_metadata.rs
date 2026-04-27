@@ -6,18 +6,24 @@ use std::collections::HashMap;
 /// Metadata associated with a file in storage.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FileMetadata {
+    /// MIME type to set on upload.
     pub content_type: Option<String>,
+    /// Content-Encoding header value.
     pub content_encoding: Option<String>,
+    /// Cache-Control header value.
     pub cache_control: Option<String>,
+    /// Arbitrary key/value metadata for the backend.
     #[serde(default)]
     pub custom: HashMap<String, String>,
 }
 
 impl FileMetadata {
+    /// Create metadata with a content type.
     pub fn with_content_type(content_type: impl Into<String>) -> Self {
         Self { content_type: Some(content_type.into()), ..Default::default() }
     }
 
+    /// Add a custom metadata entry.
     pub fn with_custom(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.custom.insert(key.into(), value.into()); self
     }

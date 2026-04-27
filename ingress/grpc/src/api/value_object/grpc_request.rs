@@ -5,8 +5,11 @@ use super::grpc_metadata::GrpcMetadata;
 /// A gRPC request envelope.
 #[derive(Debug, Clone)]
 pub struct GrpcRequest {
+    /// Fully-qualified gRPC method path (e.g. `"/pkg.Service/Method"`).
     pub method: String,
+    /// Raw protobuf-encoded request bytes.
     pub body: Vec<u8>,
+    /// Request metadata (headers / trailers).
     pub metadata: GrpcMetadata,
 }
 
