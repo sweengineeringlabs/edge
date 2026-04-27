@@ -34,26 +34,31 @@ impl Default for RuntimeConfig {
 }
 
 impl RuntimeConfig {
+    /// Override the service name reported to observability and systemd.
     pub fn with_service_name(mut self, name: impl Into<String>) -> Self {
         self.service_name = name.into();
         self
     }
 
+    /// Override the bind address for the primary HTTP ingress server.
     pub fn with_http_bind(mut self, addr: impl Into<String>) -> Self {
         self.http_bind = addr.into();
         self
     }
 
+    /// Override the bind address for the gRPC ingress server.
     pub fn with_grpc_bind(mut self, addr: impl Into<String>) -> Self {
         self.grpc_bind = addr.into();
         self
     }
 
+    /// Override the graceful-shutdown drain timeout in seconds.
     pub fn with_shutdown_timeout(mut self, secs: u64) -> Self {
         self.shutdown_timeout_secs = secs;
         self
     }
 
+    /// Enable or disable systemd sd_notify signals (READY=1, STOPPING=1).
     pub fn with_systemd_notify(mut self, enabled: bool) -> Self {
         self.systemd_notify = enabled;
         self

@@ -32,10 +32,12 @@ impl fmt::Display for RuntimeStatus {
 }
 
 impl RuntimeStatus {
+    /// Returns `true` only when the status is [`Running`](Self::Running).
     pub fn is_healthy(&self) -> bool {
         matches!(self, Self::Running)
     }
 
+    /// Returns `true` only when the status is [`Stopped`](Self::Stopped).
     pub fn is_terminal(&self) -> bool {
         matches!(self, Self::Stopped)
     }
