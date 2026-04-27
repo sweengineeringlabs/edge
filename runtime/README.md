@@ -1,6 +1,6 @@
-# swe-edge-daemon
+# swe-edge-runtime
 
-Process-level runtime manager for `swe-edge`. Wires ingress, controller, and egress into a single lifecycle-managed process with optional systemd `sd_notify` integration.
+Process-level runtime manager for `swe-edge`. Wires ingress, proxy, domain, and egress into a single lifecycle-managed process with optional systemd `sd_notify` integration.
 
 ## Build
 
