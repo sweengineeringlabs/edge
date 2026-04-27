@@ -16,6 +16,7 @@ use tokio::net::TcpListener;
 
 use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError, GrpcMessageStream};
 use crate::api::value_object::GrpcMetadata;
+use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};
 
 /// Hard cap on incoming message size.
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
@@ -25,8 +26,12 @@ type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
 /// Error returned by [`TonicGrpcServer::serve`].
 #[derive(Debug, thiserror::Error)]
 pub enum TonicServerError {
+    /// The server could not bind to the requested address.
     #[error("failed to bind to {0}: {1}")]
     Bind(String, #[source] std::io::Error),
+    /// TLS configuration could not be loaded or built.
+    #[error("TLS: {0}")]
+    Tls(#[source] IngressTlsError),
 }
 
 /// gRPC server that routes all unary requests through a [`GrpcInbound`] port.
@@ -38,17 +43,26 @@ pub struct TonicGrpcServer {
     bind:      String,
     handler:   Arc<dyn GrpcInbound>,
     max_bytes: usize,
+    tls:       Option<IngressTlsConfig>,
 }
 
 impl TonicGrpcServer {
     /// Create a server that will bind to `bind` and delegate to `handler`.
     pub fn new(bind: impl Into<String>, handler: Arc<dyn GrpcInbound>) -> Self {
-        Self { bind: bind.into(), handler, max_bytes: MAX_MESSAGE_BYTES }
+        Self { bind: bind.into(), handler, max_bytes: MAX_MESSAGE_BYTES, tls: None }
     }
 
     /// Override the maximum incoming message size (default: [`MAX_MESSAGE_BYTES`]).
     pub fn with_max_message_size(mut self, size: usize) -> Self {
         self.max_bytes = size;
+        self
+    }
+
+    /// Enable TLS (or mTLS when [`IngressTlsConfig::client_ca_pem_path`] is
+    /// set). The acceptor is built eagerly in [`serve`] / [`serve_with_listener`]
+    /// so cert/key errors surface at startup.
+    pub fn with_tls(mut self, config: IngressTlsConfig) -> Self {
+        self.tls = Some(config);
         self
     }
 
@@ -75,10 +89,23 @@ impl TonicGrpcServer {
     where
         F: Future<Output = ()>,
     {
-        tracing::info!(
-            bind = %listener.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| self.bind.clone()),
-            "gRPC server listening"
-        );
+        let bind_addr = listener
+            .local_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_else(|_| self.bind.clone());
+
+        let tls_acceptor = self
+            .tls
+            .as_ref()
+            .map(|cfg| {
+                tracing::info!(bind = %bind_addr, mtls = cfg.is_mtls(), "gRPC+TLS server listening");
+                swe_edge_ingress_tls::build_tls_acceptor(cfg).map_err(TonicServerError::Tls)
+            })
+            .transpose()?;
+
+        if tls_acceptor.is_none() {
+            tracing::info!(bind = %bind_addr, "gRPC server listening");
+        }
 
         let handler   = self.handler.clone();
         let max_bytes = self.max_bytes;
@@ -91,7 +118,8 @@ impl TonicGrpcServer {
                         Ok(s)  => s,
                         Err(e) => { tracing::warn!("gRPC accept error: {e}"); continue; }
                     };
-                    let handler = handler.clone();
+                    let handler      = handler.clone();
+                    let tls_acceptor = tls_acceptor.clone();
                     tokio::spawn(async move {
                         let svc = hyper::service::service_fn(move |req| {
                             let handler = handler.clone();
@@ -99,12 +127,27 @@ impl TonicGrpcServer {
                                 Ok::<_, Infallible>(dispatch(req, handler, max_bytes).await)
                             }
                         });
-                        let io = TokioIo::new(stream);
-                        if let Err(e) = hyper::server::conn::http2::Builder::new(TokioExecutor::new())
-                            .serve_connection(io, svc)
-                            .await
-                        {
-                            tracing::debug!("gRPC connection error: {e}");
+                        if let Some(acceptor) = tls_acceptor {
+                            match acceptor.accept(stream).await {
+                                Ok(tls) => {
+                                    let io = TokioIo::new(tls);
+                                    if let Err(e) = hyper::server::conn::http2::Builder::new(TokioExecutor::new())
+                                        .serve_connection(io, svc)
+                                        .await
+                                    {
+                                        tracing::debug!("gRPC+TLS connection error: {e}");
+                                    }
+                                }
+                                Err(e) => tracing::debug!("gRPC TLS handshake failed: {e}"),
+                            }
+                        } else {
+                            let io = TokioIo::new(stream);
+                            if let Err(e) = hyper::server::conn::http2::Builder::new(TokioExecutor::new())
+                                .serve_connection(io, svc)
+                                .await
+                            {
+                                tracing::debug!("gRPC connection error: {e}");
+                            }
                         }
                     });
                 }
