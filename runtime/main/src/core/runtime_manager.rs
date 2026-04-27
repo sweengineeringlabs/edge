@@ -10,8 +10,8 @@ use crate::api::error::{RuntimeError, RuntimeResult};
 use crate::api::runtime_manager::RuntimeManager;
 use crate::api::types::{RuntimeConfig, RuntimeHealth, RuntimeStatus};
 use crate::api::types::runtime_health::ComponentHealth;
-use crate::gateway::input::Input;
-use crate::gateway::output::Output;
+use crate::api::input::Input;
+use crate::api::output::Output;
 
 pub(crate) struct DefaultRuntimeManager {
     config:     RuntimeConfig,
@@ -195,8 +195,8 @@ mod tests {
         HttpOutboundResult, HttpRequest as EgressReq, HttpResponse as EgressResp,
     };
     use chrono::Utc;
-    use crate::gateway::input::DefaultInput;
-    use crate::gateway::output::DefaultOutput;
+    use super::super::input::DefaultInput;
+    use super::super::output::DefaultOutput;
 
     struct StubLifecycle;
 
