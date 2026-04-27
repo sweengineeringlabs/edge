@@ -7,9 +7,13 @@ use super::file_info::FileInfo;
 /// Result of a list operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListResult {
+    /// Files (or objects) in the listing.
     pub files: Vec<FileInfo>,
+    /// Common prefixes (virtual directories) in the listing.
     pub prefixes: Vec<String>,
+    /// Token for the next page, or `None` when no more pages exist.
     pub next_continuation_token: Option<String>,
+    /// `true` when more results are available beyond this page.
     pub is_truncated: bool,
 }
 

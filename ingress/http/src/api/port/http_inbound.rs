@@ -10,16 +10,22 @@ pub type HttpInboundResult<T> = Result<T, HttpInboundError>;
 /// Error type for HTTP inbound operations.
 #[derive(Debug, thiserror::Error)]
 pub enum HttpInboundError {
+    /// Internal server error.
     #[error("internal: {0}")]
     Internal(String),
+    /// Requested resource not found.
     #[error("not found: {0}")]
     NotFound(String),
+    /// Request input failed validation.
     #[error("invalid input: {0}")]
     InvalidInput(String),
+    /// Upstream service unavailable.
     #[error("unavailable: {0}")]
     Unavailable(String),
+    /// Operation timed out.
     #[error("timeout: {0}")]
     Timeout(String),
+    /// Caller lacks permission.
     #[error("permission denied: {0}")]
     PermissionDenied(String),
 }
@@ -27,18 +33,24 @@ pub enum HttpInboundError {
 /// Minimal health-check result for the HTTP domain.
 #[derive(Debug, Clone)]
 pub struct HttpHealthCheck {
+    /// `true` when the handler is healthy.
     pub healthy: bool,
+    /// Optional human-readable status detail.
     pub message: Option<String>,
 }
 
 impl HttpHealthCheck {
+    /// Create a healthy result.
     pub fn healthy() -> Self { Self { healthy: true, message: None } }
+    /// Create an unhealthy result with a message.
     pub fn unhealthy(msg: impl Into<String>) -> Self { Self { healthy: false, message: Some(msg.into()) } }
 }
 
 /// Receives and handles inbound HTTP requests.
 pub trait HttpInbound: Send + Sync {
+    /// Handle an HTTP request and return a response.
     fn handle(&self, request: HttpRequest) -> BoxFuture<'_, HttpInboundResult<HttpResponse>>;
+    /// Perform a health check of this handler.
     fn health_check(&self) -> BoxFuture<'_, HttpInboundResult<HttpHealthCheck>>;
 }
 

@@ -7,11 +7,16 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FileStorageType {
+    /// Local filesystem.
     #[default]
     Local,
+    /// Amazon S3 or S3-compatible object store.
     S3,
+    /// Google Cloud Storage.
     Gcs,
+    /// Azure Blob Storage.
     Azure,
+    /// In-memory store (for testing).
     Memory,
 }
 
@@ -19,14 +24,21 @@ pub enum FileStorageType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FileStorageConfig {
+    /// Backend type.
     pub storage_type: FileStorageType,
+    /// Base path or bucket name.
     pub base_path: String,
+    /// Cloud region when applicable.
     pub region: Option<String>,
+    /// Access key (not serialized).
     #[serde(skip_serializing)]
     pub access_key: Option<String>,
+    /// Secret key (not serialized).
     #[serde(skip_serializing)]
     pub secret_key: Option<String>,
+    /// Custom endpoint for S3-compatible backends.
     pub endpoint: Option<String>,
+    /// Extra backend-specific options.
     #[serde(default)]
     pub options: HashMap<String, String>,
 }
@@ -38,10 +50,12 @@ impl Default for FileStorageConfig {
 }
 
 impl FileStorageConfig {
+    /// Create a local filesystem config rooted at `base_path`.
     pub fn local(base_path: impl Into<String>) -> Self {
         Self { storage_type: FileStorageType::Local, base_path: base_path.into(), ..Default::default() }
     }
 
+    /// Create an in-memory config (for testing).
     pub fn memory() -> Self {
         Self { storage_type: FileStorageType::Memory, base_path: "/".to_string(), ..Default::default() }
     }
