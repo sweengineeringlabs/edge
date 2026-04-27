@@ -8,7 +8,6 @@ pub use crate::api::health_check::{HealthCheck, HealthStatus};
 pub use crate::api::ingress_error::{IngressError, IngressErrorCode, IngressResult, ResultIngressExt};
 pub use crate::api::inbound_source::InboundSource;
 pub use crate::api::metrics::{FieldExtractor, MetricFields, MetricsCollector};
-pub use crate::api::middleware::{MiddlewareAction, RequestMiddleware, ResponseMiddleware};
 pub use crate::api::pagination::{Pagination, PaginatedResponse};
 pub use crate::api::pipeline::{Pipeline, Router};
 pub use crate::api::rate_limiter::{RateLimiter, RateLimiterBuilder, RateLimiterSpec};

@@ -1,6 +1,6 @@
-//! # edge-controller
+//! # edge-proxy
 //!
-//! The L2 Controller contract — a reusable 5-concern facade sitting between
+//! The L2 Proxy contract — a reusable 5-concern facade sitting between
 //! an inbound gateway and a domain's execution units.
 //!
 //! ## The five concerns
@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! use std::sync::Arc;
-//! use edge_controller::{Handler, HandlerRegistry, new_handler_registry};
+//! use edge_proxy::{Handler, HandlerRegistry, new_handler_registry};
 //!
 //! // 1. Build a registry and register domain handlers.
 //! let registry: Arc<HandlerRegistry<MyReq, MyResp>> = new_handler_registry();

@@ -10,7 +10,7 @@ use futures::future::BoxFuture;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-use edge_controller::{HealthReport, LifecycleError, LifecycleMonitor};
+use edge_proxy::{HealthReport, LifecycleError, LifecycleMonitor};
 use swe_edge_daemon::{
     EgressGateway, IngressGateway, RuntimeConfig, RuntimeManager, RuntimeStatus,
     runtime_manager,
