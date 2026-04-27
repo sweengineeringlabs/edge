@@ -48,6 +48,14 @@ cargo test
 ./scripts/ci/test.sh
 ```
 
+### Domain
+```bash
+cd domain
+cargo build
+cargo test
+cargo clippy -- -D warnings
+```
+
 ### Runtime
 ```bash
 cd runtime
