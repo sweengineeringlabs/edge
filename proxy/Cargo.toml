@@ -1,13 +1,13 @@
 [package]
-name = "edge-controller"
+name = "edge-proxy"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/sweengineeringlabs/edge"
 authors = ["SWE Engineering Labs"]
 rust-version = "1.75"
-description = "edge — L2 Controller: 5-concern facade (Job, Router, Handler, LifecycleMonitor)"
-keywords = ["Controller", "orchestration", "facade", "sea", "swe"]
+description = "edge — L2 Proxy: 5-concern facade (Job, Router, Handler, LifecycleMonitor)"
+keywords = ["proxy", "orchestration", "facade", "sea", "swe"]
 categories = ["development-tools"]
 
 [dependencies]
