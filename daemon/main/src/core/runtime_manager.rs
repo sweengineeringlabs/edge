@@ -4,7 +4,7 @@ use std::time::Instant;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 
-use edge_controller::{HealthStatus, LifecycleMonitor};
+use edge_proxy::{HealthStatus, LifecycleMonitor};
 
 use crate::api::error::{RuntimeError, RuntimeResult};
 use crate::api::runtime_manager::RuntimeManager;
@@ -181,7 +181,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use async_trait::async_trait;
-    use edge_controller::{HealthReport, LifecycleError};
+    use edge_proxy::{HealthReport, LifecycleError};
     use futures::future::BoxFuture;
     use swe_edge_ingress::{
         HttpHealthCheck, HttpInboundResult, HttpRequest, HttpResponse,
