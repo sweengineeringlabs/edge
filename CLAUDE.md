@@ -10,7 +10,7 @@ This is **swe-edge**: a four-workspace Rust library stack. There is no top-level
 |-----------|-------|---------|
 | `ingress/` | L1 | Inbound port contracts (HTTP, gRPC, File) |
 | `egress/` | L1 | Outbound port contracts (HTTP, gRPC, Database, File, Notification, Payment) |
-| `controller/` | L2 | 5-Concern orchestration facade (Job → Router → Handler → LifecycleMonitor → Gateway) |
+| `proxy/` | L2 | 5-Concern proxy facade (Job → Router → Handler → LifecycleMonitor → Gateway) |
 | `egress/{auth,retry,rate,breaker,cache,cassette,tls}` | L3 | HTTP middleware crates (reqwest-middleware based), assembled by `DefaultHttpOutbound` |
 
 All commands must be run from within the workspace directory — there is no root-level Cargo project.
@@ -37,9 +37,9 @@ cargo fmt --check
 cargo clippy -- -D warnings
 ```
 
-### Controller
+### Proxy
 ```bash
-cd controller
+cd proxy
 cargo build --release
 cargo test
 ./scripts/ci/lint.sh    # fmt + clippy
