@@ -1,12 +1,12 @@
 [package]
-name         = "swe-edge-daemon"
+name         = "swe-edge-runtime"
 version.workspace      = true
 edition.workspace      = true
 license.workspace      = true
 rust-version.workspace = true
 authors.workspace      = true
 repository.workspace   = true
-description  = "edge — process-level runtime manager: wires ingress + proxy + egress, lifecycle, and systemd notify."
+description  = "edge — process-level runtime: wires ingress + proxy + domain + egress, lifecycle, and systemd notify."
 keywords     = ["daemon", "runtime", "lifecycle", "systemd", "swe"]
 categories   = ["network-programming"]
 

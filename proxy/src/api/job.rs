@@ -7,23 +7,17 @@ use async_trait::async_trait;
 
 use super::error::JobError;
 
-/// The single entry point for Controller work.
+/// The single entry point for proxy dispatch.
 ///
-/// Gateway holds `Arc<dyn Job<Req, Resp>>` and calls `run` for each request.
-///
-/// | Domain | Req | Resp |
-/// |--------|-----|------|
-/// | llmboot | `String` (user prompt) | `AgentOutput` |
-/// | vmisolate | `VmConfig` | `VmStatus` |
-/// | security/iam | `SecurityRequest` | `SecurityOutcome` |
+/// Runtime holds `Arc<dyn Job<Req, Response>>` and calls `run` for each request.
 #[async_trait]
-pub trait Job<Req, Resp>: Send + Sync
+pub trait Job<Req, Response>: Send + Sync
 where
     Req: Send + 'static,
-    Resp: Send + 'static,
+    Response: Send + 'static,
 {
-    /// Execute the job with the given request and return the response.
-    async fn run(&self, req: Req) -> Result<Resp, JobError>;
+    /// Dispatch the request and return the response.
+    async fn run(&self, req: Req) -> Result<Response, JobError>;
 }
 
 #[cfg(test)]
@@ -32,6 +26,6 @@ mod tests {
 
     #[test]
     fn test_job_trait_is_object_safe() {
-        fn _accept(_j: &dyn Job<String, String>) {}
+        fn _accept(_j: &dyn Job<String, String>) {} // object-safe with concrete types
     }
 }

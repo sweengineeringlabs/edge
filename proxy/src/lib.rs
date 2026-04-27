@@ -18,11 +18,11 @@
 //! use edge_proxy::{Handler, HandlerRegistry, new_handler_registry};
 //!
 //! // 1. Build a registry and register domain handlers.
-//! let registry: Arc<HandlerRegistry<MyReq, MyResp>> = new_handler_registry();
+//! let registry: Arc<HandlerRegistry<MyReq, MyResponse>> = new_handler_registry();
 //! registry.register(Arc::new(MyAgent::new()));
 //!
 //! // 2. Implement Job for your domain, backed by Router + Registry.
-//! // 3. Gateway holds Arc<dyn Job<MyReq, MyResp>> and calls .run(req).
+//! // 3. Runtime holds Arc<dyn Job<MyReq, MyResponse>> and calls .run(req).
 //! ```
 
 mod api;
