@@ -12,17 +12,17 @@ use super::handler::Handler;
 ///
 /// Concurrency: guarded by a `parking_lot::RwLock` — lookups proceed in
 /// parallel while registration and deregistration are serialized.
-pub struct HandlerRegistry<Req, Response>
+pub struct HandlerRegistry<Request, Response>
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
-    handlers: RwLock<HashMap<String, Arc<dyn Handler<Req, Response>>>>,
+    handlers: RwLock<HashMap<String, Arc<dyn Handler<Request, Response>>>>,
 }
 
-impl<Req, Response> HandlerRegistry<Req, Response>
+impl<Request, Response> HandlerRegistry<Request, Response>
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
     /// Construct an empty registry.
@@ -31,7 +31,7 @@ where
     }
 
     /// Register a handler, replacing any existing entry with the same id.
-    pub fn register(&self, handler: Arc<dyn Handler<Req, Response>>) {
+    pub fn register(&self, handler: Arc<dyn Handler<Request, Response>>) {
         let id = handler.id().to_string();
         self.handlers.write().insert(id, handler);
     }
@@ -42,7 +42,7 @@ where
     }
 
     /// Look up a handler by id. Returns `None` if not registered.
-    pub fn get(&self, id: &str) -> Option<Arc<dyn Handler<Req, Response>>> {
+    pub fn get(&self, id: &str) -> Option<Arc<dyn Handler<Request, Response>>> {
         self.handlers.read().get(id).cloned()
     }
 
@@ -62,9 +62,9 @@ where
     }
 }
 
-impl<Req, Response> Default for HandlerRegistry<Req, Response>
+impl<Request, Response> Default for HandlerRegistry<Request, Response>
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
     fn default() -> Self {
