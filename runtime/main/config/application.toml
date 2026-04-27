@@ -1,4 +1,4 @@
-# swe-edge daemon — operator overrides.
+# swe-edge runtime — operator overrides.
 # Loaded at runtime from the working directory or SWE_EDGE_CONFIG_DIR.
 # Uncomment and set fields to override the shipped defaults.
 

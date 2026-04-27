@@ -1,4 +1,4 @@
-//! Integration tests for the swe_edge_daemon SAF runtime_manager surface.
+//! Integration tests for the swe_edge_runtime SAF runtime_manager surface.
 //!
 //! These tests exercise the full daemon wiring: RuntimeManager lifecycle +
 //! AxumHttpServer serving real TCP traffic through IngressGateway.
@@ -11,7 +11,7 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 use edge_proxy::{HealthReport, LifecycleError, LifecycleMonitor};
-use swe_edge_daemon::{
+use swe_edge_runtime::{
     EgressGateway, IngressGateway, RuntimeConfig, RuntimeManager, RuntimeStatus,
     runtime_manager,
 };
