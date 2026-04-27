@@ -9,15 +9,15 @@ use super::error::JobError;
 
 /// The single entry point for proxy dispatch.
 ///
-/// Runtime holds `Arc<dyn Job<Req, Response>>` and calls `run` for each request.
+/// Runtime holds `Arc<dyn Job<Request, Response>>` and calls `run` for each request.
 #[async_trait]
-pub trait Job<Req, Response>: Send + Sync
+pub trait Job<Request, Response>: Send + Sync
 where
-    Req: Send + 'static,
+    Request: Send + 'static,
     Response: Send + 'static,
 {
     /// Dispatch the request and return the response.
-    async fn run(&self, req: Req) -> Result<Response, JobError>;
+    async fn run(&self, req: Request) -> Result<Response, JobError>;
 }
 
 #[cfg(test)]
