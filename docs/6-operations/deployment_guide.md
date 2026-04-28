@@ -190,6 +190,115 @@ GitHub Releases are created automatically on every `v*` tag push. Release notes 
 
 ---
 
+## Troubleshooting
+
+### Issue: Port Already in Use
+
+#### Symptoms
+- `AddrInUse` error on startup
+
+#### Cause
+Another process is already listening on the configured port.
+
+#### Solution
+```bash
+# Find the conflicting process
+ss -tlnp | grep <port>       # Linux
+netstat -ano | findstr <port> # Windows
+```
+Change the listen address in config or stop the conflicting process.
+
+---
+
+### Issue: TLS Handshake Failure
+
+#### Symptoms
+- `rustls` error: `AlertReceived(CertificateUnknown)` or `InvalidCertificate`
+
+#### Cause
+The client does not trust the server certificate, or the certificate path is wrong.
+
+#### Solution
+1. Verify certificate paths are absolute and the files exist at startup
+2. For mTLS, confirm both sides present a certificate signed by the shared CA
+3. Call `rustls::crypto::aws_lc_rs::default_provider().install_default().ok()` before constructing TLS clients in tests
+
+---
+
+### Issue: Middleware Not Applied
+
+#### Symptoms
+- Requests reach the upstream without auth headers, or rate limiting is not enforced
+
+#### Cause
+Middleware crate feature flag not enabled, or TOML config section missing/misnamed.
+
+#### Solution
+1. Enable the feature flag in `Cargo.toml`: `swe-edge-egress-auth = { features = ["auth"] }`
+2. Confirm the TOML section name matches: `[auth]`, `[retry]`, `[rate]`, `[breaker]`, `[cache]`, `[tls]`
+3. Check that `config/application.toml` is in the binary crate's working directory at runtime
+
+---
+
+### Issue: Graceful Shutdown Hangs
+
+#### Symptoms
+- Service does not exit after SIGTERM; drain timeout exceeded
+
+#### Cause
+In-flight request holds a resource that never completes (e.g., a stalled upstream connection without a timeout).
+
+#### Solution
+Configure timeouts on all external calls:
+
+```toml
+[retry]
+max_attempts = 3
+initial_backoff_ms = 100
+max_backoff_ms = 5000
+```
+
+Add a per-request timeout in the outbound call.
+
+---
+
+## Error Reference
+
+### `HttpInboundError::BindFailed`
+
+**Cause:** The TCP listener could not bind to the configured address (port in use, permission denied).
+
+**Solution:** Check for port conflicts; on Linux, ports < 1024 require elevated privileges.
+
+### `HttpInboundError::ServiceUnavailable`
+
+**Cause:** `health_check()` returned an error; the handler signalled that its backing dependencies are down.
+
+**Solution:** Check the handler's downstream dependencies (database, cache, etc.).
+
+### `GrpcOutboundError::ConnectionFailed`
+
+**Cause:** The gRPC client could not establish a connection to the upstream endpoint.
+
+**Solution:** Verify the upstream address is reachable and the service is running.
+
+### `GrpcOutboundError::Status`
+
+**Cause:** The upstream gRPC service returned a non-OK status code in the `grpc-status` trailer.
+
+**Solution:** Inspect the `grpc-message` trailer for the upstream error message.
+
+---
+
+## Debug Logging
+
+```bash
+RUST_LOG=swe_edge=debug cargo run
+RUST_LOG=swe_edge_egress_http=trace,swe_edge_ingress_http=debug cargo run
+```
+
+---
+
 ## Related Documents
 
 - **Architecture**: [../3-architecture/architecture.md](../3-architecture/architecture.md)

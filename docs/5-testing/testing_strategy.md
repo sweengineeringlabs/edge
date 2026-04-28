@@ -2,6 +2,19 @@
 
 **Audience**: Developers, contributors
 
+## Test Layers
+
+| Layer | Type | Mocking | Location |
+|-------|------|---------|----------|
+| `api/` value objects | Unit | N/A | Inline `#[cfg(test)]` |
+| `api/` error types | Unit | N/A | Inline `#[cfg(test)]` |
+| `core/` config parsing | Unit | N/A | Inline `#[cfg(test)]` |
+| `core/` implementations | Integration | Real listeners (port 0) | `tests/*_int_test.rs` |
+| `saf/` factories | Integration | Real components | `tests/*_int_test.rs` |
+| Cross-workspace wiring | E2E | Real + fixtures | `tests/*_e2e_test.rs` (planned) |
+
+---
+
 ## Test Strategy
 
 > Per ISO/IEC/IEEE 29119-3:2021
@@ -105,6 +118,34 @@ async fn start_server(handler: Arc<dyn HttpInbound>) -> (String, oneshot::Sender
     (format!("http://{addr}"), shutdown_tx)
 }
 ```
+
+### Mocking Strategy
+
+Edge does not use a mocking framework. Rationale: port traits are small (1-2 methods); stub implementations are faster to write and easier to read than generated mocks; real listeners on port 0 cover the same ground that mocks would cover with less risk of mock/production divergence.
+
+```rust
+// Stub: implement the trait directly in the test file
+struct AlwaysFailHandler;
+impl HttpInbound for AlwaysFailHandler {
+    fn handle(&self, _req: HttpRequest) -> BoxFuture<'_, HttpInboundResult<HttpResponse>> {
+        Box::pin(async { Err(HttpInboundError::ServiceUnavailable("forced failure".into())) })
+    }
+    fn health_check(&self) -> BoxFuture<'_, HttpInboundResult<HttpHealthCheck>> {
+        Box::pin(async { Err(HttpInboundError::ServiceUnavailable("forced failure".into())) })
+    }
+}
+```
+
+### E2E Tests
+
+E2E tests (`tests/*_e2e_test.rs`) cover cross-workspace wiring — starting a full `RuntimeManager` with real ingress and egress and sending requests through the complete stack.
+
+| Workspace | File | Status |
+|-----------|------|--------|
+| `runtime/` | `runtime_manager_int_test.rs` | Covers start/stop, health check, graceful shutdown |
+| All workspaces | `*_e2e_test.rs` | Planned — cross-workspace request round-trip |
+
+Strategy for E2E: start `saf::run(config, ingress, egress, lifecycle)`, send a real HTTP request through the full stack, assert the response and confirm clean shutdown.
 
 ### Stub Handler Pattern
 
