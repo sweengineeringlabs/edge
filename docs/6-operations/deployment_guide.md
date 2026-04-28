@@ -1,20 +1,20 @@
-# swe-edge Deployment Guide
+# Edge Deployment Guide
 
 **Audience**: Developers, platform engineers
 
 ## What
 
-Guide for consuming swe-edge in a Rust application — adding it as a dependency, configuring the runtime, wiring ingress and egress ports, and operating the service in production.
+Guide for consuming Edge in a Rust application — adding it as a dependency, configuring the runtime, wiring ingress and egress ports, and operating the service in production.
 
 ## Why
 
-swe-edge is a library, not a binary. "Deployment" means embedding it in a service binary and shipping that binary. This guide covers the end-to-end path from Cargo dependency to a running, production-hardened service.
+Edge is a library, not a binary. "Deployment" means embedding it in a service binary and shipping that binary. This guide covers the end-to-end path from Cargo dependency to a running, production-hardened service.
 
 ## How
 
 ### Step 1 — Add Dependencies
 
-swe-edge has no root workspace — add individual crates by workspace path or git tag:
+Edge has no root workspace — add individual crates by workspace path or git tag:
 
 ```toml
 [dependencies]
@@ -118,7 +118,7 @@ Secrets are read from environment variables at runtime. Never commit token value
 3. Drop all egress connections
 4. Return from `saf::run()`
 
-For systemd services, swe-edge calls `sd_notify(READY=1)` on startup and `sd_notify(STOPPING=1)` on shutdown when the `SD_NOTIFY_SOCKET` environment variable is set.
+For systemd services, Edge calls `sd_notify(READY=1)` on startup and `sd_notify(STOPPING=1)` on shutdown when the `SD_NOTIFY_SOCKET` environment variable is set.
 
 ```ini
 [Service]

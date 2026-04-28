@@ -1,14 +1,14 @@
-# swe-edge Architecture
+# Edge Architecture
 
 **Audience**: Developers, architects
 
 ## TLDR
 
-swe-edge is a five-workspace, library-level Rust dispatch stack. Each workspace is an independent SEA-compliant crate group (`api/` → `core/` → `saf/`). Consumer code imports only traits from `api/` and calls factories from `saf/` — no Axum, Tonic, or reqwest types cross the boundary. The transport is swappable without touching business logic.
+Edge is a five-workspace, library-level Rust dispatch stack. Each workspace is an independent SEA-compliant crate group (`api/` → `core/` → `saf/`). Consumer code imports only traits from `api/` and calls factories from `saf/` — no Axum, Tonic, or reqwest types cross the boundary. The transport is swappable without touching business logic.
 
 ## What
 
-swe-edge provides embeddable, production-grade HTTP/gRPC dispatch for Rust services without a sidecar process. It enforces the SEA (Structural Engineering Architecture) module contract at the type level across five peer workspaces: `ingress/`, `egress/`, `proxy/`, `domain/`, and `runtime/`.
+Edge provides embeddable, production-grade HTTP/gRPC dispatch for Rust services without a sidecar process. It enforces the SEA (Structural Engineering Architecture) module contract at the type level across five peer workspaces: `ingress/`, `egress/`, `proxy/`, `domain/`, and `runtime/`.
 
 ## Who
 
@@ -21,7 +21,7 @@ swe-edge provides embeddable, production-grade HTTP/gRPC dispatch for Rust servi
 
 ## Why
 
-Infrastructure proxies (Envoy, Traefik) require a sidecar process — unacceptable for embedded or resource-constrained deployments. Framework-coupled code (Axum types in domain logic, Tonic stubs in business code) is hard to test and impossible to transport-swap. swe-edge enforces the boundary at the type level so the transport is always behind the trait.
+Infrastructure proxies (Envoy, Traefik) require a sidecar process — unacceptable for embedded or resource-constrained deployments. Framework-coupled code (Axum types in domain logic, Tonic stubs in business code) is hard to test and impossible to transport-swap. Edge enforces the boundary at the type level so the transport is always behind the trait.
 
 ## How
 
