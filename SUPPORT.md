@@ -12,7 +12,7 @@
 
 Each workspace represents an independent SEA layer. Consumers only pull in the layers they need — a service that only serves HTTP inbound has no compile-time dependency on the egress or runtime workspaces.
 
-### Can I use swe-edge with an existing Axum or Tonic application?
+### Can I use Edge with an existing Axum or Tonic application?
 
 Yes. `AxumHttpServer` and `TonicGrpcServer` in `ingress/` wrap Axum and Tonic respectively. Your business logic implements the `HttpInbound` or `GrpcInbound` trait and remains decoupled from the framework.
 
