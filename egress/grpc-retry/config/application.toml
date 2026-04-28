@@ -1,0 +1,33 @@
+# SWE default gRPC retry policy.
+#
+# Calibrated for typical RPC traffic: a transient `Unavailable`
+# from a load-balancer hop or a brief `ResourceExhausted` from
+# a quota-throttled backend should clear within a few hundred
+# milliseconds.  The total budget is bounded by the caller's
+# per-call deadline (carried on `GrpcRequest::deadline`) — even
+# if `max_attempts` allows more tries, the retry loop stops
+# when the deadline is exhausted.
+
+# Maximum attempts per request (1 = no retry).  5 covers the
+# pathological case where an upstream is rolling deploys and
+# the load balancer hits a not-yet-ready replica twice in a row.
+max_attempts = 5
+
+# Delay before the first retry, in milliseconds.  100ms is short
+# enough that the caller barely notices a single retry but long
+# enough that we don't hammer a recovering upstream.
+initial_backoff_ms = 100
+
+# Exponential backoff base.  2.0 produces 100ms, 200ms, 400ms,
+# 800ms — the four backoffs spent across five attempts.
+backoff_multiplier = 2.0
+
+# Jitter as a fraction of the computed backoff.  0.1 = up to 10%
+# random delta.  Prevents the thundering-herd pattern where many
+# clients retry in lockstep after a shared upstream blip.
+jitter_factor = 0.1
+
+# Upper bound on any single retry backoff in milliseconds.
+# Prevents the geometric series from overrunning multi-second
+# deadlines on long-running calls.
+max_backoff_ms = 5000

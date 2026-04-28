@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["main", "http", "grpc", "database", "file", "notification", "payment",
+members = ["main", "http", "grpc", "grpc-retry", "grpc-breaker", "database", "file", "notification", "payment",
            "auth", "retry", "rate", "breaker", "cache", "cassette", "tls"]
 
 [workspace.package]
@@ -68,6 +68,10 @@ swe-edge-egress-breaker      = { path = "breaker" }
 swe-edge-egress-cache        = { path = "cache" }
 swe-edge-egress-cassette     = { path = "cassette" }
 swe-edge-egress-tls          = { path = "tls" }
+
+# Workspace-internal gRPC reliability crates
+swe-edge-egress-grpc-retry   = { path = "grpc-retry" }
+swe-edge-egress-grpc-breaker = { path = "grpc-breaker" }
 
 [workspace.lints.rust]
 unsafe_code  = "deny"
