@@ -109,7 +109,7 @@ cd runtime && cargo build && cargo test
 
 ## Documentation
 
-- [Market research & rationale](docs/0-research/rationale.md)
+- [Value proposition](docs/0-research/value_proposition.md)
 - [Crate naming conventions](docs/4-development/conventions/crate-naming.md)
 - [SEA audit reports](docs/6-operations/compliance/)
 
