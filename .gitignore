@@ -17,5 +17,8 @@
 # noise with no reproducibility value.
 **/docs/7-operations/compliance/structural_audit_report_*.json
 
+# mdBook build output
+/book/
+
 *.swp
 .DS_Store
