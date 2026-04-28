@@ -1,5 +1,7 @@
 //! Integration tests for the gRPC inbound domain.
 
+use std::time::Duration;
+
 use swe_edge_ingress_grpc::{
     GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode,
     GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcHealthCheck,
@@ -37,11 +39,7 @@ impl GrpcInbound for FailingGrpcHandler {
 #[tokio::test]
 async fn test_grpc_inbound_handle_unary_returns_response() {
     let handler = EchoGrpcHandler;
-    let req = GrpcRequest {
-        method: "pkg.Service/Method".into(),
-        body: vec![0x08, 0x01],
-        metadata: GrpcMetadata::default(),
-    };
+    let req = GrpcRequest::new("pkg.Service/Method", vec![0x08, 0x01], Duration::from_secs(5));
     let resp = handler.handle_unary(req).await.unwrap();
     assert!(!resp.body.is_empty());
 }
@@ -57,11 +55,7 @@ async fn test_grpc_inbound_health_check_returns_healthy() {
 #[tokio::test]
 async fn test_grpc_inbound_unavailable_returns_error() {
     let handler = FailingGrpcHandler;
-    let req = GrpcRequest {
-        method: "pkg.Service/Method".into(),
-        body: vec![],
-        metadata: GrpcMetadata::default(),
-    };
+    let req = GrpcRequest::new("pkg.Service/Method", vec![], Duration::from_secs(5));
     let result = handler.handle_unary(req).await;
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), GrpcInboundError::Unavailable(_)));
@@ -89,11 +83,7 @@ fn test_grpc_status_code_ok_equals_ok() {
 
 #[test]
 fn test_grpc_request_holds_method_and_body() {
-    let req = GrpcRequest {
-        method: "svc/Do".into(),
-        body: vec![1, 2, 3],
-        metadata: GrpcMetadata::default(),
-    };
+    let req = GrpcRequest::new("svc/Do", vec![1, 2, 3], Duration::from_secs(5));
     assert_eq!(req.method, "svc/Do");
     assert_eq!(req.body.len(), 3);
 }

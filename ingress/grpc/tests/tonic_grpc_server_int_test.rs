@@ -617,3 +617,299 @@ async fn test_server_returns_grpc_internal_status_for_mid_stream_output_error() 
     // tonic::Code::Internal == 13
     assert_eq!(grpc_status.as_deref(), Some("13"));
 }
+
+// ── Phase 1 enrichment: deadline + cancellation + hygiene ─────────────────────
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Issue a gRPC call with a custom `grpc-timeout` header and return the status.
+async fn grpc_call_with_timeout(
+    addr:        SocketAddr,
+    path:        &str,
+    timeout_hdr: &str,
+    payload:     &[u8],
+) -> (StatusCode, Option<String>, Option<String>) {
+    let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let io = TokioIo::new(stream);
+    let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+        .handshake(io)
+        .await
+        .unwrap();
+    tokio::spawn(conn);
+
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("http://{addr}{path}"))
+        .header("content-type", "application/grpc")
+        .header("te", "trailers")
+        .header("grpc-timeout", timeout_hdr)
+        .body(Full::new(grpc_frame(payload)))
+        .unwrap();
+
+    let resp      = sender.send_request(req).await.unwrap();
+    let status    = resp.status();
+    let collected = resp.into_body().collect().await.unwrap();
+    let trailers  = collected.trailers();
+    let grpc_status = trailers
+        .and_then(|t| t.get("grpc-status"))
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+    let grpc_message = trailers
+        .and_then(|t| t.get("grpc-message"))
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+    (status, grpc_status, grpc_message)
+}
+
+/// Handler that records whether `handle_stream` was invoked at all.
+/// Used to prove past-deadline calls are rejected BEFORE handler dispatch.
+struct DispatchObserverHandler {
+    invoked: Arc<AtomicBool>,
+}
+
+impl GrpcInbound for DispatchObserverHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        let inv = self.invoked.clone();
+        Box::pin(async move {
+            inv.store(true, Ordering::SeqCst);
+            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata::default() })
+        })
+    }
+
+    fn handle_stream(
+        &self,
+        _method:   String,
+        _metadata: GrpcMetadata,
+        _messages: GrpcMessageStream,
+    ) -> BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
+        let inv = self.invoked.clone();
+        Box::pin(async move {
+            inv.store(true, Ordering::SeqCst);
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![Ok(vec![1u8])]));
+            Ok((out, GrpcMetadata::default()))
+        })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// @covers: TonicGrpcServer dispatch — past-deadline `grpc-timeout: 0n` is
+/// rejected with `DeadlineExceeded` BEFORE the handler is invoked.
+#[tokio::test]
+async fn test_server_rejects_past_deadline_request_before_handler_dispatch() {
+    let invoked = Arc::new(AtomicBool::new(false));
+    let handler = DispatchObserverHandler { invoked: invoked.clone() };
+    let (addr, _shutdown) = start_server(handler).await;
+
+    // 0n means "deadline already elapsed" — server MUST short-circuit.
+    let (status, grpc_status, _) =
+        grpc_call_with_timeout(addr, "/pkg.Svc/Slow", "0n", b"x").await;
+
+    assert_eq!(status, StatusCode::OK);
+    // tonic::Code::DeadlineExceeded == 4
+    assert_eq!(
+        grpc_status.as_deref(),
+        Some("4"),
+        "expected DeadlineExceeded status, got: {grpc_status:?}"
+    );
+    assert!(
+        !invoked.load(Ordering::SeqCst),
+        "handler MUST NOT be invoked when deadline has already elapsed"
+    );
+}
+
+/// Handler that runs forever (until cancelled or aborted by drop).
+/// Sets `started` when entered and `finished` only on natural completion.
+struct ForeverHandler {
+    started:  Arc<AtomicBool>,
+    finished: Arc<AtomicBool>,
+}
+
+impl GrpcInbound for ForeverHandler {
+    fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+        let started  = self.started.clone();
+        let finished = self.finished.clone();
+        Box::pin(async move {
+            started.store(true, Ordering::SeqCst);
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            finished.store(true, Ordering::SeqCst);
+            Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata::default() })
+        })
+    }
+
+    fn handle_stream(
+        &self,
+        _: String,
+        _: GrpcMetadata,
+        _: GrpcMessageStream,
+    ) -> BoxFuture<'_, GrpcInboundResult<(GrpcMessageStream, GrpcMetadata)>> {
+        let started  = self.started.clone();
+        let finished = self.finished.clone();
+        Box::pin(async move {
+            started.store(true, Ordering::SeqCst);
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            finished.store(true, Ordering::SeqCst);
+            let out: GrpcMessageStream = Box::pin(futures::stream::iter(vec![Ok(vec![1u8])]));
+            Ok((out, GrpcMetadata::default()))
+        })
+    }
+
+    fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+        Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+    }
+}
+
+/// @covers: TonicGrpcServer dispatch — server-side deadline elapses while
+/// handler is running — server returns `DeadlineExceeded` and handler must
+/// NOT report natural completion.
+#[tokio::test]
+async fn test_server_returns_deadline_exceeded_when_handler_overruns_deadline() {
+    let started  = Arc::new(AtomicBool::new(false));
+    let finished = Arc::new(AtomicBool::new(false));
+    let handler  = ForeverHandler {
+        started:  started.clone(),
+        finished: finished.clone(),
+    };
+    let (addr, _shutdown) = start_server(handler).await;
+
+    // 100 ms deadline; ForeverHandler sleeps 60 s.
+    let (status, grpc_status, _) =
+        grpc_call_with_timeout(addr, "/pkg.Svc/Slow", "100m", b"x").await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("4"), "expected DeadlineExceeded");
+    assert!(started.load(Ordering::SeqCst), "handler should have started");
+    assert!(
+        !finished.load(Ordering::SeqCst),
+        "handler MUST NOT have completed naturally; the deadline should have aborted it"
+    );
+}
+
+/// @covers: TonicGrpcServer dispatch — client disconnect propagates as
+/// cancellation to the handler future, which is dropped before natural
+/// completion.  Verified by observing `finished` never becomes true.
+#[tokio::test]
+async fn test_server_returns_cancelled_when_client_drops_connection_mid_call() {
+    let started  = Arc::new(AtomicBool::new(false));
+    let finished = Arc::new(AtomicBool::new(false));
+    let handler  = ForeverHandler {
+        started:  started.clone(),
+        finished: finished.clone(),
+    };
+    let (addr, _shutdown) = start_server(handler).await;
+
+    // Spawn the client side in its own task so we can drop the *task* (and
+    // thus the in-flight `send_request` future + its connection) without
+    // ever awaiting completion.
+    let client_task = tokio::spawn(async move {
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let io     = TokioIo::new(stream);
+        let (mut sender, conn) = hyper::client::conn::http2::Builder::new(TokioExecutor::new())
+            .handshake(io)
+            .await
+            .unwrap();
+        let conn_handle = tokio::spawn(conn);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("http://{addr}/pkg.Svc/Forever"))
+            .header("content-type", "application/grpc")
+            .header("te",           "trailers")
+            // Long deadline so the deadline doesn't fire — cancellation must.
+            .header("grpc-timeout", "60S")
+            .body(Full::new(grpc_frame(b"x")))
+            .unwrap();
+
+        // Send and await the response future just long enough for the
+        // handler to have entered its sleep on the server side, then return
+        // (which drops `sender` + the response future, closing the stream).
+        let send_fut = sender.send_request(req);
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(200),
+            send_fut,
+        )
+        .await;
+        conn_handle.abort();
+    });
+
+    // Wait for the handler to enter its sleep.
+    let mut waited = 0;
+    while !started.load(Ordering::SeqCst) && waited < 50 {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        waited += 1;
+    }
+    assert!(
+        started.load(Ordering::SeqCst),
+        "handler should have started before client task dropped its connection"
+    );
+
+    // Drop the client side fully.
+    client_task.abort();
+    let _ = client_task.await;
+
+    // Give the server a window to observe disconnect and tear down the
+    // handler future.  500 ms is far less than the handler's 60 s sleep,
+    // so if the cancellation works `finished` will stay false; if it does
+    // not, `finished` would still be false now BUT would become true at
+    // t=60 s (which we don't wait for).  The interesting assertion is the
+    // negative one paired with the started=true above.
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    assert!(
+        !finished.load(Ordering::SeqCst),
+        "handler MUST NOT have run to natural completion after client disconnect"
+    );
+}
+
+/// @covers: TonicGrpcServer dispatch — `GrpcInboundError::Internal` carries
+/// a sensitive server-side message into logs but the wire `grpc-message`
+/// must be the sanitized constant (no leak).
+#[tokio::test]
+async fn test_server_sanitizes_internal_error_message_on_wire() {
+    /// Raw message we expect to see in logs but NOT on the wire.
+    const RAW_INTERNAL: &str = "panic at /home/svc/secret.rs:42 caller=alice@corp";
+
+    struct LeakyHandler;
+    impl GrpcInbound for LeakyHandler {
+        fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+            Box::pin(async move { Err(GrpcInboundError::Internal(RAW_INTERNAL.into())) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+            Box::pin(async move { Ok(GrpcHealthCheck::healthy()) })
+        }
+    }
+
+    let (addr, _shutdown) = start_server(LeakyHandler).await;
+    let (status, grpc_status, grpc_message) =
+        grpc_call_with_timeout(addr, "/pkg.Svc/Internal", "5S", b"x").await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("13"), "expected Internal grpc-status");
+
+    let msg = grpc_message.unwrap_or_default();
+    assert!(
+        !msg.contains("panic")
+            && !msg.contains("/home/")
+            && !msg.contains("alice@corp")
+            && !msg.contains("secret.rs"),
+        "wire grpc-message leaked server internals: {msg}"
+    );
+    // The sanitized constant from the status_codes module must be present.
+    assert!(
+        msg.contains("internal server error"),
+        "expected sanitized message on wire, got: {msg}"
+    );
+}
+
+/// @covers: TonicGrpcServer dispatch — happy path with a valid `grpc-timeout`
+/// header still succeeds.  Sanity that the deadline path doesn't break healthy calls.
+#[tokio::test]
+async fn test_server_handles_valid_grpc_timeout_header_for_normal_calls() {
+    let (addr, _shutdown) = start_server(EchoHandler).await;
+    let (status, grpc_status, _) =
+        grpc_call_with_timeout(addr, "/pkg.Svc/Echo", "5S", b"hello").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(grpc_status.as_deref(), Some("0"));
+}

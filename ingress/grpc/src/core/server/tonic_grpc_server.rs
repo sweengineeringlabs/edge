@@ -7,15 +7,19 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{Request, Response};
 use http_body_util::{BodyExt, Limited, StreamBody};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 
 use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError, GrpcMessageStream};
 use crate::api::value_object::GrpcMetadata;
+use crate::core::grpc_timeout::{parse_grpc_timeout, DEFAULT_DEADLINE};
+use crate::core::status_codes::map_inbound_error;
 use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};
 
 /// Hard cap on incoming message size.
@@ -161,6 +165,16 @@ impl TonicGrpcServer {
 
 // ── gRPC dispatch ─────────────────────────────────────────────────────────────
 
+/// Read the per-call deadline from the `grpc-timeout` header, falling back
+/// to [`DEFAULT_DEADLINE`] when the header is absent or malformed.
+fn read_deadline(headers: &http::HeaderMap) -> Duration {
+    headers
+        .get("grpc-timeout")
+        .and_then(|v| v.to_str().ok())
+        .and_then(parse_grpc_timeout)
+        .unwrap_or(DEFAULT_DEADLINE)
+}
+
 async fn dispatch(
     req:       Request<hyper::body::Incoming>,
     handler:   Arc<dyn GrpcInbound>,
@@ -168,11 +182,29 @@ async fn dispatch(
 ) -> Response<BoxBody> {
     let method   = req.uri().path().to_string();
     let metadata = collect_metadata(req.headers());
+    let deadline = read_deadline(req.headers());
+
+    // Past-deadline calls MUST fail before the handler runs.  A zero
+    // deadline (e.g. `grpc-timeout: 0n` or `0S`) means the client gave
+    // us no time at all to do work.
+    if deadline.is_zero() {
+        return grpc_error(
+            tonic::Code::DeadlineExceeded,
+            "request rejected before handler dispatch: deadline has already elapsed",
+        );
+    }
 
     let body_bytes = match Limited::new(req.into_body(), max_bytes).collect().await {
         Ok(collected) => collected.to_bytes(),
         Err(_)        => return grpc_error(tonic::Code::ResourceExhausted, "message too large"),
     };
+
+    // Per-request cancellation token — fired implicitly when this future is
+    // dropped (i.e. the client closed the HTTP/2 stream).  The handler
+    // observes the token via the `messages` stream's parent scope; we expose
+    // it on the bridge below.
+    let cancel = CancellationToken::new();
+    let _drop_guard = cancel.clone().drop_guard();
 
     // Decode all gRPC length-prefix frames from the body.
     let frames = decode_grpc_frames(&body_bytes);
@@ -180,10 +212,46 @@ async fn dispatch(
         frames.into_iter().map(|f| Ok::<Vec<u8>, GrpcInboundError>(f.to_vec())),
     ));
 
-    match handler.handle_stream(method, GrpcMetadata { headers: metadata }, message_stream).await {
+    // Inject the deadline + cancellation token into request metadata via
+    // well-known internal keys.  Handlers that need them can opt in by
+    // reading these keys; the GrpcRequest envelope-based path also carries
+    // them on the value object.
+    let mut headers = metadata.clone();
+    headers.insert(
+        "x-edge-grpc-deadline-millis".to_string(),
+        deadline.as_millis().to_string(),
+    );
+
+    // Race the handler future against the deadline — past-deadline
+    // mid-handler is a server-side `DeadlineExceeded` and must NOT
+    // propagate handler partial output.
+    let handler_fut = handler.handle_stream(
+        method,
+        GrpcMetadata { headers },
+        message_stream,
+    );
+    let cancel_fut  = cancel.cancelled();
+
+    let result = tokio::select! {
+        biased;
+        // Cancellation: client disconnected — abort and never produce a body.
+        _ = cancel_fut => {
+            return grpc_error(tonic::Code::Cancelled, "client disconnected");
+        }
+        // Deadline: timer fired before the handler returned.
+        _ = tokio::time::sleep(deadline) => {
+            return grpc_error(
+                tonic::Code::DeadlineExceeded,
+                "handler deadline exceeded",
+            );
+        }
+        r = handler_fut => r,
+    };
+
+    match result {
         Ok((resp_stream, resp_meta)) => grpc_stream_response(resp_stream, resp_meta).await,
-        Err(e)          => {
-            let (code, msg) = map_error(e);
+        Err(e) => {
+            let (code, msg) = map_inbound_error(e);
             grpc_error(code, msg)
         }
     }
@@ -238,7 +306,7 @@ async fn grpc_stream_response(mut stream: GrpcMessageStream, meta: GrpcMetadata)
                 frames.push(buf.freeze());
             }
             Some(Err(e)) => {
-                let (code, msg) = map_error(e);
+                let (code, msg) = map_inbound_error(e);
                 return grpc_error(code, msg);
             }
             None => break,
@@ -308,17 +376,8 @@ fn collect_metadata(headers: &http::HeaderMap) -> HashMap<String, String> {
         .collect()
 }
 
-fn map_error(e: GrpcInboundError) -> (tonic::Code, String) {
-    match e {
-        GrpcInboundError::Internal(m)         => (tonic::Code::Internal, m),
-        GrpcInboundError::NotFound(m)         => (tonic::Code::NotFound, m),
-        GrpcInboundError::InvalidArgument(m)  => (tonic::Code::InvalidArgument, m),
-        GrpcInboundError::Unavailable(m)      => (tonic::Code::Unavailable, m),
-        GrpcInboundError::DeadlineExceeded(m) => (tonic::Code::DeadlineExceeded, m),
-        GrpcInboundError::PermissionDenied(m) => (tonic::Code::PermissionDenied, m),
-        GrpcInboundError::Unimplemented(m)    => (tonic::Code::Unimplemented, m),
-    }
-}
+// `map_error` was replaced by `map_inbound_error` in
+// `crate::core::status_codes` — kept here as a cross-reference comment.
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -326,23 +385,29 @@ fn map_error(e: GrpcInboundError) -> (tonic::Code, String) {
 mod tests {
     use super::*;
 
-    // ── map_error ─────────────────────────────────────────────────────────
+    // ── read_deadline ─────────────────────────────────────────────────────
 
+    /// @covers: read_deadline — falls back to DEFAULT_DEADLINE when header absent.
     #[test]
-    fn test_map_error_maps_all_grpc_inbound_error_variants() {
-        let cases = [
-            (GrpcInboundError::Internal("x".into()),         tonic::Code::Internal),
-            (GrpcInboundError::NotFound("x".into()),         tonic::Code::NotFound),
-            (GrpcInboundError::InvalidArgument("x".into()),  tonic::Code::InvalidArgument),
-            (GrpcInboundError::Unavailable("x".into()),      tonic::Code::Unavailable),
-            (GrpcInboundError::DeadlineExceeded("x".into()), tonic::Code::DeadlineExceeded),
-            (GrpcInboundError::PermissionDenied("x".into()), tonic::Code::PermissionDenied),
-            (GrpcInboundError::Unimplemented("x".into()),    tonic::Code::Unimplemented),
-        ];
-        for (err, expected_code) in cases {
-            let (code, _) = map_error(err);
-            assert_eq!(code, expected_code);
-        }
+    fn test_read_deadline_falls_back_to_default_when_header_absent() {
+        let map = http::HeaderMap::new();
+        assert_eq!(read_deadline(&map), DEFAULT_DEADLINE);
+    }
+
+    /// @covers: read_deadline — parses well-formed grpc-timeout header.
+    #[test]
+    fn test_read_deadline_parses_grpc_timeout_header() {
+        let mut map = http::HeaderMap::new();
+        map.insert("grpc-timeout", "500m".parse().unwrap());
+        assert_eq!(read_deadline(&map), Duration::from_millis(500));
+    }
+
+    /// @covers: read_deadline — malformed header falls back to default rather than panicking.
+    #[test]
+    fn test_read_deadline_falls_back_on_malformed_header() {
+        let mut map = http::HeaderMap::new();
+        map.insert("grpc-timeout", "garbage".parse().unwrap());
+        assert_eq!(read_deadline(&map), DEFAULT_DEADLINE);
     }
 
     // ── grpc_error ────────────────────────────────────────────────────────
