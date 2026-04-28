@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in swe-edge, please report it responsibly.
+If you discover a security vulnerability in Edge, please report it responsibly.
 
 1. Do not open a public issue
 2. Email the maintainers with a description of the vulnerability

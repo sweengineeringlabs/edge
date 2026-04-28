@@ -1,4 +1,4 @@
-# swe-edge
+# Edge
 
 [![Release](https://github.com/sweengineeringlabs/edge/actions/workflows/release.yml/badge.svg)](https://github.com/sweengineeringlabs/edge/actions/workflows/release.yml)
 
@@ -7,7 +7,7 @@ Enforces the SEA (Structural Engineering Architecture) module contract at the ty
 
 ## Overview
 
-swe-edge is a set of five independent Rust workspaces that sit between your transport layer and your business logic:
+Edge is a set of five independent Rust workspaces that sit between your transport layer and your business logic:
 
 | Workspace | Crate prefix | Role |
 |-----------|-------------|------|
