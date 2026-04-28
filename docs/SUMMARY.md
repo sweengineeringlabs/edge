@@ -6,7 +6,7 @@
 
 # Research
 
-- [Rationale](0-research/rationale.md)
+- [Value Proposition](0-research/value_proposition.md)
 
 # Architecture
 

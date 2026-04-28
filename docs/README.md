@@ -18,7 +18,7 @@ Edge enforces the SEA (Structural Engineering Architecture) module contract at t
 
 ## Quick Links
 
-- [Rationale](0-research/rationale.md) — why Edge exists
+- [Value Proposition](0-research/value_proposition.md) — why Edge exists
 - [Architecture](3-architecture/architecture.md) — diagrams and layer model
 - [Developer Guide](4-development/developer_guide.md) — build, extend, contribute
 - [Testing Strategy](5-testing/testing_strategy.md) — test categories and conventions
