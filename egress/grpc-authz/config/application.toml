@@ -1,0 +1,9 @@
+# Default authz policy — deny everything until consumers add an
+# explicit allow.  The wildcard subject `"*"` matches any
+# authenticated caller (still requires authn upstream).
+#
+# [by_subject]
+# alice = ["/svc/Read", "/svc/Write"]
+# bob   = []                            # any method
+# "*"   = ["/grpc.health.v1.Health/Check"]
+[by_subject]

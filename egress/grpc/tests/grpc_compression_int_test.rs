@@ -16,6 +16,16 @@ use swe_edge_egress_grpc::{
     CompressionMode, GrpcOutbound, GrpcRequest, TonicGrpcClient,
 };
 
+/// Install rustls's aws-lc-rs CryptoProvider exactly once per process.
+/// See `grpc_outbound_int_test::ensure_rustls_provider` for context.
+fn ensure_rustls_provider() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    });
+}
+
 fn encode_frame(payload: &[u8]) -> Bytes {
     let mut buf = BytesMut::with_capacity(5 + payload.len());
     buf.put_u8(0x00);
@@ -26,6 +36,7 @@ fn encode_frame(payload: &[u8]) -> Bytes {
 
 #[tokio::test]
 async fn tonic_grpc_client_struct_advertises_grpc_encoding_when_gzip_set_int_test() {
+    ensure_rustls_provider();
     let recorded: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
@@ -80,6 +91,7 @@ async fn tonic_grpc_client_struct_advertises_grpc_encoding_when_gzip_set_int_tes
 
 #[tokio::test]
 async fn tonic_grpc_client_struct_does_not_set_grpc_encoding_when_none_int_test() {
+    ensure_rustls_provider();
     let recorded: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();

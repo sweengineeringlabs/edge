@@ -1,0 +1,30 @@
+[package]
+name = "swe-edge-egress-grpc-authz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Authorization GrpcInboundInterceptor — runs a pluggable AuthzPolicy on identity carried in GrpcMetadata"
+keywords = ["grpc", "authz", "rbac", "interceptor", "swe"]
+categories = ["network-programming", "authentication"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "processor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+swe-edge-ingress-grpc = { path = "../../ingress/grpc" }
+thiserror   = { workspace = true }
+async-trait = { workspace = true }
+futures     = { workspace = true }
+serde       = { workspace = true }
+toml        = { workspace = true }
+tracing     = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
