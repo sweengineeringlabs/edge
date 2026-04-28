@@ -1,6 +1,6 @@
-# Contributing to swe-edge
+# Contributing to Edge
 
-Thank you for your interest in contributing to swe-edge.
+Thank you for your interest in contributing to Edge.
 
 ## Getting Started
 

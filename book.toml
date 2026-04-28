@@ -1,6 +1,6 @@
 [book]
-title       = "swe-edge"
-authors     = ["swe-edge contributors"]
+title       = "Edge"
+authors     = ["Edge contributors"]
 language    = "en"
 src         = "docs"
 description = "Embeddable, library-level HTTP/gRPC dispatch stack for Rust services."
