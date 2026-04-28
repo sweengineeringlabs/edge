@@ -1,0 +1,7 @@
+# SEA feature crate configuration (L2)
+
+[package.metadata.struct-engine]
+application_type = "lib"
+
+[whitelist]
+allow = ["scripts"]
