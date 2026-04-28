@@ -1,4 +1,4 @@
-# swe-edge Testing Strategy
+# Edge Testing Strategy
 
 **Audience**: Developers, contributors
 

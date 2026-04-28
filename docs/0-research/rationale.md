@@ -1,4 +1,4 @@
-# swe-edge — Market Research & Rationale
+# Edge — Market Research & Rationale
 
 ## What exists
 
@@ -24,9 +24,9 @@ Tower gives you a composable `Service` abstraction but no architectural contract
 
 The result: applications import Axum types into domain code, Tonic-generated stubs into business logic, and end up with framework-coupled application code that is hard to test without spinning up a real server.
 
-## What swe-edge provides
+## What Edge provides
 
-swe-edge is an **embeddable, library-level dispatch stack** that enforces the SEA (Structural Engineering Architecture) module contract at the type level:
+Edge is an **embeddable, library-level dispatch stack** that enforces the SEA (Structural Engineering Architecture) module contract at the type level:
 
 - **Ingress ports** (`swe-edge-ingress`) — `HttpInbound`, `GrpcInbound`, `FileInbound` traits with no framework types leaking into the API surface. Concrete servers (Axum, Tonic) live in `core/` behind `saf/` factories.
 - **Egress ports** (`swe-edge-egress`) — `HttpOutbound`, `GrpcOutbound`, `DatabaseGateway`, `NotificationSender`, `PaymentGateway` traits. Middleware (auth, retry, rate, breaker, cache, TLS) composes via `reqwest-middleware` and is assembled by `DefaultHttpOutbound`.

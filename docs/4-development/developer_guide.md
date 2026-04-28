@@ -1,10 +1,10 @@
-# swe-edge Developer Guide
+# Edge Developer Guide
 
 **Audience**: Developers, contributors
 
 ## What
 
-Guide for developing and extending swe-edge — an embeddable, library-level HTTP/gRPC dispatch stack for Rust services enforcing the SEA module contract.
+Guide for developing and extending Edge — an embeddable, library-level HTTP/gRPC dispatch stack for Rust services enforcing the SEA module contract.
 
 ## Why
 
