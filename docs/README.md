@@ -1,10 +1,10 @@
-# swe-edge
+# Edge
 
 **Audience**: Developers, architects
 
 Embeddable, library-level HTTP/gRPC dispatch stack for Rust services.
 
-swe-edge enforces the SEA (Structural Engineering Architecture) module contract at the type level — no sidecar process, no framework lock-in. Consumer code imports only traits from `api/` and calls factories from `saf/`. The transport is always behind the trait and swappable without touching business logic.
+Edge enforces the SEA (Structural Engineering Architecture) module contract at the type level — no sidecar process, no framework lock-in. Consumer code imports only traits from `api/` and calls factories from `saf/`. The transport is always behind the trait and swappable without touching business logic.
 
 ## Workspaces
 
@@ -18,7 +18,7 @@ swe-edge enforces the SEA (Structural Engineering Architecture) module contract 
 
 ## Quick Links
 
-- [Rationale](0-research/rationale.md) — why swe-edge exists
+- [Rationale](0-research/rationale.md) — why Edge exists
 - [Architecture](3-architecture/architecture.md) — diagrams and layer model
 - [Developer Guide](4-development/developer_guide.md) — build, extend, contribute
 - [Testing Strategy](5-testing/testing_strategy.md) — test categories and conventions
