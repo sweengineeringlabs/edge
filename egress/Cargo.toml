@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["main", "http", "grpc", "database", "file", "notification", "payment",
-           "auth", "retry", "rate", "breaker", "cache", "cassette", "tls"]
+           "auth", "retry", "rate", "breaker", "cache", "cassette", "tls",
+           "grpc-auth-mtls"]
 
 [workspace.package]
 version      = "0.1.0"
@@ -68,6 +69,15 @@ swe-edge-egress-breaker      = { path = "breaker" }
 swe-edge-egress-cache        = { path = "cache" }
 swe-edge-egress-cassette     = { path = "cassette" }
 swe-edge-egress-tls          = { path = "tls" }
+
+# gRPC interceptor crates (Phase 2 — issue #5).  Each ships a
+# GrpcInboundInterceptor (or symmetric Inbound + Outbound for
+# bearer) that the consumer plugs into the server / client chain.
+# Cross-workspace path-dep on `swe-edge-ingress-grpc` for the
+# inbound trait — declared per-crate, not in workspace.dependencies.
+swe-edge-egress-grpc-auth-mtls   = { path = "grpc-auth-mtls" }
+swe-edge-egress-grpc-auth-bearer = { path = "grpc-auth-bearer" }
+swe-edge-egress-grpc-authz       = { path = "grpc-authz" }
 
 [workspace.lints.rust]
 unsafe_code  = "deny"
