@@ -1,0 +1,15 @@
+[book]
+title       = "swe-edge"
+authors     = ["swe-edge contributors"]
+language    = "en"
+src         = "docs"
+description = "Embeddable, library-level HTTP/gRPC dispatch stack for Rust services."
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+git-repository-url    = "https://github.com/sweengineeringlabs/edge"
+git-repository-icon   = "fa-github"
+edit-url-template     = "https://github.com/sweengineeringlabs/edge/edit/main/docs/{path}"
+additional-js         = ["mermaid.min.js", "mermaid-init.js"]
