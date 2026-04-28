@@ -2,7 +2,7 @@
 resolver = "2"
 members = ["main", "http", "grpc", "database", "file", "notification", "payment",
            "auth", "retry", "rate", "breaker", "cache", "cassette", "tls",
-           "grpc-auth-mtls"]
+           "grpc-auth-mtls", "grpc-auth-bearer"]
 
 [workspace.package]
 version      = "0.1.0"
