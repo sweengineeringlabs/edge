@@ -138,7 +138,9 @@ async fn plaintext_to_tls_required_server_fails_before_handler_runs_int_test() {
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server = TonicGrpcServer::new("127.0.0.1:0", handler).with_tls(tls_cfg);
+    let server = TonicGrpcServer::new("127.0.0.1:0", handler)
+        .with_tls(tls_cfg)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server
@@ -206,7 +208,8 @@ async fn tonic_grpc_server_struct_advertises_grpc_accept_encoding_when_gzip_set_
     let addr     = listener.local_addr().unwrap();
     let hit      = Arc::new(AtomicBool::new(false));
     let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(RecordingHandler { hit: hit.clone() }))
-        .with_compression(CompressionMode::Gzip);
+        .with_compression(CompressionMode::Gzip)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server

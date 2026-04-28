@@ -70,7 +70,8 @@ async fn start_server_with_dispatcher(
 ) -> (SocketAddr, oneshot::Sender<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(dispatcher));
+    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(dispatcher))
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server
