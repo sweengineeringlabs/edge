@@ -11,10 +11,12 @@
 # Architecture
 
 - [Architecture](3-architecture/architecture.md)
+- [Compliance Checklist](3-architecture/compliance/compliance_checklist.md)
 
 # Development
 
 - [Developer Guide](4-development/developer_guide.md)
+- [Setup Guide](4-development/setup_guide.md)
 - [Crate Naming](4-development/conventions/crate-naming.md)
 
 # Testing
