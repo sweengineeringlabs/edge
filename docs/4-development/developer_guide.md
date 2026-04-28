@@ -12,6 +12,14 @@ Contributors need a clear entry point to understand the multi-workspace build pr
 
 ## How
 
+### Development Workflow
+
+1. **Branch** from `dev` using `feature/<short-description>`
+2. **Implement** changes in the appropriate layer (see [Architecture](../3-architecture/architecture.md)) — traits in `api/`, impls in `core/`, factories in `saf/`
+3. **Test** with `cargo test` from within the workspace directory
+4. **Lint** with `cargo clippy -- -D warnings` and `cargo fmt --check`
+5. **Submit** a pull request targeting `dev`
+
 ### Build & Test
 
 swe-edge has five independent Rust workspaces. There is no root `Cargo.toml`. Build and test each workspace separately:
@@ -152,6 +160,27 @@ missing_docs = "warn"
 
 Zero clippy warnings is the CI bar. Run `cargo clippy -- -D warnings` before every commit.
 
+### Error Handling
+
+- Define error variants in `src/api/error.rs` within the relevant crate; use `thiserror`
+- Return `Result<T, DomainError>` from all fallible functions — no `.unwrap()` outside tests
+- Errors never cross workspace boundaries raw; the transport layer maps them to HTTP/gRPC status codes
+- Example for a new port trait:
+
+```rust
+// src/api/error.rs
+#[derive(Debug, thiserror::Error)]
+pub enum MyInboundError {
+    #[error("bind failed on {addr}: {source}")]
+    BindFailed { addr: String, #[source] source: std::io::Error },
+    #[error("service unavailable: {0}")]
+    ServiceUnavailable(String),
+}
+
+// In the factory (saf/), map to HTTP status in the Axum handler:
+// MyInboundError::ServiceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE
+```
+
 ### Feature Flags (Egress)
 
 All egress backends are opt-in via feature flags:
@@ -174,3 +203,12 @@ Enable only what you need:
 ```toml
 swe-edge-egress-database = { git = "...", features = ["postgres"] }
 ```
+
+---
+
+## See Also
+
+- [Setup Guide](setup_guide.md)
+- [Architecture](../3-architecture/architecture.md)
+- [Testing Strategy](../5-testing/testing_strategy.md)
+- [Deployment Guide](../6-operations/deployment_guide.md)

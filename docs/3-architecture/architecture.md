@@ -2,6 +2,17 @@
 
 **Audience**: Developers, architects
 
+## Stakeholders & Concerns
+
+> Per ISO/IEC/IEEE 42010:2022
+
+| Stakeholder | Concerns |
+|-------------|----------|
+| Application developers | Port trait stability, factory API ergonomics, no framework lock-in |
+| Library authors | Composable middleware, trait-only public surface, SEA contract |
+| Platform engineers | Graceful shutdown, systemd notify, health checks, observability |
+| Architects | Layer separation, dependency direction, cross-workspace boundaries |
+
 ## TLDR
 
 Edge is a five-workspace, library-level Rust dispatch stack. Each workspace is an independent SEA-compliant crate group (`api/` → `core/` → `saf/`). Consumer code imports only traits from `api/` and calls factories from `saf/` — no Axum, Tonic, or reqwest types cross the boundary. The transport is swappable without touching business logic.
@@ -309,3 +320,71 @@ Upstream
 ```
 
 Policy for every middleware is loaded from TOML config — never hardcoded in Rust.
+
+---
+
+## Architectural Viewpoints
+
+| Viewpoint | Diagram | Key Concern |
+|-----------|---------|-------------|
+| Structural | Block Diagram | Workspace boundaries and layer ownership |
+| Behavioral | Dataflow Diagram | Request path through ingress → domain → egress |
+| Interaction | Sequence Diagrams (HTTP, gRPC) | Protocol-level contract between components |
+| Deployment | Workspace Structure | Independent compilation units, no root workspace |
+
+---
+
+## Cross-Cutting Concerns
+
+### Security
+
+- Secrets are never stored as Rust literals; config reads from environment variables at runtime
+- `#![deny(unsafe_code)]` is enforced at the workspace level across all five workspaces
+- mTLS is available for both ingress (`swe-edge-ingress-tls`) and egress (`swe-edge-egress-tls`)
+- Error messages do not expose internal details to callers; `HttpInboundError` maps to HTTP status codes
+
+### Error Handling
+
+- Every fallible function returns `Result<T, DomainError>` — no panics in library code
+- Each workspace defines its own error enum in `src/api/error.rs`; errors never cross workspace boundaries raw
+- The `?` operator propagates errors up to the transport layer, which maps them to HTTP/gRPC status codes
+
+### Performance
+
+- All server and client implementations are async via Tokio; no blocking I/O on the runtime thread pool
+- `DefaultHttpOutbound` assembles the middleware stack once at construction time (zero overhead per request)
+- Port-0 integration tests measure real connection latency; no simulated delays
+
+---
+
+## Key Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| No root Cargo workspace | Five independent peer workspaces | Consumers add only the crates they need; no forced transitive compile of unused transport layers |
+| `saf/` as sole public surface | Factory returns `impl Trait`; core types `pub(crate)` | Consumers never name concrete structs; transports are swappable without API break |
+| TOML-only middleware policy | Config loaded at startup; no Rust literals | Policy changes without recompile; same binary ships to all environments |
+| No mocking framework | Stub implementations in test files | Integration tests use real listeners (port 0); unit tests use direct struct construction |
+| reqwest-middleware for egress | Composable middleware stack | Each middleware crate is independent; stack assembled at `DefaultHttpOutbound` construction |
+
+---
+
+## Integration Points
+
+| System | Integration | Notes |
+|--------|-------------|-------|
+| Axum | `AxumHttpServer` wraps Axum router | Transport lives in `core/`; never exposed to consumers |
+| Tonic | `TonicGrpcServer` / `TonicGrpcClient` | gRPC over h2c; metadata propagation via `GrpcRequest` |
+| reqwest-middleware | `DefaultHttpOutbound` middleware stack | All seven egress middleware crates implement `reqwest_middleware::Middleware` |
+| systemd | `sd_notify(READY=1)` / `sd_notify(STOPPING=1)` | Activated when `SD_NOTIFY_SOCKET` env var is set |
+| Tokio | Async runtime throughout | All port trait methods return `BoxFuture`; all tests use `#[tokio::test]` |
+
+---
+
+## Related Documents
+
+- [Developer Guide](../4-development/developer_guide.md)
+- [Setup Guide](../4-development/setup_guide.md)
+- [Testing Strategy](../5-testing/testing_strategy.md)
+- [Deployment Guide](../6-operations/deployment_guide.md)
+- [Compliance Checklist](compliance/compliance_checklist.md)
