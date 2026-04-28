@@ -1,5 +1,6 @@
 //! SAF layer — gRPC inbound public facade.
 
+pub use crate::api::handler_adapter::{DecodeFn, EncodeFn, GrpcHandlerAdapter};
 pub use crate::api::interceptor::{GrpcInboundInterceptor, GrpcInboundInterceptorChain};
 pub use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError, GrpcInboundResult, GrpcHealthCheck, GrpcMessageStream};
 pub use crate::api::value_object::{
@@ -9,6 +10,11 @@ pub use crate::api::value_object::{
     PEER_SAN_DNS, PEER_SAN_URI, RESERVED_PEER_PREFIXES,
 };
 pub use crate::core::grpc_timeout::{parse_grpc_timeout, DEFAULT_DEADLINE};
+pub use crate::core::handler_dispatch::HandlerRegistryDispatcher;
+pub use crate::core::health_service::{
+    HealthAggregate, HealthService, ServingStatus, HEALTH_CHECK_METHOD, HEALTH_WATCH_METHOD,
+    WATCH_CHANNEL_CAPACITY,
+};
 pub use crate::core::interceptor::{
     TraceContextInterceptor, EXTRACTED_TRACEPARENT, EXTRACTED_TRACESTATE, TRACEPARENT, TRACESTATE,
 };
