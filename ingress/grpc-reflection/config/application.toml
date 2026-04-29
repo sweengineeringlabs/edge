@@ -1,0 +1,11 @@
+# swe-edge-ingress-grpc-reflection — application defaults.
+#
+# The reflection service has no runtime config of its own.  The
+# enable/disable knob lives on the Phase 2 GrpcServerConfig:
+#
+#   [server]
+#   enable_reflection = false   # default; flip to true for debugging
+#
+# This file is shipped to satisfy the per-crate scaffolding contract
+# (every feature crate carries config/application.toml).  Add real
+# defaults here only if a future field needs them.

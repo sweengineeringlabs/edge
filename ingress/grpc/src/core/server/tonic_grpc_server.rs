@@ -36,6 +36,16 @@ pub const MISSING_AUTHORIZATION_INTERCEPTOR_MSG: &str =
      without authz, set `allow_unauthenticated = true` in \
      GrpcServerConfig (logged at startup as a warning).";
 
+/// Diagnostic message emitted at startup when `enable_reflection` is `true`.
+///
+/// Reflection lets any caller reaching the endpoint enumerate every
+/// registered service/method and download FileDescriptorProto bytes.
+/// Logged unconditionally as a WARN so the operational decision is
+/// observable in deployment logs.
+pub const REFLECTION_ENABLED_WARN_MSG: &str =
+    "gRPC reflection enabled — exposes service surface to anyone reaching this endpoint. \
+     Disable in production deployments.";
+
 /// Hard cap on incoming message size.
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
 
@@ -85,6 +95,7 @@ pub struct TonicGrpcServer {
     compression:            CompressionMode,
     allow_unauthenticated:  bool,
     audit_sink:             Arc<dyn AuditSink>,
+    enable_reflection:      bool,
 }
 
 impl TonicGrpcServer {
@@ -105,6 +116,7 @@ impl TonicGrpcServer {
             compression:            CompressionMode::None,
             allow_unauthenticated:  false,
             audit_sink:             Arc::new(NoopAuditSink),
+            enable_reflection:      false,
         }
     }
 
@@ -132,7 +144,24 @@ impl TonicGrpcServer {
             compression:            config.compression,
             allow_unauthenticated:  config.allow_unauthenticated,
             audit_sink:             Arc::new(NoopAuditSink),
+            enable_reflection:      config.enable_reflection,
         })
+    }
+
+    /// Mirror of [`GrpcServerConfig::enable_reflection`] for builders
+    /// that constructed the server via [`Self::new`].  Setting this
+    /// flag does **not** register a reflection service — wiring code
+    /// reads the flag and adds [`swe-edge-ingress-grpc-reflection`]'s
+    /// `ReflectionService` to the dispatcher when it is `true`.
+    /// The startup WARN is emitted unconditionally on the bind path.
+    pub fn enable_reflection(mut self, enable: bool) -> Self {
+        self.enable_reflection = enable;
+        self
+    }
+
+    /// Read whether reflection has been opted in for this server.
+    pub fn is_reflection_enabled(&self) -> bool {
+        self.enable_reflection
     }
 
     /// Replace the audit sink — defaults to [`NoopAuditSink`].  The
@@ -259,6 +288,10 @@ impl TonicGrpcServer {
 
         if tls_acceptor.is_none() {
             tracing::info!(bind = %bind_addr, "gRPC server listening");
+        }
+
+        if self.enable_reflection {
+            tracing::warn!("{REFLECTION_ENABLED_WARN_MSG}");
         }
 
         let handler                = self.handler.clone();
@@ -954,5 +987,31 @@ mod tests {
         let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
             .allow_unauthenticated(true);
         assert!(server.allow_unauthenticated);
+    }
+
+    /// @covers: TonicGrpcServer::new — reflection flag is off by default.
+    #[test]
+    fn test_new_disables_reflection_flag_by_default() {
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler));
+        assert!(!server.is_reflection_enabled());
+    }
+
+    /// @covers: TonicGrpcServer::enable_reflection — sets the flag.
+    #[test]
+    fn test_enable_reflection_builder_flips_the_flag() {
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
+            .enable_reflection(true);
+        assert!(server.is_reflection_enabled());
+    }
+
+    /// @covers: TonicGrpcServer::from_config — propagates enable_reflection from config.
+    #[test]
+    fn test_from_config_propagates_enable_reflection_from_config() {
+        let cfg = GrpcServerConfig::new("127.0.0.1:0".parse().unwrap())
+            .allow_plaintext()
+            .enable_reflection();
+        let server = TonicGrpcServer::from_config(&cfg, Arc::new(DummyHandler))
+            .expect("config valid");
+        assert!(server.is_reflection_enabled());
     }
 }
