@@ -1,0 +1,25 @@
+# SWE default gRPC circuit-breaker policy.
+#
+# Trips after 5 consecutive `Unavailable`/`Internal` outcomes,
+# probes every 30 seconds, closes after a single probe success.
+# Conservative enough not to flip-flop under one-off lb hiccups;
+# aggressive enough to shed traffic from a legitimately-down
+# upstream within seconds.
+
+# Consecutive failure count that trips the breaker open.
+# Counts only `Unavailable` and `Internal` results (transport-
+# level transients + server bugs).  `ResourceExhausted` is NOT
+# a breaker failure — it's a rate-limit signal that the retry
+# layer handles with a longer backoff.  `Unauthenticated` /
+# `PermissionDenied` are NOT breaker failures either — the
+# upstream is healthy; the credential is wrong.
+failure_threshold = 5
+
+# Seconds to wait after opening before allowing a probe.
+cool_down_seconds = 30
+
+# Number of probe successes required in HalfOpen to close.
+# 1 is the standard choice — a single probe success is a
+# strong-enough signal that the upstream recovered; demanding
+# more just delays restoration.
+half_open_probe_count = 1

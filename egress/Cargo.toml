@@ -1,8 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["main", "http", "grpc", "database", "file", "notification", "payment",
-           "auth", "retry", "rate", "breaker", "cache", "cassette", "tls",
-           "grpc-auth-mtls", "grpc-auth-bearer", "grpc-authz"]
+members = ["main", "http", "grpc", "grpc-retry", "grpc-breaker",
+           "grpc-auth-mtls", "grpc-auth-bearer", "grpc-authz",
+           "database", "file", "notification", "payment",
+           "auth", "retry", "rate", "breaker", "cache", "cassette", "tls"]
 
 [workspace.package]
 version      = "0.1.0"
@@ -70,6 +71,7 @@ swe-edge-egress-cache        = { path = "cache" }
 swe-edge-egress-cassette     = { path = "cassette" }
 swe-edge-egress-tls          = { path = "tls" }
 
+<<<<<<< HEAD
 # gRPC interceptor crates (Phase 2 — issue #5).  Each ships a
 # GrpcInboundInterceptor (or symmetric Inbound + Outbound for
 # bearer) that the consumer plugs into the server / client chain.
@@ -78,6 +80,11 @@ swe-edge-egress-tls          = { path = "tls" }
 swe-edge-egress-grpc-auth-mtls   = { path = "grpc-auth-mtls" }
 swe-edge-egress-grpc-auth-bearer = { path = "grpc-auth-bearer" }
 swe-edge-egress-grpc-authz       = { path = "grpc-authz" }
+=======
+# Workspace-internal gRPC reliability crates
+swe-edge-egress-grpc-retry   = { path = "grpc-retry" }
+swe-edge-egress-grpc-breaker = { path = "grpc-breaker" }
+>>>>>>> origin/dev
 
 [workspace.lints.rust]
 unsafe_code  = "deny"
