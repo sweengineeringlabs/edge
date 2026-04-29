@@ -1,0 +1,23 @@
+# Bearer interceptor defaults — placeholder values only.  Real
+# deployments MUST override `secret` and the `expected_*` claims.
+#
+# Outbound config (used when minting tokens):
+[outbound]
+issuer            = "swe-edge"
+audience          = "swe-edge"
+subject           = "swe-edge-client"
+lifetime_seconds  = 300
+
+[outbound.secret]
+kind   = "hs256"
+secret = []  # 32+ bytes recommended; populated by env injection at deploy time
+
+# Inbound config (used when validating tokens):
+[inbound]
+expected_issuer   = "swe-edge"
+expected_audience = "swe-edge"
+leeway_seconds    = 5
+
+[inbound.secret]
+kind   = "hs256"
+secret = []

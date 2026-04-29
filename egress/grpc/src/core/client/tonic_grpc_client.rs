@@ -9,8 +9,12 @@ use http_body_util::{BodyExt as _, Full};
 use hyper_util::client::legacy::connect::HttpConnector;
 use tokio_util::sync::CancellationToken;
 
+use crate::api::interceptor::GrpcOutboundInterceptorChain;
 use crate::api::port::{GrpcMessageStream, GrpcOutbound, GrpcOutboundError, GrpcOutboundResult};
-use crate::api::value_object::{GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode};
+use crate::api::value_object::{
+    CompressionMode, GrpcChannelConfig, GrpcMetadata, GrpcRequest, GrpcResponse, GrpcStatusCode,
+    DEFAULT_MAX_MESSAGE_BYTES,
+};
 use crate::core::status_codes::from_wire;
 
 /// Hyper HTTP/2 client type alias.
@@ -39,6 +43,21 @@ pub struct TonicGrpcClient {
     /// Fallback timeout used by [`call_stream`] and [`health_check`] only.
     /// Per-request unary calls use the deadline carried on `GrpcRequest`.
     timeout:  Duration,
+    /// Outbound interceptor chain.  First failure short-circuits.
+    interceptors: GrpcOutboundInterceptorChain,
+    /// Cap on a single response message.  Oversize ⇒ `ResourceExhausted`.
+    max_message_bytes: usize,
+    /// Negotiated compression mode.
+    compression: CompressionMode,
+}
+
+/// Error returned by [`TonicGrpcClient::from_config`] when the supplied
+/// channel configuration violates a fail-closed invariant.
+#[derive(Debug, thiserror::Error)]
+pub enum GrpcChannelConfigError {
+    /// `tls_required` is set but the endpoint scheme is plaintext.
+    #[error("plaintext endpoint '{0}' rejected — tls_required is set; use .allow_plaintext() to opt out")]
+    PlaintextRejected(String),
 }
 
 // ── internal helpers ─────────────────────────────────────────────────────────
@@ -210,8 +229,56 @@ impl TonicGrpcClient {
             hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
                 .http2_only(true)
                 .build(connector);
-        Self { base_uri: base_uri.into(), client, timeout }
+        Self {
+            base_uri: base_uri.into(),
+            client,
+            timeout,
+            interceptors:      GrpcOutboundInterceptorChain::new(),
+            max_message_bytes: DEFAULT_MAX_MESSAGE_BYTES,
+            compression:       CompressionMode::None,
+        }
     }
+
+    /// Construct a client from a [`GrpcChannelConfig`].
+    ///
+    /// **Fail-closed**: if `config.tls_required` is `true` and the
+    /// endpoint URL has an `http://` scheme, returns
+    /// [`GrpcChannelConfigError::PlaintextRejected`] before any
+    /// transport setup.
+    pub fn from_config(
+        config: &GrpcChannelConfig,
+    ) -> Result<Self, GrpcChannelConfigError> {
+        if config.tls_required && is_plaintext_endpoint(&config.endpoint) {
+            return Err(GrpcChannelConfigError::PlaintextRejected(config.endpoint.clone()));
+        }
+        let mut client = Self::new(&config.endpoint);
+        client.max_message_bytes = config.max_message_bytes;
+        client.compression       = config.compression;
+        Ok(client)
+    }
+
+    /// Attach an interceptor chain to the client.  Replaces any previous chain.
+    pub fn with_interceptors(mut self, chain: GrpcOutboundInterceptorChain) -> Self {
+        self.interceptors = chain;
+        self
+    }
+
+    /// Override the max-message-bytes cap.
+    pub fn with_max_message_bytes(mut self, bytes: usize) -> Self {
+        self.max_message_bytes = bytes;
+        self
+    }
+
+    /// Override the compression mode.
+    pub fn with_compression(mut self, mode: CompressionMode) -> Self {
+        self.compression = mode;
+        self
+    }
+}
+
+/// Returns `true` when `endpoint` starts with `http://` (case-insensitive).
+fn is_plaintext_endpoint(endpoint: &str) -> bool {
+    endpoint.len() >= 7 && endpoint[..7].eq_ignore_ascii_case("http://")
 }
 
 /// Race a future against the request's deadline AND its optional cancellation
@@ -251,12 +318,34 @@ where
 impl GrpcOutbound for TonicGrpcClient {
     fn call_unary(
         &self,
-        request: GrpcRequest,
+        mut request: GrpcRequest,
     ) -> BoxFuture<'_, GrpcOutboundResult<GrpcResponse>> {
+        // Run before-call interceptors; first failure short-circuits.
+        if let Err(e) = self.interceptors.run_before(&mut request) {
+            return Box::pin(futures::future::ready(Err(e)));
+        }
+
+        // Inject grpc-encoding when compression is enabled.  Done after
+        // interceptors so they can override the negotiated value.
+        if let Some(name) = self.compression.header_value() {
+            request
+                .metadata
+                .headers
+                .entry("grpc-encoding".to_string())
+                .or_insert_with(|| name.to_string());
+            request
+                .metadata
+                .headers
+                .entry("grpc-accept-encoding".to_string())
+                .or_insert_with(|| name.to_string());
+        }
+
         let uri_str   = format!("{}/{}", self.base_uri.trim_end_matches('/'), request.method);
         let body_bytes = encode_grpc_frame(&request.body);
         let deadline   = request.deadline;
         let cancel     = request.cancellation.clone();
+        let max_bytes  = self.max_message_bytes;
+        let interceptors = self.interceptors.clone();
         let http_req   = match build_http_request(
             &uri_str, body_bytes, &request.metadata, Some(deadline),
         ) {
@@ -276,39 +365,44 @@ impl GrpcOutbound for TonicGrpcClient {
                 GrpcOutboundError::ConnectionFailed("transport error".into())
             })?;
 
-            // Check grpc-status in the initial response headers first (some servers
-            // send it there rather than in HTTP/2 trailers).
             check_grpc_status(Some(resp.headers()))?;
 
+            // Bound the response body; oversize returns ResourceExhausted.
+            let limited = http_body_util::Limited::new(resp.into_body(), max_bytes + 5);
             let collected = race_deadline_and_cancel(
-                resp.into_body().collect(),
+                limited.collect(),
                 deadline,
                 cancel.as_ref(),
             )
             .await?
             .map_err(|e| {
-                tracing::warn!(error = %e, "failed to read gRPC response body");
-                GrpcOutboundError::Internal(SANITIZED_INTERNAL_MSG.into())
+                tracing::warn!(error = %e, "response body exceeded max_message_bytes or transport error");
+                GrpcOutboundError::Status(
+                    GrpcStatusCode::ResourceExhausted,
+                    "response body exceeded max_message_bytes".into(),
+                )
             })?;
 
-            // Also check trailers (the canonical gRPC location).
             check_grpc_status(collected.trailers())?;
 
-            // Extract trailer headers BEFORE consuming bytes.
             let trailer_headers = header_map_to_hash(collected.trailers());
             let data            = collected.to_bytes();
 
-            // Strip 5-byte gRPC frame header from the response payload.
             let body = if data.len() >= 5 {
                 data[5..].to_vec()
             } else {
                 data.to_vec()
             };
 
-            Ok(GrpcResponse {
+            let mut response = GrpcResponse {
                 body,
                 metadata: GrpcMetadata { headers: trailer_headers },
-            })
+            };
+
+            // Run after-call interceptors; first failure short-circuits.
+            interceptors.run_after(&mut response)?;
+
+            Ok(response)
         })
     }
 

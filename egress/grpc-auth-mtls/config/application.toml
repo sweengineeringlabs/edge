@@ -1,0 +1,17 @@
+# Default mTLS auth policy — accepts any peer the underlying TLS
+# stack verified. Tighten by adding `allowed_cns` and/or
+# `allowed_san_dns` entries here, or by loading a consumer-specific
+# TOML override and feeding it to MtlsAuthConfig::from_toml.
+
+# When non-empty, the peer's CN MUST exactly match (case-insensitive)
+# one of these values.
+allowed_cns = []
+
+# When non-empty, AT LEAST ONE of the peer's DNS SANs MUST match.
+allowed_san_dns = []
+
+# Allow specific method paths to bypass the identity check (typically
+# used for health-check probes that originate from a load balancer
+# without client cert).  Off by default.
+allow_unauthenticated_methods = false
+unauthenticated_methods = []
