@@ -20,7 +20,33 @@ pub trait GrpcInboundInterceptor: Send + Sync {
     /// Run after the handler returns successfully.  Returning
     /// `Err(_)` converts the call result into that error.
     fn after_dispatch(&self, resp: &mut GrpcResponse) -> Result<(), GrpcInboundError>;
+
+    /// Whether this interceptor enforces authorisation.
+    ///
+    /// Implementations of [`AuthorizationInterceptor`] **must** override
+    /// this to return `true` so the server-startup default-deny check
+    /// can detect them.  The default `false` keeps non-authz
+    /// interceptors out of the gate-discovery path.
+    fn is_authorization(&self) -> bool { false }
 }
+
+/// Marker trait for an inbound interceptor that gates dispatch on
+/// authorization.
+///
+/// Implementors **must** also override
+/// [`GrpcInboundInterceptor::is_authorization`] to return `true` so
+/// the default-deny startup check (in [`crate::TonicGrpcServer`]) can
+/// detect that an authz gate is wired in.
+///
+/// ## Why a marker trait?
+///
+/// At server startup we need to ask the chain "is at least one
+/// interceptor an authz gate?" without dispatching a request.  A
+/// marker trait on its own is not visible through `Arc<dyn
+/// GrpcInboundInterceptor>`, so we pair it with the
+/// `is_authorization()` method on the base trait — the marker is the
+/// declarative contract, the method is the runtime detection hook.
+pub trait AuthorizationInterceptor: GrpcInboundInterceptor {}
 
 /// A registered chain of [`GrpcInboundInterceptor`]s.
 #[derive(Clone, Default)]
@@ -43,6 +69,13 @@ impl GrpcInboundInterceptorChain {
 
     /// `true` when no interceptors are registered.
     pub fn is_empty(&self) -> bool { self.interceptors.is_empty() }
+
+    /// `true` when at least one registered interceptor declares itself
+    /// an [`AuthorizationInterceptor`] via
+    /// [`GrpcInboundInterceptor::is_authorization`].
+    pub fn contains_authorization(&self) -> bool {
+        self.interceptors.iter().any(|i| i.is_authorization())
+    }
 
     /// Run every `before_dispatch` in order until one fails or all succeed.
     pub fn run_before(&self, req: &mut GrpcRequest) -> Result<(), GrpcInboundError> {
@@ -145,5 +178,58 @@ mod tests {
     #[test]
     fn test_grpc_inbound_interceptor_is_object_safe() {
         fn _assert(_: &dyn GrpcInboundInterceptor) {}
+    }
+
+    /// @covers: GrpcInboundInterceptor::is_authorization — defaults to false.
+    #[test]
+    fn test_is_authorization_defaults_to_false_for_plain_interceptors() {
+        struct Plain;
+        impl GrpcInboundInterceptor for Plain {
+            fn before_dispatch(&self, _: &mut GrpcRequest) -> Result<(), GrpcInboundError> { Ok(()) }
+            fn after_dispatch(&self, _: &mut GrpcResponse) -> Result<(), GrpcInboundError> { Ok(()) }
+        }
+        assert!(!Plain.is_authorization());
+    }
+
+    /// @covers: GrpcInboundInterceptorChain::contains_authorization — false on empty chain.
+    #[test]
+    fn test_contains_authorization_returns_false_for_empty_chain() {
+        let chain = GrpcInboundInterceptorChain::new();
+        assert!(!chain.contains_authorization());
+    }
+
+    /// @covers: GrpcInboundInterceptorChain::contains_authorization — false when no authz interceptors.
+    #[test]
+    fn test_contains_authorization_returns_false_when_chain_has_no_authz_gates() {
+        struct Plain;
+        impl GrpcInboundInterceptor for Plain {
+            fn before_dispatch(&self, _: &mut GrpcRequest) -> Result<(), GrpcInboundError> { Ok(()) }
+            fn after_dispatch(&self, _: &mut GrpcResponse) -> Result<(), GrpcInboundError> { Ok(()) }
+        }
+        let chain = GrpcInboundInterceptorChain::new()
+            .push(Arc::new(Plain))
+            .push(Arc::new(Plain));
+        assert!(!chain.contains_authorization());
+    }
+
+    /// @covers: GrpcInboundInterceptorChain::contains_authorization — true when at least one authz gate present.
+    #[test]
+    fn test_contains_authorization_returns_true_when_at_least_one_authz_gate_is_present() {
+        struct Plain;
+        impl GrpcInboundInterceptor for Plain {
+            fn before_dispatch(&self, _: &mut GrpcRequest) -> Result<(), GrpcInboundError> { Ok(()) }
+            fn after_dispatch(&self, _: &mut GrpcResponse) -> Result<(), GrpcInboundError> { Ok(()) }
+        }
+        struct Authz;
+        impl GrpcInboundInterceptor for Authz {
+            fn before_dispatch(&self, _: &mut GrpcRequest) -> Result<(), GrpcInboundError> { Ok(()) }
+            fn after_dispatch(&self, _: &mut GrpcResponse) -> Result<(), GrpcInboundError> { Ok(()) }
+            fn is_authorization(&self) -> bool { true }
+        }
+        impl AuthorizationInterceptor for Authz {}
+        let chain = GrpcInboundInterceptorChain::new()
+            .push(Arc::new(Plain))
+            .push(Arc::new(Authz));
+        assert!(chain.contains_authorization());
     }
 }

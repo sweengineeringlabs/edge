@@ -61,7 +61,8 @@ async fn server_returns_resource_exhausted_for_oversized_message_int_test() {
     // handler envelope.  4 MiB is the production default.
     let max_bytes = 1024;
     let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(GuardedHandler { hit: hit.clone() }))
-        .with_max_message_size(max_bytes);
+        .with_max_message_size(max_bytes)
+        .allow_unauthenticated(true);
 
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
@@ -122,7 +123,8 @@ async fn server_accepts_message_within_cap_int_test() {
 
     let max_bytes = 1024;
     let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(GuardedHandler { hit: hit.clone() }))
-        .with_max_message_size(max_bytes);
+        .with_max_message_size(max_bytes)
+        .allow_unauthenticated(true);
 
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {

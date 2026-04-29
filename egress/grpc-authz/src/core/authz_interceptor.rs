@@ -9,8 +9,8 @@
 use std::sync::Arc;
 
 use swe_edge_ingress_grpc::{
-    GrpcInboundError, GrpcInboundInterceptor, GrpcMetadata, GrpcRequest, GrpcResponse,
-    GrpcStatusCode, PeerIdentity, PEER_CN, PEER_SAN_DNS,
+    AuthorizationInterceptor, GrpcInboundError, GrpcInboundInterceptor, GrpcMetadata,
+    GrpcRequest, GrpcResponse, GrpcStatusCode, PeerIdentity, PEER_CN, PEER_SAN_DNS,
 };
 
 use crate::api::AuthzPolicy;
@@ -89,7 +89,17 @@ impl GrpcInboundInterceptor for AuthzInterceptor {
     fn after_dispatch(&self, _resp: &mut GrpcResponse) -> Result<(), GrpcInboundError> {
         Ok(())
     }
+
+    /// Mark this interceptor as the authz gate so the server-startup
+    /// default-deny check (in `swe-edge-ingress-grpc::TonicGrpcServer`)
+    /// can detect that the chain enforces authorisation.
+    fn is_authorization(&self) -> bool { true }
 }
+
+/// `AuthzInterceptor` is the canonical authorisation gate for inbound
+/// gRPC.  Implementing the marker trait declares its role explicitly
+/// alongside the runtime detection hook on `GrpcInboundInterceptor`.
+impl AuthorizationInterceptor for AuthzInterceptor {}
 
 #[cfg(test)]
 mod tests {
@@ -165,5 +175,16 @@ mod tests {
         let meta = GrpcMetadata { headers };
         let id   = AuthzInterceptor::identity_from_metadata(&meta).expect("identity built");
         assert_eq!(id.cn.as_deref(), Some("mtls-cn"));
+    }
+
+    /// @covers: AuthzInterceptor::is_authorization — declares itself an authz gate.
+    #[test]
+    fn test_is_authorization_returns_true_for_authz_interceptor() {
+        let interceptor = AuthzInterceptor::from_policy(|_: &PeerIdentity, _: &str| true);
+        assert!(
+            interceptor.is_authorization(),
+            "AuthzInterceptor must declare itself as the authz gate so the \
+             default-deny startup check can find it"
+        );
     }
 }

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{Request, Response};
@@ -16,16 +16,25 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 
+use crate::api::audit_sink::{AuditEvent, AuditSink, NoopAuditSink};
 use crate::api::interceptor::GrpcInboundInterceptorChain;
 use crate::api::port::grpc_inbound::{GrpcInbound, GrpcInboundError, GrpcMessageStream};
 use crate::api::value_object::{
     is_reserved_peer_key, CompressionMode, GrpcMetadata, GrpcRequest, GrpcResponse,
-    GrpcServerConfig,
+    GrpcServerConfig, GrpcStatusCode, PEER_CN,
 };
 use crate::core::grpc_timeout::{parse_grpc_timeout, DEFAULT_DEADLINE};
 use crate::core::peer_identity::extract_peer_identity;
-use crate::core::status_codes::map_inbound_error;
+use crate::core::status_codes::{from_tonic_code, map_inbound_error};
 use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};
+
+/// Diagnostic message emitted when the server is started without an
+/// [`AuthorizationInterceptor`] but `allow_unauthenticated` is `false`.
+pub const MISSING_AUTHORIZATION_INTERCEPTOR_MSG: &str =
+    "gRPC server requires an AuthorizationInterceptor in the chain \
+     (e.g. swe-edge-egress-grpc-authz::AuthzInterceptor). To explicitly run \
+     without authz, set `allow_unauthenticated = true` in \
+     GrpcServerConfig (logged at startup as a warning).";
 
 /// Hard cap on incoming message size.
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1_024 * 1_024; // 4 MiB
@@ -74,10 +83,17 @@ pub struct TonicGrpcServer {
     tls:                    Option<IngressTlsConfig>,
     interceptors:           GrpcInboundInterceptorChain,
     compression:            CompressionMode,
+    allow_unauthenticated:  bool,
+    audit_sink:             Arc<dyn AuditSink>,
 }
 
 impl TonicGrpcServer {
     /// Create a server that will bind to `bind` and delegate to `handler`.
+    ///
+    /// **Defaults**: no audit sink (see [`NoopAuditSink`]); fail-closed
+    /// authentication (see [`GrpcServerConfig::allow_unauthenticated`]).
+    /// Use [`Self::with_audit_sink`] and
+    /// [`Self::allow_unauthenticated`] to opt out.
     pub fn new(bind: impl Into<String>, handler: Arc<dyn GrpcInbound>) -> Self {
         Self {
             bind:                   bind.into(),
@@ -87,6 +103,8 @@ impl TonicGrpcServer {
             tls:                    None,
             interceptors:           GrpcInboundInterceptorChain::new(),
             compression:            CompressionMode::None,
+            allow_unauthenticated:  false,
+            audit_sink:             Arc::new(NoopAuditSink),
         }
     }
 
@@ -112,7 +130,24 @@ impl TonicGrpcServer {
             tls:                    config.tls.clone(),
             interceptors:           GrpcInboundInterceptorChain::new(),
             compression:            config.compression,
+            allow_unauthenticated:  config.allow_unauthenticated,
+            audit_sink:             Arc::new(NoopAuditSink),
         })
+    }
+
+    /// Replace the audit sink — defaults to [`NoopAuditSink`].  The
+    /// sink fires after every dispatched call.
+    pub fn with_audit_sink(mut self, sink: Arc<dyn AuditSink>) -> Self {
+        self.audit_sink = sink;
+        self
+    }
+
+    /// Opt out of the default-deny authorisation invariant.  Mirror of
+    /// [`GrpcServerConfig::allow_unauthenticated`] for builders that
+    /// constructed the server via [`Self::new`].
+    pub fn allow_unauthenticated(mut self, allow: bool) -> Self {
+        self.allow_unauthenticated = allow;
+        self
     }
 
     /// Override the maximum incoming message size (default: [`MAX_MESSAGE_BYTES`]).
@@ -152,20 +187,52 @@ impl TonicGrpcServer {
     }
 
     /// Bind and serve until `shutdown` resolves.
+    ///
+    /// **Fail-closed authorisation invariant**: if no
+    /// [`crate::AuthorizationInterceptor`] is registered AND
+    /// `allow_unauthenticated` is `false`, this method panics with
+    /// [`MISSING_AUTHORIZATION_INTERCEPTOR_MSG`] before binding.
+    /// Callers that want to run unauthenticated must explicitly call
+    /// [`Self::allow_unauthenticated`] (or set the flag via
+    /// [`GrpcServerConfig`]) — that path logs a WARN at startup so
+    /// the decision is observable in production.
     pub async fn serve<F>(&self, shutdown: F) -> Result<(), TonicServerError>
     where
         F: Future<Output = ()>,
     {
+        self.enforce_authorization_invariant();
         let listener = TcpListener::bind(&self.bind)
             .await
             .map_err(|e| TonicServerError::Bind(self.bind.clone(), e))?;
         self.serve_with_listener(listener, shutdown).await
     }
 
+    /// Apply the fail-closed authorisation invariant.
+    ///
+    /// Panics when no authorization interceptor is registered and
+    /// `allow_unauthenticated` is `false`.  Logs a WARN when the
+    /// caller opted out via `allow_unauthenticated = true`.
+    pub(crate) fn enforce_authorization_invariant(&self) {
+        let has_authz = self.interceptors.contains_authorization();
+        if !has_authz {
+            if self.allow_unauthenticated {
+                tracing::warn!(
+                    "running with allow_unauthenticated = true; \
+                     gRPC dispatch will accept all callers"
+                );
+            } else {
+                panic!("{MISSING_AUTHORIZATION_INTERCEPTOR_MSG}");
+            }
+        }
+    }
+
     /// Serve using a caller-supplied pre-bound listener.
     ///
     /// Useful for port-0 allocation in tests or pre-bind for zero-downtime
     /// restarts — consistent with the HTTP server pattern.
+    ///
+    /// **Fail-closed authorisation invariant** is enforced here as
+    /// well — see [`Self::serve`] for details.
     pub async fn serve_with_listener<F>(
         &self,
         listener: TcpListener,
@@ -174,6 +241,8 @@ impl TonicGrpcServer {
     where
         F: Future<Output = ()>,
     {
+        self.enforce_authorization_invariant();
+
         let bind_addr = listener
             .local_addr()
             .map(|a| a.to_string())
@@ -197,6 +266,7 @@ impl TonicGrpcServer {
         let max_concurrent_streams = self.max_concurrent_streams;
         let interceptors           = self.interceptors.clone();
         let compression            = self.compression;
+        let audit_sink             = self.audit_sink.clone();
         let mut shutdown           = std::pin::pin!(shutdown);
 
         loop {
@@ -209,6 +279,7 @@ impl TonicGrpcServer {
                     let handler      = handler.clone();
                     let tls_acceptor = tls_acceptor.clone();
                     let interceptors = interceptors.clone();
+                    let audit_sink   = audit_sink.clone();
                     tokio::spawn(async move {
                         if let Some(acceptor) = tls_acceptor {
                             match acceptor.accept(stream).await {
@@ -229,10 +300,12 @@ impl TonicGrpcServer {
                                         let handler         = handler.clone();
                                         let interceptors    = interceptors.clone();
                                         let peer_metadata   = peer_metadata.clone();
+                                        let audit_sink      = audit_sink.clone();
                                         move |req| {
                                             let handler       = handler.clone();
                                             let interceptors  = interceptors.clone();
                                             let peer_metadata = peer_metadata.clone();
+                                            let audit_sink    = audit_sink.clone();
                                             async move {
                                                 Ok::<_, Infallible>(dispatch(
                                                     req,
@@ -241,6 +314,7 @@ impl TonicGrpcServer {
                                                     interceptors,
                                                     compression,
                                                     peer_metadata,
+                                                    audit_sink,
                                                 ).await)
                                             }
                                         }
@@ -261,9 +335,11 @@ impl TonicGrpcServer {
                             let svc = hyper::service::service_fn({
                                 let handler      = handler.clone();
                                 let interceptors = interceptors.clone();
+                                let audit_sink   = audit_sink.clone();
                                 move |req| {
                                     let handler      = handler.clone();
                                     let interceptors = interceptors.clone();
+                                    let audit_sink   = audit_sink.clone();
                                     async move {
                                         Ok::<_, Infallible>(dispatch(
                                             req,
@@ -272,6 +348,7 @@ impl TonicGrpcServer {
                                             interceptors,
                                             compression,
                                             HashMap::new(),
+                                            audit_sink,
                                         ).await)
                                     }
                                 }
@@ -313,24 +390,52 @@ async fn dispatch(
     interceptors:  GrpcInboundInterceptorChain,
     compression:   CompressionMode,
     peer_metadata: HashMap<String, String>,
+    audit_sink:    Arc<dyn AuditSink>,
 ) -> Response<BoxBody> {
     let method   = req.uri().path().to_string();
+    let started  = Instant::now();
+    let timestamp = SystemTime::now();
     let metadata = collect_metadata(req.headers());
     let deadline = read_deadline(req.headers());
+
+    // Identity for audit — drawn from the cryptographic peer
+    // metadata snapshot taken at TLS-acceptance time.  Plaintext
+    // connections see `None`, mirroring the audit-event contract.
+    let identity = peer_metadata.get(PEER_CN).cloned();
+
+    // Helper to emit a final audit event and return the wire response.
+    // Centralises every termination path so we never miss recording.
+    let emit = |code: tonic::Code, response: Response<BoxBody>| {
+        let evt = AuditEvent {
+            timestamp,
+            method:      method.clone(),
+            identity:    identity.clone(),
+            status:      from_tonic_code(code),
+            duration_ms: started.elapsed().as_millis() as u64,
+        };
+        audit_sink.record(evt);
+        response
+    };
 
     // Past-deadline calls MUST fail before the handler runs.  A zero
     // deadline (e.g. `grpc-timeout: 0n` or `0S`) means the client gave
     // us no time at all to do work.
     if deadline.is_zero() {
-        return grpc_error(
+        return emit(
             tonic::Code::DeadlineExceeded,
-            "request rejected before handler dispatch: deadline has already elapsed",
+            grpc_error(
+                tonic::Code::DeadlineExceeded,
+                "request rejected before handler dispatch: deadline has already elapsed",
+            ),
         );
     }
 
     let body_bytes = match Limited::new(req.into_body(), max_bytes).collect().await {
         Ok(collected) => collected.to_bytes(),
-        Err(_)        => return grpc_error(tonic::Code::ResourceExhausted, "message too large"),
+        Err(_)        => return emit(
+            tonic::Code::ResourceExhausted,
+            grpc_error(tonic::Code::ResourceExhausted, "message too large"),
+        ),
     };
 
     // Per-request cancellation token — fired implicitly when this future is
@@ -376,8 +481,8 @@ async fn dispatch(
     // Run before_dispatch — first failure short-circuits and the
     // handler never runs.
     if let Err(e) = interceptors.run_before(&mut intercept_req) {
-        let (code, msg) = map_inbound_error(e);
-        return grpc_error(code, msg);
+        let (code, msg) = map_inbound_error(sanitize_authz_error(e));
+        return emit(code, grpc_error(code, msg));
     }
     // Interceptors may have mutated headers; pull them back.
     let merged_headers = intercept_req.metadata.headers.clone();
@@ -386,7 +491,7 @@ async fn dispatch(
     // mid-handler is a server-side `DeadlineExceeded` and must NOT
     // propagate handler partial output.
     let handler_fut = handler.handle_stream(
-        method,
+        method.clone(),
         GrpcMetadata { headers: merged_headers },
         message_stream,
     );
@@ -396,13 +501,16 @@ async fn dispatch(
         biased;
         // Cancellation: client disconnected — abort and never produce a body.
         _ = cancel_fut => {
-            return grpc_error(tonic::Code::Cancelled, "client disconnected");
+            return emit(
+                tonic::Code::Cancelled,
+                grpc_error(tonic::Code::Cancelled, "client disconnected"),
+            );
         }
         // Deadline: timer fired before the handler returned.
         _ = tokio::time::sleep(deadline) => {
-            return grpc_error(
+            return emit(
                 tonic::Code::DeadlineExceeded,
-                "handler deadline exceeded",
+                grpc_error(tonic::Code::DeadlineExceeded, "handler deadline exceeded"),
             );
         }
         r = handler_fut => r,
@@ -420,7 +528,7 @@ async fn dispatch(
                 Ok(p)  => p,
                 Err(e) => {
                     let (code, msg) = map_inbound_error(e);
-                    return grpc_error(code, msg);
+                    return emit(code, grpc_error(code, msg));
                 }
             };
             // Synthesise an interceptor-visible response.  The body
@@ -446,7 +554,7 @@ async fn dispatch(
             // after_dispatch — same short-circuit semantics as before.
             if let Err(e) = interceptors.run_after(&mut response) {
                 let (code, msg) = map_inbound_error(e);
-                return grpc_error(code, msg);
+                return emit(code, grpc_error(code, msg));
             }
 
             let body_changed = response.body != original_payload.concat();
@@ -456,12 +564,34 @@ async fn dispatch(
                 original_payload
             };
 
-            grpc_stream_response_from_payloads(payloads, response.metadata).await
+            let wire = grpc_stream_response_from_payloads(payloads, response.metadata).await;
+            emit(tonic::Code::Ok, wire)
         }
         Err(e) => {
             let (code, msg) = map_inbound_error(e);
-            grpc_error(code, msg)
+            emit(code, grpc_error(code, msg))
         }
+    }
+}
+
+/// Strip authz policy rationale before it reaches the wire.
+///
+/// Authorisation interceptors may attach policy-decision details to
+/// the error message — those strings could leak the server's ACL
+/// shape.  Replace any `PermissionDenied` payload with a fixed,
+/// non-revealing string.  Other errors pass through untouched.
+fn sanitize_authz_error(err: GrpcInboundError) -> GrpcInboundError {
+    match err {
+        GrpcInboundError::PermissionDenied(_) => {
+            GrpcInboundError::PermissionDenied("authorization denied".into())
+        }
+        GrpcInboundError::Status(GrpcStatusCode::PermissionDenied, _) => {
+            GrpcInboundError::Status(
+                GrpcStatusCode::PermissionDenied,
+                "authorization denied".into(),
+            )
+        }
+        other => other,
     }
 }
 
@@ -689,5 +819,140 @@ mod tests {
         map.insert("x-request-id", "abc-123".parse().unwrap());
         let meta = collect_metadata(&map);
         assert_eq!(meta.get("x-request-id"), Some(&"abc-123".to_string()));
+    }
+
+    // ── sanitize_authz_error ──────────────────────────────────────────────
+
+    /// @covers: sanitize_authz_error — replaces PermissionDenied rationale.
+    #[test]
+    fn test_sanitize_authz_error_strips_permission_denied_rationale() {
+        let detailed = GrpcInboundError::PermissionDenied(
+            "policy ROLE_ADMIN denied subject=alice path=/svc/Drop".into(),
+        );
+        let sanitized = sanitize_authz_error(detailed);
+        match sanitized {
+            GrpcInboundError::PermissionDenied(msg) => {
+                assert_eq!(msg, "authorization denied");
+                assert!(!msg.contains("alice"));
+                assert!(!msg.contains("ROLE_ADMIN"));
+            }
+            other => panic!("expected PermissionDenied, got {other:?}"),
+        }
+    }
+
+    /// @covers: sanitize_authz_error — Status(PermissionDenied) variant also sanitized.
+    #[test]
+    fn test_sanitize_authz_error_strips_status_permission_denied_rationale() {
+        let detailed = GrpcInboundError::Status(
+            GrpcStatusCode::PermissionDenied,
+            "denied: subject=bob lacks scope=admin".into(),
+        );
+        let sanitized = sanitize_authz_error(detailed);
+        match sanitized {
+            GrpcInboundError::Status(GrpcStatusCode::PermissionDenied, msg) => {
+                assert_eq!(msg, "authorization denied");
+                assert!(!msg.contains("bob"));
+                assert!(!msg.contains("scope"));
+            }
+            other => panic!("expected Status(PermissionDenied), got {other:?}"),
+        }
+    }
+
+    /// @covers: sanitize_authz_error — non-PermissionDenied errors pass through.
+    #[test]
+    fn test_sanitize_authz_error_passes_through_unrelated_errors() {
+        let original = GrpcInboundError::NotFound("row not found".into());
+        let result = sanitize_authz_error(original);
+        match result {
+            GrpcInboundError::NotFound(msg) => assert_eq!(msg, "row not found"),
+            other => panic!("expected NotFound, got {other:?}"),
+        }
+    }
+
+    // ── enforce_authorization_invariant ──────────────────────────────────
+
+    use crate::api::interceptor::{AuthorizationInterceptor, GrpcInboundInterceptor, GrpcInboundInterceptorChain};
+    use crate::api::port::grpc_inbound::{GrpcInbound, GrpcHealthCheck, GrpcInboundResult};
+    use futures::future::BoxFuture;
+
+    struct FakeAuthz;
+    impl GrpcInboundInterceptor for FakeAuthz {
+        fn before_dispatch(&self, _: &mut GrpcRequest) -> Result<(), GrpcInboundError> { Ok(()) }
+        fn after_dispatch(&self, _: &mut GrpcResponse) -> Result<(), GrpcInboundError> { Ok(()) }
+        fn is_authorization(&self) -> bool { true }
+    }
+    impl AuthorizationInterceptor for FakeAuthz {}
+
+    struct DummyHandler;
+    impl GrpcInbound for DummyHandler {
+        fn handle_unary(&self, _: GrpcRequest) -> BoxFuture<'_, GrpcInboundResult<GrpcResponse>> {
+            Box::pin(async { Ok(GrpcResponse { body: vec![], metadata: GrpcMetadata::default() }) })
+        }
+        fn health_check(&self) -> BoxFuture<'_, GrpcInboundResult<GrpcHealthCheck>> {
+            Box::pin(async { Ok(GrpcHealthCheck::healthy()) })
+        }
+    }
+
+    /// @covers: enforce_authorization_invariant — passes when authz interceptor is present.
+    #[test]
+    fn test_enforce_authorization_invariant_succeeds_with_authz_interceptor() {
+        let chain = GrpcInboundInterceptorChain::new().push(Arc::new(FakeAuthz));
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
+            .with_interceptors(chain);
+        // Should not panic.
+        server.enforce_authorization_invariant();
+    }
+
+    /// @covers: enforce_authorization_invariant — passes with allow_unauthenticated.
+    #[test]
+    fn test_enforce_authorization_invariant_succeeds_when_allow_unauthenticated_is_set() {
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
+            .allow_unauthenticated(true);
+        // Should not panic, only WARN.
+        server.enforce_authorization_invariant();
+    }
+
+    /// @covers: enforce_authorization_invariant — panics with no authz + fail-closed default.
+    #[test]
+    #[should_panic(expected = "AuthorizationInterceptor")]
+    fn test_enforce_authorization_invariant_panics_when_authz_missing_and_fail_closed() {
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler));
+        // No authz registered, allow_unauthenticated defaults to false → panic.
+        server.enforce_authorization_invariant();
+    }
+
+    // ── with_audit_sink / allow_unauthenticated builders ──────────────────
+
+    /// @covers: TonicGrpcServer::with_audit_sink — replaces the default sink.
+    #[test]
+    fn test_with_audit_sink_installs_provided_sink() {
+        use std::sync::Mutex;
+        struct CountingSink(Arc<Mutex<usize>>);
+        impl AuditSink for CountingSink {
+            fn record(&self, _: AuditEvent) {
+                *self.0.lock().unwrap() += 1;
+            }
+        }
+        let calls = Arc::new(Mutex::new(0usize));
+        let sink: Arc<dyn AuditSink> = Arc::new(CountingSink(calls.clone()));
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
+            .with_audit_sink(sink);
+        // Drive the sink directly through the server's stored Arc.
+        server.audit_sink.record(AuditEvent {
+            timestamp:   SystemTime::UNIX_EPOCH,
+            method:      "/x".into(),
+            identity:    None,
+            status:      GrpcStatusCode::Ok,
+            duration_ms: 0,
+        });
+        assert_eq!(*calls.lock().unwrap(), 1);
+    }
+
+    /// @covers: TonicGrpcServer::allow_unauthenticated — sets the flag.
+    #[test]
+    fn test_allow_unauthenticated_sets_the_flag() {
+        let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(DummyHandler))
+            .allow_unauthenticated(true);
+        assert!(server.allow_unauthenticated);
     }
 }

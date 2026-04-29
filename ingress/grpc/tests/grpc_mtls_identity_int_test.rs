@@ -229,7 +229,9 @@ async fn mtls_peer_identity_flows_through_to_handler_metadata_int_test() {
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server   = TonicGrpcServer::new("127.0.0.1:0", handler).with_tls(tls_cfg);
+    let server   = TonicGrpcServer::new("127.0.0.1:0", handler)
+        .with_tls(tls_cfg)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server
@@ -283,7 +285,9 @@ async fn mtls_server_strips_spoofed_peer_headers_int_test() {
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server   = TonicGrpcServer::new("127.0.0.1:0", handler).with_tls(tls_cfg);
+    let server   = TonicGrpcServer::new("127.0.0.1:0", handler)
+        .with_tls(tls_cfg)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server

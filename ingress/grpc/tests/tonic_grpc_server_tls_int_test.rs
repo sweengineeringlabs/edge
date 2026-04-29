@@ -160,7 +160,9 @@ async fn grpc_call_tls(addr: SocketAddr, path: &str, payload: &[u8]) -> (u16, Op
 async fn start_tls_server(tls: IngressTlsConfig) -> (SocketAddr, oneshot::Sender<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler)).with_tls(tls);
+    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler))
+        .with_tls(tls)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server
@@ -202,7 +204,9 @@ async fn test_grpc_tls_server_echoes_payload_with_status_0() {
 #[tokio::test]
 async fn test_grpc_tls_server_returns_tls_error_for_missing_cert() {
     let cfg = IngressTlsConfig::tls("/no/such/cert.pem", "/no/such/key.pem");
-    let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler)).with_tls(cfg);
+    let server = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler))
+        .with_tls(cfg)
+        .allow_unauthenticated(true);
     let err = server.serve(std::future::pending::<()>()).await;
     assert!(err.is_err(), "expected Tls error");
     let msg = err.unwrap_err().to_string();
@@ -222,7 +226,8 @@ async fn test_plain_grpc_server_unaffected_when_tls_server_runs_concurrently() {
     let plain_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let plain_addr     = plain_listener.local_addr().unwrap();
     let (ptx, prx)     = oneshot::channel::<()>();
-    let plain_server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler));
+    let plain_server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler))
+        .allow_unauthenticated(true);
     tokio::spawn(async move {
         plain_server
             .serve_with_listener(plain_listener, async move { let _ = prx.await; })
