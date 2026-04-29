@@ -1,0 +1,46 @@
+[package]
+name         = "swe-edge-ingress-grpc-reflection"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+repository.workspace   = true
+description  = "swe-edge ingress — gRPC reflection (grpc.reflection.v1alpha.ServerReflection) for grpcurl/evans"
+keywords     = ["grpc", "reflection", "grpcurl", "edge", "swe"]
+categories   = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type     = "processor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace          = true
+thiserror.workspace      = true
+async-trait.workspace    = true
+futures.workspace        = true
+tokio.workspace          = true
+parking_lot.workspace    = true
+tracing.workspace        = true
+
+# Cross-workspace path dep on the inbound port + dispatcher.
+swe-edge-ingress-grpc    = { path = "../grpc" }
+edge-domain              = { path = "../../domain" }
+
+[dev-dependencies]
+tokio          = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+async-trait.workspace    = true
+bytes.workspace          = true
+tracing.workspace        = true
+http                     = "1"
+http-body-util.workspace = true
+hyper                    = { version = "1", features = ["http2", "client", "server"] }
+hyper-util               = { version = "0.1", features = ["tokio"] }
+swe-edge-ingress-grpc    = { path = "../grpc" }
+edge-domain              = { path = "../../domain" }
+
+[lints]
+workspace = true

@@ -33,6 +33,17 @@ pub struct GrpcServerConfig {
     pub allow_unauthenticated: bool,
     /// Compression negotiation mode.
     pub compression: CompressionMode,
+    /// Phase 5 hook — expose `grpc.reflection.v1alpha.ServerReflection`.
+    ///
+    /// **Default `false`**.  Reflection lets any caller reaching the
+    /// endpoint list every registered method and download
+    /// FileDescriptorProto blobs — useful for grpcurl/evans during
+    /// development, but a real attack-surface concern in production.
+    /// Wiring code that registers a `ReflectionService` MUST gate on
+    /// this flag.  The server logs a startup WARN when the flag is
+    /// `true` so the decision is observable.
+    #[serde(default)]
+    pub enable_reflection: bool,
 }
 
 impl GrpcServerConfig {
@@ -47,6 +58,7 @@ impl GrpcServerConfig {
             max_concurrent_streams: DEFAULT_MAX_CONCURRENT_STREAMS,
             allow_unauthenticated:  false,
             compression:            CompressionMode::None,
+            enable_reflection:      false,
         }
     }
 
@@ -85,6 +97,17 @@ impl GrpcServerConfig {
         self.allow_unauthenticated = true;
         self
     }
+
+    /// Phase 5 hook: opt in to gRPC reflection.
+    ///
+    /// **Off by default.**  Calling this flips
+    /// [`GrpcServerConfig::enable_reflection`] to `true`; downstream
+    /// wiring code that registers a `ReflectionService` reads that
+    /// flag and logs a startup WARN before exposing the endpoint.
+    pub fn enable_reflection(mut self) -> Self {
+        self.enable_reflection = true;
+        self
+    }
 }
 
 impl Default for GrpcServerConfig {
@@ -104,6 +127,7 @@ impl Default for GrpcServerConfig {
             max_concurrent_streams: DEFAULT_MAX_CONCURRENT_STREAMS,
             allow_unauthenticated:  false,
             compression:            CompressionMode::None,
+            enable_reflection:      false,
         }
     }
 }
@@ -179,5 +203,45 @@ mod tests {
     fn test_default_max_concurrent_streams_is_one_hundred() {
         let cfg = GrpcServerConfig::default();
         assert_eq!(cfg.max_concurrent_streams, 100);
+    }
+
+    /// @covers: GrpcServerConfig::new — reflection is off by default.
+    /// Issue #8 acceptance gate (default-off).
+    #[test]
+    fn test_new_disables_reflection_by_default() {
+        let cfg = GrpcServerConfig::new(addr());
+        assert!(!cfg.enable_reflection, "reflection must be off by default");
+    }
+
+    /// @covers: GrpcServerConfig::default — reflection off in default profile.
+    #[test]
+    fn test_default_disables_reflection() {
+        let cfg = GrpcServerConfig::default();
+        assert!(!cfg.enable_reflection);
+    }
+
+    /// @covers: GrpcServerConfig::enable_reflection — opt-in flips the flag.
+    #[test]
+    fn test_enable_reflection_builder_flips_the_flag() {
+        let cfg = GrpcServerConfig::new(addr()).enable_reflection();
+        assert!(cfg.enable_reflection);
+    }
+
+    /// @covers: serde — `enable_reflection` defaults to false when missing in TOML.
+    /// Backwards-compat: existing configs without the field must still deserialise.
+    #[test]
+    fn test_deserialize_missing_enable_reflection_defaults_to_false() {
+        // Minimal serialised form that exercises the missing-field path.
+        let json = serde_json::json!({
+            "bind": "127.0.0.1:0",
+            "tls_required": false,
+            "tls": null,
+            "max_message_bytes": 4194304,
+            "max_concurrent_streams": 100,
+            "allow_unauthenticated": false,
+            "compression": "None"
+        });
+        let cfg: GrpcServerConfig = serde_json::from_value(json).expect("must deserialise");
+        assert!(!cfg.enable_reflection);
     }
 }

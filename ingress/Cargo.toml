@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["main", "http", "grpc", "file", "tls"]
+members = ["main", "http", "grpc", "grpc-reflection", "file", "tls"]
 
 [workspace.package]
 version      = "0.1.0"
@@ -34,10 +34,11 @@ swe-observ-processes    = { package = "swe_justobserv_processes", git = "ssh://g
 reqwest          = { version = "0.12", features = ["json"], default-features = false }
 
 # Workspace-internal domain crates
-swe-edge-ingress-http  = { path = "http" }
-swe-edge-ingress-grpc  = { path = "grpc" }
-swe-edge-ingress-file  = { path = "file" }
-swe-edge-ingress-tls   = { path = "tls" }
+swe-edge-ingress-http             = { path = "http" }
+swe-edge-ingress-grpc             = { path = "grpc" }
+swe-edge-ingress-grpc-reflection  = { path = "grpc-reflection" }
+swe-edge-ingress-file             = { path = "file" }
+swe-edge-ingress-tls              = { path = "tls" }
 
 [workspace.lints.rust]
 unsafe_code  = "deny"

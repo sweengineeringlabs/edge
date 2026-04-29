@@ -24,7 +24,7 @@ pub use crate::core::interceptor::{
 pub use crate::core::peer_identity::extract_peer_identity;
 pub use crate::core::server::{
     GrpcServerConfigError, TonicGrpcServer, TonicServerError, MAX_MESSAGE_BYTES,
-    MISSING_AUTHORIZATION_INTERCEPTOR_MSG,
+    MISSING_AUTHORIZATION_INTERCEPTOR_MSG, REFLECTION_ENABLED_WARN_MSG,
 };
 pub use crate::core::status_codes::{from_tonic_code, from_wire, map_inbound_error, to_tonic_code, to_wire, SANITIZED_INTERNAL_MSG};
 pub use swe_edge_ingress_tls::{IngressTlsConfig, IngressTlsError};
