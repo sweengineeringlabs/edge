@@ -107,11 +107,12 @@ impl GrpcInbound for HandlerRegistryDispatcher {
 /// [`GrpcInboundError`] without leaking internals to the wire.
 fn map_handler_error(err: HandlerError) -> GrpcInboundError {
     match err {
-        HandlerError::Unsupported(m)     => GrpcInboundError::Unimplemented(m),
-        HandlerError::InvalidRequest(m)  => GrpcInboundError::InvalidArgument(m),
-        HandlerError::ExecutionFailed(m) => GrpcInboundError::Internal(m),
-        HandlerError::Unhealthy          => GrpcInboundError::Unavailable("handler unhealthy".into()),
-        HandlerError::Other(m)           => GrpcInboundError::Internal(m),
+        HandlerError::Unsupported(m)        => GrpcInboundError::Unimplemented(m),
+        HandlerError::InvalidRequest(m)     => GrpcInboundError::InvalidArgument(m),
+        HandlerError::ExecutionFailed(m)    => GrpcInboundError::Internal(m),
+        HandlerError::Unhealthy             => GrpcInboundError::Unavailable("handler unhealthy".into()),
+        HandlerError::FailedPrecondition(m) => GrpcInboundError::Status(crate::saf::GrpcStatusCode::FailedPrecondition, m),
+        HandlerError::Other(m)              => GrpcInboundError::Internal(m),
     }
 }
 
@@ -300,5 +301,19 @@ mod tests {
     fn test_map_handler_error_other_maps_to_internal() {
         let mapped = map_handler_error(HandlerError::Other("misc".into()));
         assert!(matches!(mapped, GrpcInboundError::Internal(_)));
+    }
+
+    /// @covers: map_handler_error — FailedPrecondition -> Status(FailedPrecondition).
+    #[test]
+    fn test_map_handler_error_failed_precondition_maps_to_status() {
+        use crate::saf::GrpcStatusCode;
+        let mapped = map_handler_error(HandlerError::FailedPrecondition("rerank not configured".into()));
+        match mapped {
+            GrpcInboundError::Status(code, msg) => {
+                assert_eq!(code, GrpcStatusCode::FailedPrecondition);
+                assert!(msg.contains("rerank not configured"));
+            }
+            other => panic!("expected Status(FailedPrecondition, _), got {other:?}"),
+        }
     }
 }
