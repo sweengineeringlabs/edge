@@ -340,7 +340,13 @@ impl GrpcOutbound for TonicGrpcClient {
                 .or_insert_with(|| name.to_string());
         }
 
-        let uri_str   = format!("{}/{}", self.base_uri.trim_end_matches('/'), request.method);
+        // Method paths are conventionally written with a leading `/`
+        // (e.g. `/pkg.Service/Method`); trim it so we never produce
+        // `host//path`. Strict registry-based dispatchers (e.g.
+        // `HandlerRegistryDispatcher`) key on the exact path string and
+        // reject the double-slash form.
+        let method = request.method.trim_start_matches('/');
+        let uri_str   = format!("{}/{}", self.base_uri.trim_end_matches('/'), method);
         let body_bytes = encode_grpc_frame(&request.body);
         let deadline   = request.deadline;
         let cancel     = request.cancellation.clone();
@@ -424,6 +430,7 @@ impl GrpcOutbound for TonicGrpcClient {
         metadata: GrpcMetadata,
         messages: GrpcMessageStream,
     ) -> BoxFuture<'_, GrpcOutboundResult<GrpcMessageStream>> {
+        let method = method.trim_start_matches('/');
         let uri_str = format!("{}/{}", self.base_uri.trim_end_matches('/'), method);
 
         Box::pin(async move {
