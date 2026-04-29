@@ -7,6 +7,7 @@
 //! call and a streaming call through TonicGrpcClient, then exits.
 
 use std::convert::Infallible;
+use std::time::Duration;
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::StreamExt as _;
@@ -98,9 +99,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let uri = start_echo_server().await;
     let client = TonicGrpcClient::new(&uri);
 
-    // Unary call — single request, single response.
-    let req = GrpcRequest::new("echo.EchoService/Echo", b"hello from egress".to_vec())
-        .with_header("x-request-id", "example-001");
+    // Unary call — single request, single response.  Per-call deadline is mandatory.
+    let req = GrpcRequest::new(
+        "echo.EchoService/Echo",
+        b"hello from egress".to_vec(),
+        Duration::from_secs(5),
+    )
+    .with_header("x-request-id", "example-001");
     let resp = client.call_unary(req).await?;
     println!(
         "Unary  → {} bytes echoed: {:?}",
