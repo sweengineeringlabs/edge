@@ -21,6 +21,12 @@ pub enum HandlerError {
     #[error("handler unhealthy")]
     Unhealthy,
 
+    /// Caller asked for an operation the handler cannot perform in its
+    /// current state — distinct from `InvalidRequest` (request shape is
+    /// fine; system state is not). Maps to gRPC `FAILED_PRECONDITION`.
+    #[error("failed precondition: {0}")]
+    FailedPrecondition(String),
+
     /// Domain-specific failure that does not fit the above categories.
     #[error("handler error: {0}")]
     Other(String),
