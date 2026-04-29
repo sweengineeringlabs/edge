@@ -240,7 +240,11 @@ impl GrpcInbound for MidStreamErrorHandler {
 async fn start_server<H: GrpcInbound + 'static>(handler: H) -> (SocketAddr, oneshot::Sender<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr     = listener.local_addr().unwrap();
-    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(handler));
+    // Phase 3 introduces a default-deny authorisation invariant; these
+    // dispatch-level tests exercise the wire path without an authz
+    // interceptor, so we explicitly opt out of the gate here.
+    let server   = TonicGrpcServer::new("127.0.0.1:0", Arc::new(handler))
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server
@@ -454,7 +458,8 @@ async fn test_server_enforces_message_size_limit_with_resource_exhausted() {
     let listener  = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr      = listener.local_addr().unwrap();
     let server    = TonicGrpcServer::new("127.0.0.1:0", Arc::new(EchoHandler))
-        .with_max_message_size(16);
+        .with_max_message_size(16)
+        .allow_unauthenticated(true);
     let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         server.serve_with_listener(listener, async move { let _ = rx.await; }).await.unwrap();
