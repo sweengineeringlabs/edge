@@ -1,0 +1,35 @@
+[package]
+name = "swe-edge-egress-grpc-retry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Decorator: gRPC-aware retry around any GrpcOutbound"
+keywords = ["grpc", "retry", "tonic", "decorator", "swe"]
+categories = ["network-programming"]
+
+[package.metadata.struct-engine]
+application_type = "lib"
+service_type = "processor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+swe-edge-egress-grpc = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+# `from_config` loads policy from TOML. `serde` derives the
+# schema; `toml` parses it. Policy values live in
+# `config/application.toml` + consumer overrides — never as
+# hardcoded literals in source.
+serde = { workspace = true }
+toml = { workspace = true }
+tokio = { workspace = true, features = ["time", "sync", "macros"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
